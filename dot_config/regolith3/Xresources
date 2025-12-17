@@ -1,0 +1,22 @@
+Xft.dpi: 90
+wm.binding.terminal: i
+wm.binding.browser: Shift+i
+wm.binding.bar_toggle: m
+wm.binding.exit_app: q
+wm.binding.launcher.app: slash
+wm.binding.files: e
+wm.binding.bar_toggle: period
+wm.binding.swap_focus: y
+
+wm.bar.position: top
+wm.bar.separatorchar: " "
+
+wm.gaps.inner.size: 0
+
+regolith.look.path: /usr/share/regolith-look/dracula
+! regolith.look.path: /usr/share/regolith-look/default
+
+! regolith.wallpaper.file: /home/sungsik/.local/share/backgrounds/2025-04-25-23-15-00-wooju.JPEG
+! regolith.lockscreen.wallpaper.file: /home/sungsik/.local/share/backgrounds/2025-04-25-23-15-00-wooju.JPEG
+! regolith.wallpaper.file: /home/sungsik/.local/share/backgrounds/2025-04-25-23-15-00-wooju.JPEG
+! regolith.lockscreen.wallpaper.file: /home/sungsik/.local/share/backgrounds/2025-04-25-23-15-00-wooju.JPEG

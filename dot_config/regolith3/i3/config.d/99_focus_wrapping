@@ -1,0 +1,12 @@
+focus_wrapping no
+
+## Screenshots
+bindsym $mod+p exec --no-startup-id maim "/home/$USER/Pictures/$(date).png"
+bindsym $mod+Ctrl+p exec --no-startup-id maim --window $(xdotool getactivewindow) "/home/$USER/Pictures/$(date).png"
+bindsym $mod+Ctrl+Shift+p exec --no-startup-id maim --select "/home/$USER/Pictures/$(date).png"
+
+## Clipboard Screenshots
+bindsym $mod+o exec --no-startup-id maim | xclip -selection clipboard -t image/png -i
+bindsym $mod+Ctrl+o exec --no-startup-id maim --window $(xdotool getactivewindow) | xclip -selection clipboard -t image/png -i
+bindsym $mod+Ctrl+Shift+o exec --no-startup-id maim --select | xclip -selection clipboard -t image/png -i
+

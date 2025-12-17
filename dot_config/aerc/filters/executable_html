@@ -1,0 +1,10 @@
+#!/bin/sh
+# aerc filter which runs lynx using socksify (from the dante package) to prevent
+# any phoning home by rendered emails
+export SOCKS_SERVER="127.0.0.1:1"
+exec socksify lynx \
+	-stdin \
+	-force_html \
+	-width=$(tput cols) \
+	-dump \
+	-number_links
