@@ -65,7 +65,7 @@ set norunexec
 
 " Selected color scheme
 
-colorscheme paper
+colorscheme dayfox
 
 " Format for displaying time in file list. For example:
 " TIME_STAMP_FORMAT=%m/%d-%H:%M
@@ -112,6 +112,9 @@ endif
 " Set custom status line look
 
 set statusline="  Hint: %z%= %A %10u:%-7g %15s %20d  "
+
+set fillchars='vborder:│'
+set tuioptions=u
 
 " ------------------------------------------------------------------------------
 

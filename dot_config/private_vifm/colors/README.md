@@ -1,12 +1,17 @@
 # vifm-colors
+[![Packaging status](https://repology.org/badge/tiny-repos/vifm-colors.svg)](https://repology.org/project/vifm-colors/versions)
 
 Various colorschemes for [vifm](https://vifm.info/):
+- afterglow (by romic)
+- ansa (by savchenko)
 - astrell (by astrell)
+- crown_24bit (by hombrey)
 - darkdesert (by langner)
 - Default
 - desert
 - dracula (by EgZvor)
 - dwmlight (by satsaeid)
+- fargo (by shlomi-aknin)
 - g80
 - gruvbox (by laur89)
 - iceberg (by puven12)
@@ -14,16 +19,23 @@ Various colorschemes for [vifm](https://vifm.info/):
 - matrix
 - mc-like (by Petteri Knihti)
 - molokai (by Miguel Madrid Mencía)
+- monochrome (by qsmodo)
 - near-default
+- nord (by novores)
 - onedark (by mroavi)
 - palenight (by mroavi)
 - ph (by pihao)
+- paper (by s6muel)
+- papercolor-dark (by pmilosev)
+- papercolor-light (by pmilosev)
 - reicheltd-light (by reicheltd)
+- retrobox (by dacyberduck)
 - sandy (by nandox)
 - semidarkdesert (by clausED)
 - snowwhite (by durcheinandr)
 - solarized-dark
 - solarized-light (by ayroblu)
+- truedark (by bratpeki)
 - zenburn
 - zenburn_1 (by frgm)
 

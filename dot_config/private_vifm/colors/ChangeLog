@@ -1,6 +1,24 @@
 unreleased
+  Add new color scheme: retrobox (Thanks dacyberduck)
+
+0.12 to 0.13 (2023-12-20)
+  Add new color scheme: truedark (Thanks bratpeki)
+  Add new color scheme: afterglow (Thanks RomiC)
+  Fix invalid cterm=default in astrell.vifm (Thanks xaizek)
+
+0.11 to 0.12 (2022-09-18)
+  Add new color scheme: ansa (Thanks savchenko)
+  Add new color scheme: monochrome (Thanks qsmodo)
+  Add new color scheme: crown_24bit (Thanks hombrey)
+  Add new color scheme: nord (Thanks novores)
+  Add new color scheme: fargo (Thanks shlomi-aknin )
+  Add new color scheme: paper (Thanks to s6muel)
+
+0.10 to 0.11 (2021-07-08)
    Add new color scheme: sandy (Thanks Nando)
    Update mc-like color theme (Thanks Jose Riha)
+   Add PaperColor light/dark (Thanks pmilosev)
+   Update solarized-dark theme (Thanks gennaro-tedesco)
 
 0.9 to 0.10 (2020-09-24)
    Add new color scheme: dwmlight (Thanks satsaeid)
