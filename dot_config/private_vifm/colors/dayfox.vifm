@@ -6,18 +6,18 @@ highlight   Border       cterm=none           ctermfg=none   ctermbg=none
 highlight   AuxWin       cterm=none           ctermfg=238   ctermbg=none
 
 highlight   TopLine      cterm=bold           ctermfg=250   ctermbg=24
-highlight   TopLineSel   cterm=bold           ctermfg=255   ctermbg=31
+highlight   TopLineSel   cterm=bold           ctermfg=255   ctermbg=30
 
 highlight   CmdLine      cterm=none           ctermfg=234   ctermbg=none
 highlight   ErrorMsg     cterm=bold           ctermfg=160   ctermbg=none
 highlight   StatusLine   cterm=bold           ctermfg=255   ctermbg=24
-highlight   JobLine      cterm=bold           ctermfg=255   ctermbg=31
-highlight   SuggestBox   cterm=bold           ctermfg=255   ctermbg=31
-highlight   WildMenu     cterm=bold           ctermfg=255   ctermbg=31
+highlight   JobLine      cterm=bold           ctermfg=255   ctermbg=30
+highlight   SuggestBox   cterm=bold           ctermfg=255   ctermbg=30
+highlight   WildMenu     cterm=bold           ctermfg=255   ctermbg=30
 
 highlight   CurrLine     cterm=bold,inverse ctermfg=default ctermbg=default
 highlight   OtherLine    cterm=bold         ctermfg=default ctermbg=250
-highlight   Selected     cterm=bold         ctermfg=255     ctermbg=166
+highlight   Selected     cterm=bold         ctermfg=166     ctermbg=228
 highlight   LineNr       cterm=none           ctermfg=102   ctermbg=none
 
 highlight   Directory    cterm=bold           ctermfg=25    ctermbg=none
@@ -25,5 +25,5 @@ highlight   Link         cterm=none           ctermfg=24    ctermbg=none
 highlight   BrokenLink   cterm=none           ctermfg=160   ctermbg=none
 highlight   Socket       cterm=bold           ctermfg=91    ctermbg=none
 highlight   Device       cterm=none           ctermfg=124   ctermbg=none
-highlight   Fifo         cterm=none           ctermfg=31    ctermbg=none
+highlight   Fifo         cterm=none           ctermfg=30    ctermbg=none
 highlight   Executable   cterm=bold           ctermfg=28    ctermbg=none
