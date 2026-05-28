@@ -1,8 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import type { ExtensionAPI } from "/home/sungsik.nam/.nvm/versions/node/v25.8.1/lib/node_modules/@earendil-works/pi-coding-agent/dist/index.d.ts";
-import { DynamicBorder } from "/home/sungsik.nam/.nvm/versions/node/v25.8.1/lib/node_modules/@earendil-works/pi-coding-agent/dist/index.js";
-import { Key, SelectList, Text, truncateToWidth, visibleWidth } from "/home/sungsik.nam/.nvm/versions/node/v25.8.1/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui/dist/index.js";
+import { DynamicBorder, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Key, SelectList, Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
@@ -13,7 +12,7 @@ import {
 	getLatestAssistantResponse,
 	previewText,
 	truncate,
-} from "/home/sungsik.nam/.nvm/versions/node/v25.8.1/lib/node_modules/pi-copy-response/lib/copy-response-core.js";
+} from "pi-copy-response/lib/copy-response-core.js";
 
 const CLIPBOARD_COMMAND_TIMEOUT_MS = 5000;
 const HOTKEYS_CONFIG_PATH = join(homedir(), ".pi", "agent", "config", "copy-response-keybindings.json");
