@@ -4,15 +4,157 @@ import { DynamicBorder, type ExtensionAPI } from "@earendil-works/pi-coding-agen
 import { Key, SelectList, Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import {
-	buildTargets,
-	countLines,
-	createCopyTargetPickerComponent,
-	extractTextBlocks,
-	getLatestAssistantResponse,
-	previewText,
-	truncate,
-} from "pi-copy-response/lib/copy-response-core.js";
+
+const LABEL_PREVIEW_LIMIT = 70;
+
+const extractTextBlocks = (content: unknown): string[] => {
+	if (typeof content === "string") {
+		return content.trim().length > 0 ? [content] : [];
+	}
+	if (!Array.isArray(content)) return [];
+	return content.flatMap((block) =>
+		block && typeof block === "object" && (block as any).type === "text" && typeof (block as any).text === "string" && (block as any).text.trim().length > 0
+			? [(block as any).text]
+			: [],
+	);
+};
+
+const getLatestAssistantResponse = (entries: any[]) => {
+	for (let i = entries.length - 1; i >= 0; i--) {
+		const entry = entries[i];
+		if (entry?.type !== "message" || entry.message?.role !== "assistant") continue;
+		const fullText = extractTextBlocks(entry.message.content).join("\n\n");
+		if (fullText.trim()) return { fullText };
+	}
+	return undefined;
+};
+
+const countLines = (text: string) => (text.length === 0 ? 1 : text.split("\n").length);
+
+const truncate = (text: string, limit: number) => {
+	const compact = text.replace(/\s+/g, " ").trim();
+	if (compact.length <= limit) return compact;
+	return `${compact.slice(0, Math.max(0, limit - 1))}…`;
+};
+
+const previewText = (text: string, limit = LABEL_PREVIEW_LIMIT) => {
+	const firstNonEmpty = text
+		.split("\n")
+		.map((line) => line.trim())
+		.find(Boolean);
+	return truncate(firstNonEmpty ?? "(empty)", limit);
+};
+
+const sanitizeLang = (lang: string | undefined) => {
+	if (!lang) return undefined;
+	const clean = lang.replace(/[^a-zA-Z0-9_+.-]/g, "").trim();
+	return clean.length > 0 ? clean : undefined;
+};
+
+const extractCodeBlocks = (text: string) => {
+	const lines = text.split("\n");
+	const blocks: Array<{ lang?: string; code: string }> = [];
+	for (let i = 0; i < lines.length; i++) {
+		const open = lines[i].match(/^(`{3,})(.*)$/);
+		if (!open) continue;
+		const fence = open[1];
+		const lang = sanitizeLang(open[2].trim().split(/\s+/)[0]);
+		const codeLines: string[] = [];
+		let closed = false;
+		for (i = i + 1; i < lines.length; i++) {
+			if (lines[i].startsWith(fence)) {
+				closed = true;
+				break;
+			}
+			codeLines.push(lines[i]);
+		}
+		if (closed) blocks.push({ lang, code: codeLines.join("\n") });
+	}
+	return blocks;
+};
+
+const buildTargets = (response: { fullText: string }) => {
+	const fullText = response.fullText;
+	const targets = [
+		{
+			id: "full",
+			label: "Full response",
+			description: `${fullText.length} chars, ${countLines(fullText)} lines`,
+			text: fullText,
+		},
+	];
+	for (const [i, block] of extractCodeBlocks(fullText).entries()) {
+		targets.push({
+			id: `code-${i + 1}`,
+			label: `Code block ${i + 1}`,
+			description: `${block.lang ?? "plain text"} • ${countLines(block.code)} lines • ${previewText(block.code)}`,
+			text: block.code,
+		});
+	}
+	return targets;
+};
+
+const createCopyTargetPickerComponent = (tui: any, theme: any, targets: any[], done: (value: string | null) => void) => {
+	const items = targets.map((target) => ({ value: target.id, label: target.label, description: target.description }));
+	const targetsById = new Map(targets.map((target) => [target.id, target]));
+	let currentTarget = targets[0];
+	const border = new DynamicBorder((s) => theme.fg("border", s));
+	const selectList = new SelectList(items, Math.min(items.length, 10), {
+		selectedPrefix: (text) => theme.fg("accent", text),
+		selectedText: (text) => theme.fg("accent", text),
+		description: (text) => theme.fg("muted", text),
+		scrollInfo: (text) => theme.fg("dim", text),
+		noMatch: (text) => theme.fg("warning", text),
+	}, { minPrimaryColumnWidth: 12, maxPrimaryColumnWidth: 32 });
+	const initialSelection = selectList.getSelectedItem?.();
+	if (initialSelection) currentTarget = targetsById.get(initialSelection.value) ?? currentTarget;
+	const padLine = (line: string, width: number) => line + " ".repeat(Math.max(0, width - visibleWidth(line)));
+	const clipLines = (lines: string[], maxLines: number) => {
+		if (lines.length <= maxLines) return lines;
+		const visibleLines = lines.slice(0, Math.max(1, maxLines - 1));
+		visibleLines.push(theme.fg("dim", `… ${lines.length - visibleLines.length} more lines`));
+		return visibleLines;
+	};
+	const renderPreview = (width: number) => {
+		const preview = new Text(currentTarget.text, 1, 0);
+		return clipLines(preview.render(width), Math.max(8, (tui.terminal?.rows ?? 24) - 10));
+	};
+	selectList.onSelectionChange = (item) => {
+		currentTarget = targetsById.get(item.value) ?? currentTarget;
+		tui.requestRender();
+	};
+	selectList.onSelect = (item) => done(item.value);
+	selectList.onCancel = () => done(null);
+	return {
+		render: (width: number) => {
+			const lines: string[] = [];
+			lines.push(...border.render(width));
+			lines.push(...new Text(theme.fg("accent", theme.bold("Select content to copy")), 1, 0).render(width));
+			lines.push(...new Text(theme.fg("dim", "Preview shows the exact clipboard contents (wrapped for display)."), 1, 0).render(width));
+			if (width >= 96) {
+				const gutter = theme.fg("border", " │ ");
+				const gutterWidth = visibleWidth(gutter);
+				const listWidth = Math.max(28, Math.min(40, Math.floor((width - gutterWidth) * 0.34)));
+				const previewWidth = Math.max(24, width - gutterWidth - listWidth);
+				lines.push(padLine(theme.fg("accent", theme.bold("Choices")), listWidth) + gutter + padLine(theme.fg("accent", theme.bold(`Preview — ${currentTarget.label}`)), previewWidth));
+				const listLines = selectList.render(listWidth);
+				const previewLines = renderPreview(previewWidth);
+				for (let i = 0; i < Math.max(listLines.length, previewLines.length); i++) lines.push(padLine(listLines[i] ?? "", listWidth) + gutter + padLine(previewLines[i] ?? "", previewWidth));
+			} else {
+				lines.push(...new Text(theme.fg("accent", theme.bold("Choices")), 1, 0).render(width));
+				lines.push(...selectList.render(width));
+				lines.push(...border.render(width));
+				lines.push(...new Text(theme.fg("accent", theme.bold(`Preview — ${currentTarget.label}`)), 1, 0).render(width));
+				lines.push(...renderPreview(width));
+			}
+			lines.push(...new Text(theme.fg("dim", "  ↑/↓ to change preview · Enter to copy · Esc to cancel"), 0, 0).render(width));
+			lines.push(...border.render(width));
+			return lines;
+		},
+		invalidate: () => { border.invalidate(); selectList.invalidate(); },
+		handleInput: (data: any) => { selectList.handleInput(data); tui.requestRender(); },
+	};
+};
 
 const CLIPBOARD_COMMAND_TIMEOUT_MS = 5000;
 const HOTKEYS_CONFIG_PATH = join(homedir(), ".pi", "agent", "config", "copy-response-keybindings.json");
