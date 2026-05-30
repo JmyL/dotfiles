@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dir="${1:-}"
+
+case "$dir" in
+  left)  flag="-L"; edge="#{pane_at_left}" ;;
+  down)  flag="-D"; edge="#{pane_at_bottom}" ;;
+  up)    flag="-U"; edge="#{pane_at_top}" ;;
+  right) flag="-R"; edge="#{pane_at_right}" ;;
+  *)
+    echo "usage: $0 left|down|up|right" >&2
+    exit 2
+    ;;
+esac
+
+# Nothing to swap with at the tmux edge.
+if [ "$(tmux display-message -p "$edge")" = "1" ]; then
+  exit 0
+fi
+
+cur="$(tmux display-message -p '#{pane_id}')"
+
+tmux select-pane "$flag"
+target="$(tmux display-message -p '#{pane_id}')"
+
+# If select-pane did not move for any reason, do nothing.
+if [ "$cur" = "$target" ]; then
+  exit 0
+fi
+
+tmux swap-pane -s "$cur" -t "$target"
+
+# Keep focus on the pane that moved.
+tmux select-pane -t "$cur"
