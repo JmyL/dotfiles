@@ -10,5 +10,6 @@
   ],
   "workspaceHistory": {
     "enabled": false
-  }
+  },
+  "showHardwareCursor": true
 }
