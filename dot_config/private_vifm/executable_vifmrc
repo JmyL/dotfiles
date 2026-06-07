@@ -427,6 +427,16 @@ if has('win')
     nnoremap yd :!echo %"d:gs!\!/! %i | clip<cr>
     " Yank path to current file to Windows clipboard with forward slashes
     nnoremap yf :!echo %"c:gs!\!/! %i | clip<cr>
+elseif executable('clipwrite')
+	nnoremap yo :!echo -n %d | clipwrite<cr>
+    " yank current directory path into the clipboard
+    nnoremap yd :!printf '%%s' %"d | clipwrite<cr>:echo expand('%"d') "is yanked"<cr>
+    " yank current file path into the clipboard
+    nnoremap yf :!printf '%%s' %"c:p | clipwrite<cr>:echo expand('%"c:p') "is yanked"<cr>
+    " yank current filename without path into the clipboard
+    nnoremap yn :!printf '%%s' %"c | clipwrite<cr>:echo expand('%"c') "is yanked"<cr>
+    " yank stem of current file's name into the clipboard
+    nnoremap ys :!printf '%%s' %"c:r | clipwrite<cr>:echo expand('%"c:r') "is yanked"<cr>
 elseif executable('wl-copy')
     " yank current directory path into the clipboard
     nnoremap yd :!echo -n %d | wl-copy %i<cr>:echo expand('%"d') "is yanked to clipboard"<cr>
@@ -438,20 +448,12 @@ elseif executable('wl-copy')
     nnoremap ys :!echo -n %c:r | wl-copy %i<cr>:echo expand('%"c:r') "is yanked to clipboard"<cr>
 elseif executable('xclip')
     " yank current directory path into the clipboard
-    nnoremap yd :!echo -n %d | xclip -selection clipboard %i<cr>:echo expand('%"d') "is yanked to clipboard"<cr>
-    " yank current file path into the clipboard
+    nnoremap yd :!echo -n %d | xclip -selection clipboard %i<cr>:echo expand('%"d') "is yanked to clipboard"<cr> " yank current file path into the clipboard
     nnoremap yf :!echo -n %c:p | xclip -selection clipboard %i<cr>:echo expand('%"c:p') "is yanked to clipboard"<cr>
     " yank current filename without path into the clipboard
     nnoremap yn :!echo -n %c | xclip -selection clipboard %i<cr>:echo expand('%"c') "is yanked to clipboard"<cr>
     " yank root of current file's name into the clipboard
-    nnoremap yr :!echo -n %c:r | xclip -selection clipboard %i<cr>:echo expand('%"c:r') "is yanked to clipboard"<cr>
-elseif executable('xsel')
-    " Yank current directory path into primary and selection clipboards
-    nnoremap yd :!echo -n %d | xsel --input --primary %i &&
-                \ echo -n %d | xsel --clipboard --input %i<cr>
-    " Yank current file path into into primary and selection clipboards
-    nnoremap yf :!echo -n %c:p | xsel --input --primary %i &&
-                \ echo -n %c:p | xsel --clipboard --input %i<cr>
+    nnoremap ys :!echo -n %c:r | xclip -selection clipboard %i<cr>:echo expand('%"c:r') "is yanked to clipboard"<cr>
 endif
 
 " Mappings for faster renaming
