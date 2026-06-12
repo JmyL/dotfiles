@@ -1,8 +1,8 @@
 {
   "app.session.resume": [
-    "alt+shift+r"
+    "ctrl+shift+r"
   ],
   "app.interrupt": [
-    "alt+shift+c"
+    "ctrl+shift+c"
   ]
 }
