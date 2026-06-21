@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# If running inside a container (toolbox/docker) and flatpak-spawn is available,
+# delegate URL opening to the host system.
+if [[ -f /run/.containerenv || -f /.dockerenv ]]; then
+    if command -v flatpak-spawn >/dev/null 2>&1; then
+        exec flatpak-spawn --host xdg-open "$@"
+    fi
+fi
+
+# Otherwise use normal xdg-open.
+exec xdg-open "$@"
