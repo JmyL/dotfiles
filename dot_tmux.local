@@ -1,0 +1,3 @@
+# Local machine overrides for ~/.tmux.conf
+# Hide system uptime locally; servers without this file will show it.
+set -g @show_uptime 0
