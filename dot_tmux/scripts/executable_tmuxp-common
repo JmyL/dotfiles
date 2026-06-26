@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+workspace_name() {
+  local file="$1"
+  awk -F: '
+    /^[[:space:]]*session_name[[:space:]]*:/ {
+      v=$0; sub(/^[^:]*:[[:space:]]*/, "", v); gsub(/^["'"'"']|["'"'"']$/, "", v); print v; exit
+    }
+  ' "$file"
+}
+
+remember_workspace() {
+  local file="$1"
+  local name
+  name="$(workspace_name "$file")"
+  if [ -n "$name" ] && tmux has-session -t "$name" 2>/dev/null; then
+    tmux set-option -t "$name:" -q @tmuxp_config_path "$file"
+    tmux display-message "tmuxp workspace: $file"
+  fi
+}
+
+load_workspace() {
+  local file="$1"
+  [ -n "$file" ] || exit 0
+  tmuxp load -y "$file"
+  remember_workspace "$file"
+}
