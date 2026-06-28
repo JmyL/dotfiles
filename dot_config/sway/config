@@ -16,7 +16,23 @@ set $right l
 # Your preferred terminal emulator
 set $term kitty
 # Your preferred application launcher
-set $menu wmenu-run
+set $menu fuzzel
+
+### Window appearance
+#
+# Make tiled windows easier to distinguish.
+# class                 border  backgr. text    indicator child_border
+client.focused          #2f7d32 #1e1e2e #cdd6f4 #2f7d32   #2f7d32
+client.focused_inactive #40523f #1e1e2e #cdd6f4 #40523f   #40523f
+client.unfocused        #263526 #1e1e2e #a6adc8 #263526   #263526
+client.urgent           #f38ba8 #1e1e2e #cdd6f4 #f38ba8   #f38ba8
+client.placeholder      #000000 #1e1e2e #cdd6f4 #000000   #000000
+
+default_border pixel 4
+default_floating_border pixel 4
+gaps inner 2
+gaps outer 0
+smart_gaps on
 
 ### Output configuration
 #
@@ -109,6 +125,9 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     bindsym $mod+Shift+Down move down
     bindsym $mod+Shift+Up move up
     bindsym $mod+Shift+Right move right
+
+    focus_wrapping no
+    mouse_warping container
 #
 # Workspaces:
 #
@@ -181,16 +200,16 @@ mode "resize" {
     # right will grow the containers width
     # up will shrink the containers height
     # down will grow the containers height
-    bindsym $left resize shrink width 10px
-    bindsym $down resize grow height 10px
-    bindsym $up resize shrink height 10px
-    bindsym $right resize grow width 10px
+    bindsym $left resize shrink width 30px
+    bindsym $down resize grow height 30px
+    bindsym $up resize shrink height 30px
+    bindsym $right resize grow width 30px
 
     # Ditto, with arrow keys
-    bindsym Left resize shrink width 10px
-    bindsym Down resize grow height 10px
-    bindsym Up resize shrink height 10px
-    bindsym Right resize grow width 10px
+    bindsym Left resize shrink width 30px
+    bindsym Down resize grow height 30px
+    bindsym Up resize shrink height 30px
+    bindsym Right resize grow width 30px
 
     # Return to default mode
     bindsym Return mode "default"
@@ -216,17 +235,7 @@ bindsym $mod+r mode "resize"
 #
 # Read `man 5 sway-bar` for more information about this section.
 bar {
-    position top
-
-    # When the status_command prints a new line to stdout, swaybar updates.
-    # The default just shows the current date and time.
-    status_command while date +'%Y-%m-%d %X'; do sleep 1; done
-
-    colors {
-        statusline #ffffff
-        background #323232
-        inactive_workspace #32323200 #32323200 #5c5c5c
-    }
+    swaybar_command waybar
 }
 
 include /etc/sway/config.d/*
