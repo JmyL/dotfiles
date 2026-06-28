@@ -84,12 +84,15 @@ button:hover {
 #temperature,
 #backlight,
 #network,
+#bluetooth,
 #pulseaudio,
 #wireplumber,
 #custom-media,
 #tray,
 #mode,
 #idle_inhibitor,
+#custom-idle_inhibitor,
+#bluetooth,
 #scratchpad,
 #power-profiles-daemon,
 #mpd {
@@ -246,11 +249,15 @@ label:focus {
     background-color: #eb4d4b;
 }
 
-#idle_inhibitor {
+#idle_inhibitor,
+#custom-idle_inhibitor {
     background-color: #2d3436;
+    padding-left: 14px;
+    padding-right: 14px;
 }
 
-#idle_inhibitor.activated {
+#idle_inhibitor.activated,
+#custom-idle_inhibitor.activated {
     background-color: #ecf0f1;
     color: #2d3436;
 }
