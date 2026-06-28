@@ -18,6 +18,7 @@
         "idle_inhibitor",
         "pulseaudio",
         "network",
+        "bluetooth",
         "power-profiles-daemon",
         "cpu",
         "memory",
@@ -166,7 +167,23 @@
         "tooltip-format": "{ifname} via {gwaddr} ",
         "format-linked": "{ifname} (No IP) ",
         "format-disconnected": "Disconnected ⚠",
-        "format-alt": "{ifname}: {ipaddr}/{cidr}"
+        "format-alt": "{ifname}: {ipaddr}/{cidr}",
+        "on-click": "gnome-control-center wifi",
+        "on-click-right": "nm-connection-editor",
+        "on-click-middle": "ptyxis -- nmtui"
+    },
+    "bluetooth": {
+        "format": " {status}",
+        "format-connected": " {device_alias}",
+        "format-connected-battery": " {device_alias} {device_battery_percentage}%",
+        "format-disabled": " off",
+        "format-off": " off",
+        "format-no-controller": "",
+        "tooltip-format": "{controller_alias}\t{controller_address}",
+        "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+        "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%",
+        "on-click-right": "blueman-manager"
     },
     "pulseaudio": {
         // "scroll-step": 1, // %, can be a float
