@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pidfile="${XDG_RUNTIME_DIR:-/tmp}/manual-idle-inhibit.pid"
+
+active=false
+if [[ -f "$pidfile" ]]; then
+  pid="$(cat "$pidfile" 2>/dev/null || true)"
+  if [[ -n "${pid:-}" ]] && kill -0 "$pid" 2>/dev/null; then
+    active=true
+  fi
+fi
+
+if [[ "$active" == true ]]; then
+  printf '{"text":"", "tooltip":"Idle inhibitor: on", "class":"activated"}\n'
+else
+  printf '{"text":"", "tooltip":"Idle inhibitor: off", "class":"deactivated"}\n'
+fi
