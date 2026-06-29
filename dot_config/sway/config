@@ -83,6 +83,9 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # Start a terminal
     bindsym $mod+i exec $term
 
+    # Start Brave browser
+    bindsym $mod+Shift+i exec flatpak run com.brave.Browser
+
     # Kill focused window
     bindsym $mod+q kill
 
