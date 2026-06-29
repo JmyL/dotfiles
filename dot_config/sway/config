@@ -104,6 +104,9 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # Reload the configuration file
     bindsym $mod+Shift+c reload
 
+    # Restart sway
+    bindsym $mod+Shift+r exec swaynag -t warning -m 'Restart sway?' -B 'Yes, restart sway' 'swaymsg restart'
+
     # Suspend the system
     bindsym $mod+Shift+s exec systemctl suspend
 
