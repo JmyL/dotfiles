@@ -105,16 +105,16 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     bindsym $mod+Shift+c reload
 
     # Restart sway
-    bindsym $mod+Shift+r exec swaynag -t warning -m 'Restart sway?' -B 'Yes, restart sway' 'swaymsg restart'
+    bindsym $mod+Shift+r exec ~/.local/bin/confirm-system-action restart-sway
 
     # Suspend the system
-    bindsym $mod+Shift+s exec systemctl suspend
+    bindsym $mod+Shift+s exec ~/.local/bin/confirm-system-action suspend
 
     # Power down the system
-    bindsym $mod+Shift+p exec swaynag -t warning -m 'Power off the system?' -B 'Yes, power off' 'systemctl poweroff'
+    bindsym $mod+Shift+p exec ~/.local/bin/confirm-system-action poweroff
 
     # Exit sway (logs you out of your Wayland session)
-    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+    bindsym $mod+Shift+e exec ~/.local/bin/confirm-system-action exit-sway
 #
 # Moving around:
 #
