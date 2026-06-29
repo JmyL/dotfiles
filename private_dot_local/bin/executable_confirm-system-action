@@ -18,23 +18,27 @@ fi
 
 case "$1" in
   suspend)
+    title="Suspend"
     prompt="Suspend the system?"
-    yes="Yes, suspend"
+    yes="Suspend"
     command=(systemctl suspend)
     ;;
   restart-sway)
+    title="Restart sway"
     prompt="Restart sway?"
-    yes="Yes, restart sway"
+    yes="Restart sway"
     command=(swaymsg restart)
     ;;
   poweroff)
+    title="Power off"
     prompt="Power off the system?"
-    yes="Yes, power off"
+    yes="Power off"
     command=(systemctl poweroff)
     ;;
   exit-sway)
+    title="Exit sway"
     prompt="Exit sway? This will end your Wayland session."
-    yes="Yes, exit sway"
+    yes="Exit sway"
     command=(swaymsg exit)
     ;;
   *)
@@ -43,13 +47,15 @@ case "$1" in
     ;;
 esac
 
-if ! command -v fuzzel >/dev/null 2>&1; then
-  notify_error "fuzzel is not installed or not in PATH"
+if ! command -v zenity >/dev/null 2>&1; then
+  notify_error "zenity is not installed or not in PATH"
   exit 1
 fi
 
-choice="$(printf 'No\n%s\n' "$yes" | fuzzel --dmenu --prompt "$prompt ")"
-
-if [[ "$choice" == "$yes" ]]; then
+if zenity --question \
+  --title "$title" \
+  --text "$prompt" \
+  --ok-label "$yes" \
+  --cancel-label "Cancel"; then
   "${command[@]}"
 fi
