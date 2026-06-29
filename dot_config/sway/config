@@ -30,9 +30,8 @@ client.placeholder      #000000 #1e1e2e #cdd6f4 #000000   #000000
 
 default_border pixel 4
 default_floating_border pixel 4
-gaps inner 2
-gaps outer 0
-smart_gaps on
+gaps inner 4
+gaps outer 4
 
 ### Output configuration
 #
@@ -87,7 +86,7 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     bindsym $mod+Shift+i exec flatpak run com.brave.Browser
 
     # Start file browser
-    bindsym $mod+e exec nautilus
+    bindsym $mod+e exec thunar
 
     # Kill focused window
     bindsym $mod+q kill
@@ -109,7 +108,7 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     bindsym $mod+Shift+s exec systemctl suspend
 
     # Power down the system
-    bindsym $mod+Shift+p exec systemctl poweroff
+    bindsym $mod+Shift+p exec swaynag -t warning -m 'Power off the system?' -B 'Yes, power off' 'systemctl poweroff'
 
     # Exit sway (logs you out of your Wayland session)
     bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
