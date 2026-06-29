@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+app_dir="/var/lib/flatpak/app/com.dropbox.Client/current/active/files/extra/.dropbox-dist"
+dest="${HOME}/.local/share/icons/hicolor/16x16/status"
+
+if [[ ! -d "${app_dir}" ]]; then
+  echo "Dropbox Flatpak files not found: ${app_dir}" >&2
+  exit 1
+fi
+
+src="$(find "${app_dir}" -path '*/images/hicolor/16x16/status' -type d | head -n 1)"
+
+if [[ -z "${src}" || ! -d "${src}" ]]; then
+  echo "Dropbox tray icon directory not found under: ${app_dir}" >&2
+  exit 1
+fi
+
+mkdir -p "${dest}"
+cp "${src}"/dropboxstatus-*.png "${dest}"/
+
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+  gtk-update-icon-cache "${HOME}/.local/share/icons/hicolor" >/dev/null 2>&1 || true
+fi
+
+echo "Installed Dropbox tray icons to ${dest}"
