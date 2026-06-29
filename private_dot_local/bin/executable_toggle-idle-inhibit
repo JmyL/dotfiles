@@ -5,7 +5,7 @@ pidfile="${XDG_RUNTIME_DIR:-/tmp}/manual-idle-inhibit.pid"
 
 notify() {
   if command -v notify-send >/dev/null 2>&1; then
-    notify-send "Idle inhibitor" "$1"
+    notify-send "Idle inhibitor" "$1" || true
   fi
 }
 
