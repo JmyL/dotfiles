@@ -86,6 +86,9 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # Start Brave browser
     bindsym $mod+Shift+i exec flatpak run com.brave.Browser
 
+    # Start file browser
+    bindsym $mod+e exec nautilus
+
     # Kill focused window
     bindsym $mod+q kill
 
@@ -176,7 +179,6 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
     # Switch the current container between different layout styles
     bindsym $mod+s layout stacking
     bindsym $mod+w layout tabbed
-    bindsym $mod+e layout toggle split
 
     # Make the current focus fullscreen
     bindsym $mod+f fullscreen
