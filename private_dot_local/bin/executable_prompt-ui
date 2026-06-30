@@ -14,7 +14,7 @@ fzf_common=(
 
 case "$mode" in
   text)
-    result="$(printf '\n' | fzf "${fzf_common[@]}" --prompt="$prompt" --bind 'enter:become(echo {q})')" || exit 1
+    result="$(printf '\n' | fzf "${fzf_common[@]}" --prompt="$prompt" --bind 'enter:print-query+abort')" || exit 1
     [[ -n "$result" ]] || exit 1
     printf '%s\n' "$result"
     ;;
@@ -30,8 +30,7 @@ case "$mode" in
     done
     ;;
   message|error)
-    printf '%s\n' "$prompt"
-    printf 'Press Enter to continue... '
+    printf '%s' "$prompt"
     read -r _ || true
     ;;
   *)

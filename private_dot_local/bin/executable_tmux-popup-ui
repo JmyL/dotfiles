@@ -4,17 +4,24 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  tmux-popup-ui text <prompt>
-  tmux-popup-ui confirm <prompt>
+  tmux-popup-ui text <prompt> [-- <command> [argument ...]]
+  tmux-popup-ui confirm <prompt> [-- <command> [argument ...]]
   tmux-popup-ui message <message>
   tmux-popup-ui error <message>
   tmux-popup-ui -- <shell-command> [argument ...]
 
-Runs prompt-ui inside a styled tmux popup. Use -- to run an arbitrary command.
+Runs prompt-ui inside a styled tmux popup.
+
+Text mode prints the entered value to stdout. With a callback, the entered
+value is passed as PROMPT_VALUE and the callback runs after the popup closes:
+  tmux-popup-ui text "Name: " -- sh -c 'echo "$PROMPT_VALUE"'
+
+For confirm callbacks, the command runs only when confirmed.
 
 Environment overrides:
   TMUX_POPUP_UI_WIDTH          default: 70
   TMUX_POPUP_UI_HEIGHT         default: 3
+  TMUX_POPUP_UI_MESSAGE_HEIGHT default: 3
   TMUX_POPUP_UI_BG
   TMUX_POPUP_UI_FG
   TMUX_POPUP_UI_BORDER_FG
@@ -45,17 +52,66 @@ if [[ $# -eq 0 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
+popup() {
+  tmux display-popup -x C -y 10% -w "$width" -h "$height" -s "$style" -S "$border_style" -E "$@"
+}
+
+message_popup() {
+  local message_height="${TMUX_POPUP_UI_MESSAGE_HEIGHT:-3}"
+  tmux display-popup -x C -y 10% -w "$width" -h "$message_height" -s "$style" -S "$border_style" -E "$@"
+}
+
+capture_prompt() {
+  local mode="$1" prompt="$2" out status token code
+  out="$(mktemp)"
+  status="$(mktemp)"
+  token="prompt-ui-$$-$RANDOM"
+  trap 'rm -f "$out" "$status"' RETURN
+
+  popup bash -lc 'set +e; prompt-ui "$1" "$2" >"$3"; code=$?; printf "%s\n" "$code" >"$4"; tmux wait-for -S "$5"; exit "$code"' \
+    bash "$mode" "$prompt" "$out" "$status" "$token" || true
+  tmux wait-for "$token"
+
+  code="$(cat "$status" 2>/dev/null || printf 1)"
+  if [[ "$code" != 0 ]]; then
+    return "$code"
+  fi
+
+  cat "$out"
+}
+
 case "${1:-}" in
-  text|confirm|message|error)
-    tmux display-popup -x C -y 10% -w "$width" -h "$height" -s "$style" -S "$border_style" -E prompt-ui "$@"
+  text)
+    prompt="${2:-}"
+    shift 2 || true
+    if [[ "${1:-}" == "--" ]]; then
+      shift
+      [[ $# -gt 0 ]] || { usage >&2; exit 2; }
+      value="$(capture_prompt text "$prompt")" || exit 0
+      PROMPT_VALUE="$value" "$@"
+    else
+      capture_prompt text "$prompt"
+    fi
+    ;;
+  confirm)
+    prompt="${2:-}"
+    shift 2 || true
+    if [[ "${1:-}" == "--" ]]; then
+      shift
+      [[ $# -gt 0 ]] || { usage >&2; exit 2; }
+      capture_prompt confirm "$prompt" >/dev/null || exit 0
+      "$@"
+    else
+      capture_prompt confirm "$prompt" >/dev/null
+    fi
+    ;;
+  message|error)
+    message_popup prompt-ui "$@"
     ;;
   --)
     shift
-    if [[ $# -eq 0 ]]; then
-      usage >&2
-      exit 2
-    fi
-    tmux display-popup -x C -y 10% -w "$width" -h "$height" -s "$style" -S "$border_style" -E "$@"
+    [[ $# -gt 0 ]] || { usage >&2; exit 2; }
+    popup "$@"
     ;;
   *)
     printf 'tmux-popup-ui: unknown mode or missing --: %s\n\n' "$1" >&2

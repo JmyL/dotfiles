@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project="${1:-}"
+[[ -n "$project" ]] || exit 0
+
+escaped="$(printf '%q' "$project")"
+tmux run-shell "sleep 0.1; tmux display-popup -x C -y C -w 80% -h 80% -E 'tmuxinator new $escaped'"
