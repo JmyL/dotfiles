@@ -1,0 +1,43 @@
+# Home-directory search filter for fd/rg/Telescope
+# Ignore everything under $HOME by default, then expose frequently edited dotfiles.
+
+*
+
+# Main config directory
+!/.config/
+!/.config/**
+
+# Shell startup/config files
+!/.bashrc
+!/.bash_profile
+!/.bash_logout
+!/.profile
+!/.inputrc
+!/.npmrc
+!/.nix-channels
+
+# Shell config directories
+!/.bashrc.d/
+!/.bashrc.d/**
+
+# tmux
+!/.tmux.conf
+!/.tmux.local
+!/.tmux/
+!/.tmux/scripts/
+!/.tmux/scripts/**
+
+# Git/editor/tooling dotfiles
+!/.gitconfig
+!/.gitignore_global
+!/.editorconfig
+!/.clang-format
+
+# Common project/user scripts in home
+!/install.sh
+!/mapkeys.sh
+!/packages.txt
+
+# SSH config only, not keys
+!/.ssh/
+!/.ssh/config
