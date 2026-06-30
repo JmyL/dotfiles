@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+target="${1:-}"
+[[ -n "$target" ]] || target="$(tmux display-message -p '#{session_id}' 2>/dev/null || true)"
+
+if [[ -z "$target" ]]; then
+  tmux display-message -d 1000 "No session to kill" 2>/dev/null || true
+  exit 1
+fi
+
+# Keep the previous behavior: move to the last session first, then kill the
+# session that was active when M-q was pressed.  If there is nowhere to move,
+# do not kill the last remaining session.
+if sesh last; then
+  tmux kill-session -t "$target"
+else
+  tmux display-message -d 1000 "Only one session" 2>/dev/null || true
+fi
