@@ -5,7 +5,6 @@ mode="${1:-}"
 prompt="${2:-}"
 
 fzf_common=(
-  --print-query
   --phony
   --no-info
   --no-separator
@@ -15,7 +14,7 @@ fzf_common=(
 
 case "$mode" in
   text)
-    result="$(printf '' | fzf "${fzf_common[@]}" --prompt="$prompt")" || exit 1
+    result="$(printf '\n' | fzf "${fzf_common[@]}" --prompt="$prompt" --bind 'enter:become(echo {q})')" || exit 1
     [[ -n "$result" ]] || exit 1
     printf '%s\n' "$result"
     ;;
