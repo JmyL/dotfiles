@@ -40,6 +40,7 @@ alias v=nvim
 alias dv='toolbox enter f44'
 alias dnf-backup='dnf repoquery --userinstalled --qf "%{name}\n" > packages.txt'
 alias tms='sesh connect "$(sesh list | fzf)"'
+alias tm='tmuxinator'
 
 . "$HOME/.cargo/env"
 
