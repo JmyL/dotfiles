@@ -22,6 +22,7 @@ When an agent is launched from this home directory, assume the task is to modify
 - Use `chezmoi diff` after `chezmoi add` when practical to review what will be tracked.
 - Do not edit files in `~/.local/share/chezmoi` directly for normal dotfile changes unless the user explicitly asks, the live file cannot be safely edited, or a chezmoi template/source-only file requires direct source edits.
 - Keep secrets out of tracked files. Use chezmoi private/encrypted/ignored mechanisms for sensitive data.
+- For tmux status-bar confirmations, prefer tmux-native `confirm-before` with `y/n` prompts unless an explicit default-on-Enter behavior is required.
 
 ## Project boundaries
 
