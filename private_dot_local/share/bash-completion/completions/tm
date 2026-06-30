@@ -1,0 +1,19 @@
+# bash completion for tm alias (tmuxinator)
+# Loaded lazily by bash-completion when completing `tm`.
+
+_tm_completion_dir="${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions"
+_tmuxinator_completion="$_tm_completion_dir/tmuxinator"
+
+if [[ -r "$_tmuxinator_completion" ]]; then
+  . "$_tmuxinator_completion"
+fi
+
+if declare -F _tmuxinator >/dev/null; then
+  complete -F _tmuxinator tm
+
+  # When this file is loaded lazily for the first `tm<TAB>`, also run the
+  # completion function immediately so the first TAB produces results.
+  _tmuxinator
+fi
+
+unset _tm_completion_dir _tmuxinator_completion
