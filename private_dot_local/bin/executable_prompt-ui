@@ -20,12 +20,12 @@ case "$mode" in
     ;;
   confirm)
     while true; do
-      printf '%s (Y/n) ' "$prompt"
+      printf '%s (Y/n) ' "$prompt" >&2
       read -r answer || exit 1
       case "$answer" in
         [Yy]|'') exit 0 ;;
         [Nn]) exit 1 ;;
-        *) printf '\033[1A\033[2K' ;;
+        *) printf '\033[1A\033[2K' >&2 ;;
       esac
     done
     ;;

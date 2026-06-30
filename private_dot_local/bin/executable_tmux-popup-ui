@@ -62,15 +62,16 @@ message_popup() {
 }
 
 capture_prompt() {
-  local mode="$1" prompt="$2" out status token code
+  local mode="$1" prompt="$2" out status code
   out="$(mktemp)"
   status="$(mktemp)"
-  token="prompt-ui-$$-$RANDOM"
   trap 'rm -f "$out" "$status"' RETURN
 
-  popup bash -lc 'set +e; prompt-ui "$1" "$2" >"$3"; code=$?; printf "%s\n" "$code" >"$4"; tmux wait-for -S "$5"; exit "$code"' \
-    bash "$mode" "$prompt" "$out" "$status" "$token" || true
-  tmux wait-for "$token"
+  # display-popup -E waits for the popup command to finish and closes the popup.
+  # Do not use tmux wait-for here: if the popup command is interrupted before it
+  # can signal, the caller blocks forever and tmux appears frozen.
+  popup bash -lc 'set +e; prompt-ui "$1" "$2" >"$3"; code=$?; printf "%s\n" "$code" >"$4"; exit "$code"' \
+    bash "$mode" "$prompt" "$out" "$status" || true
 
   code="$(cat "$status" 2>/dev/null || printf 1)"
   if [[ "$code" != 0 ]]; then
