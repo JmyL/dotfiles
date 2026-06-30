@@ -1,4 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tmuxinator list | sed '1d;s/[[:space:]]\+/\n/g;/^$/d'
+current_session="$(tmux display-message -p '#S' 2>/dev/null || true)"
+
+session_info="$(tmux list-sessions -F '#{session_name}	#{session_activity}' 2>/dev/null || true)"
+
+is_open_session() {
+  local project="$1"
+  printf '%s\n' "$session_info" | cut -f1 | grep -Fxq -- "$project"
+}
+
+session_activity() {
+  local project="$1"
+  awk -F '\t' -v project="$project" '$1 == project { print $2; exit }' <<<"$session_info"
+}
+
+tmuxinator list |
+  sed '1d;s/[[:space:]]\+/\n/g;/^$/d' |
+  while IFS= read -r project; do
+    if [[ "$project" == "$current_session" ]]; then
+      activity="$(session_activity "$project")"
+      printf '%s\t%s\t\033[1;32m●\033[0m %s\n' "-${activity:-0}" "$project" "$project"
+    elif is_open_session "$project"; then
+      activity="$(session_activity "$project")"
+      printf '%s\t%s\t○ %s\n' "-${activity:-0}" "$project" "$project"
+    else
+      printf '0\t%s\t─ %s\n' "$project" "$project"
+    fi
+  done |
+  sort -t $'\t' -k1,1n -k2,2 |
+  cut -f3-
