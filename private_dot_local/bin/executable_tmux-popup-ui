@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+width="${TMUX_POPUP_UI_WIDTH:-70}"
+height="${TMUX_POPUP_UI_HEIGHT:-3}"
+style="${TMUX_POPUP_UI_BORDER_STYLE:-fg=colour201,bg=default}"
+
+if [[ $# -eq 0 ]]; then
+  printf 'Usage: %s <shell-command> [argument ...]\n' "$0" >&2
+  exit 2
+fi
+
+tmux display-popup -x C -y C -w "$width" -h "$height" -S "$style" -E "$@"
