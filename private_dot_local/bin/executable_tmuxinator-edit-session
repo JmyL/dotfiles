@@ -8,7 +8,7 @@ config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator"
 project_file="$config_dir/$project.yml"
 
 if [[ ! -f "$project_file" ]]; then
-  tmux-popup-ui error "Project not found: $project"
+  tmux display-message "Project not found: $project" 2>/dev/null || printf '%s\n' "Project not found: $project"
   exit 0
 fi
 

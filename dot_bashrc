@@ -39,8 +39,9 @@ export INPUT_METHOD=fcitx
 alias v=nvim
 alias dv='toolbox enter f44'
 alias dnf-backup='dnf repoquery --userinstalled --qf "%{name}\n" > packages.txt'
-alias tms='sesh connect "$(sesh list | fzf)"'
+alias tmo='sesh connect "$(sesh list | fzf)"'
 alias tm='tmuxinator'
+alias tmp='tmuxinator $(tmuxinator list -n | tail -n +2 | fzf)'
 
 . "$HOME/.cargo/env"
 

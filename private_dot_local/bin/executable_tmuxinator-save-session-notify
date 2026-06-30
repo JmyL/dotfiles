@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -u
+
+force=0
+session=""
+client=""
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator"
+
+usage() {
+  echo "Usage: tmuxinator-save-session-notify [--force] [session-name] [client-tty]" >&2
+  exit 2
+}
+
+message() {
+  local message="$1"
+
+  sleep 0.2
+  if [[ -n "$client" ]]; then
+    tmux display-message -c "$client" -d 2000 -- "$message" 2>/dev/null || true
+  else
+    tmux display-message -d 2000 -- "$message" 2>/dev/null || true
+  fi
+}
+
+run_save() {
+  local status
+
+  if [[ "$force" -eq 1 ]]; then
+    tmuxinator-save-session --force "$session" >/dev/null 2>&1
+  else
+    tmuxinator-save-session "$session" >/dev/null 2>&1
+  fi
+  status=$?
+
+  if [[ "$status" -eq 0 ]]; then
+    message "Saved: $session.yml"
+  else
+    message "Save failed: $session.yml"
+  fi
+
+  return "$status"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force) force=1; shift ;;
+    --help|-h) usage ;;
+    -*) usage ;;
+    *)
+      if [[ -z "$session" ]]; then
+        session="$1"
+      elif [[ -z "$client" ]]; then
+        client="$1"
+      else
+        usage
+      fi
+      shift
+      ;;
+  esac
+done
+
+[[ -z "$session" ]] && session="$(tmux display-message -p '#S' 2>/dev/null || true)"
+[[ -z "$client" ]] && client="$(tmux display-message -p '#{client_tty}' 2>/dev/null || true)"
+
+if [[ -z "$session" ]]; then
+  message "No session to save"
+  exit 1
+fi
+
+mkdir -p "$config_dir"
+yml="$config_dir/$session.yml"
+
+if [[ -f "$yml" && "$force" -ne 1 ]]; then
+  printf -v shell_cmd 'tmuxinator-save-session-notify --force %q %q' "$session" "$client"
+  tmux_cmd="if-shell '[ -z \"%%\" ] || [ \"%%\" = y ] || [ \"%%\" = Y ]' 'run-shell -b \"$shell_cmd\"'"
+  if [[ -n "$client" ]]; then
+    tmux command-prompt -t "$client" -p "$session.yml already exists. Overwrite? (Y/n)" "$tmux_cmd" || true
+  else
+    tmux command-prompt -p "$session.yml already exists. Overwrite? (Y/n)" "$tmux_cmd" || true
+  fi
+  exit 0
+fi
+
+run_save
