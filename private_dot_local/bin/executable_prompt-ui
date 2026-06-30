@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="${1:-}"
+prompt="${2:-}"
+
+fzf_common=(
+  --print-query
+  --phony
+  --no-info
+  --no-separator
+  --no-scrollbar
+  --border=none
+)
+
+case "$mode" in
+  text)
+    result="$(printf '' | fzf "${fzf_common[@]}" --prompt="$prompt")" || exit 1
+    [[ -n "$result" ]] || exit 1
+    printf '%s\n' "$result"
+    ;;
+  confirm)
+    while true; do
+      printf '%s [y]/n ' "$prompt"
+      read -r answer || exit 1
+      case "$answer" in
+        [Yy]|'') exit 0 ;;
+        [Nn]) exit 1 ;;
+        *) printf 'Please answer y or n.\n' ;;
+      esac
+    done
+    ;;
+  message|error)
+    printf '%s\n' "$prompt"
+    printf 'Press Enter to continue... '
+    read -r _ || true
+    ;;
+  *)
+    printf 'Usage: %s {text|confirm|message|error} <prompt>\n' "$0" >&2
+    exit 2
+    ;;
+esac
