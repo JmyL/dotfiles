@@ -48,6 +48,19 @@ set_project_name() {
   fi
 }
 
+confirm() {
+  local prompt="$1" answer
+  while true; do
+    printf '%s [y/N] ' "$prompt"
+    read -r answer || return 1
+    case "$answer" in
+      [Yy]) return 0 ;;
+      [Nn]|'') return 1 ;;
+      *) printf 'Please answer y or n.\n' ;;
+    esac
+  done
+}
+
 case "$action" in
   copy)
     require_project
@@ -63,9 +76,7 @@ case "$action" in
     ;;
   delete)
     require_project
-    printf 'Delete %s? [y/N] ' "$project"
-    read -r yn || exit 0
-    [[ "$yn" == y ]] || exit 0
+    confirm "Delete $project?" || exit 0
     rm -f "$dir/$project.yml"
     ;;
   *)
