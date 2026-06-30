@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project="${1:-}"
+[[ -n "$project" ]] || exit 0
+
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator"
+mkdir -p "$config_dir"
+
+session="tmuxinator-new-$project"
+if tmux has-session -t "$session" 2>/dev/null; then
+  tmux switch-client -t "$session"
+  exit 0
+fi
+
+tmux new-session -d -s "$session" -n "$project" -c "$config_dir" "tmuxinator new '$project'"
+tmux split-window -h -t "$session:1" -c "$config_dir" "pi"
+tmux select-pane -t "$session:1.1"
+tmux switch-client -t "$session"
