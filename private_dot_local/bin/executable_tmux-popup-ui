@@ -3,18 +3,11 @@ set -euo pipefail
 
 width="${TMUX_POPUP_UI_WIDTH:-70}"
 height="${TMUX_POPUP_UI_HEIGHT:-3}"
-
-popup_bg="${TMUX_POPUP_UI_BG:-$(tmux show-options -gqv @thm_base 2>/dev/null || true)}"
-popup_fg="${TMUX_POPUP_UI_FG:-$(tmux show-options -gqv @thm_fg 2>/dev/null || true)}"
-popup_bg="${popup_bg:-default}"
-popup_fg="${popup_fg:-default}"
-
-popup_style="${TMUX_POPUP_UI_STYLE:-fg=${popup_fg},bg=${popup_bg}}"
-border_style="${TMUX_POPUP_UI_BORDER_STYLE:-fg=colour201,bg=${popup_bg}}"
+style="${TMUX_POPUP_UI_BORDER_STYLE:-fg=colour201,bg=default}"
 
 if [[ $# -eq 0 ]]; then
   printf 'Usage: %s <shell-command> [argument ...]\n' "$0" >&2
   exit 2
 fi
 
-tmux display-popup -x C -y C -w "$width" -h "$height" -s "$popup_style" -S "$border_style" -E "$@"
+tmux display-popup -x C -y C -w "$width" -h "$height" -S "$style" -E "$@"
