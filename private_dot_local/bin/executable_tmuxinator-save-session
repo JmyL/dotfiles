@@ -75,25 +75,25 @@ tmux list-windows -t "$session" -F $'#{window_index}\t#{window_name}\t#{window_l
     echo "      panes:"
 
     tmux list-panes -t "$session:.$idx" -F $'#{pane_index}\t#{pane_current_command}\t#{pane_current_path}' 2>/dev/null |
-      sort -t $'\t' -k1,1n > "$tmpdir/panes-$idx"
-
-    while IFS=$'\t' read -r pi cmd pane_dir; do
-      case "$cmd" in
-        bash|zsh|fish|sh) cmd="" ;;
-        pi)               cmd="pi -c" ;;
-        nvim|vim)         cmd="$cmd" ;;
-        *)                ;; # keep as-is
-      esac
-      if [[ -n "$cmd" ]]; then
-        comment=""
-        if [[ "$pane_dir" != "$root" && -n "$pane_dir" ]]; then
-          comment=" # $pane_dir"
+      sort -t $'\t' -k1,1n | {
+      while IFS=$'\t' read -r pi cmd pane_dir; do
+        case "$cmd" in
+          bash|zsh|fish|sh) cmd="" ;;
+          pi)               cmd="pi -c" ;;
+          nvim|vim)         cmd="$cmd" ;;
+          *)                ;; # keep as-is
+        esac
+        if [[ -n "$cmd" ]]; then
+          comment=""
+          if [[ "$pane_dir" != "$root" && -n "$pane_dir" ]]; then
+            comment=" # $pane_dir"
+          fi
+          echo "        - $cmd$comment"
+        else
+          echo "        -"
         fi
-        echo "        - $cmd$comment"
-      else
-        echo "        -"
-      fi
-    done < "$tmpdir/panes-$idx"
+      done
+    }
 
   done < "$tmpdir/windows"
 
