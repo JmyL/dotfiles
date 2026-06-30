@@ -26,10 +26,25 @@ require_project() {
 }
 
 read_new_name() {
-  local prompt="$1" new
-  printf '%s' "$prompt" >&2
-  read -r new || exit 0
-  [[ -n "$new" ]] || exit 0
+  local prompt="$1" new="${2:-}" ch
+  printf '%s%s' "$prompt" "$new" >&2
+  while IFS= read -rsn1 ch; do
+    case "$ch" in
+      $'\e') printf '\n' >&2; return 1 ;;
+      $'\177'|$'\b')
+        if [[ -n "$new" ]]; then
+          new="${new%?}"
+          printf '\b \b' >&2
+        fi
+        ;;
+      $'\n'|'') printf '\n' >&2; break ;;
+      *)
+        new+="$ch"
+        printf '%s' "$ch" >&2
+        ;;
+    esac
+  done
+  [[ -n "$new" ]] || return 1
   if [[ "$new" == */* || "$new" == .* ]]; then
     printf 'Invalid project name: %s\n' "$new" >&2
     pause
@@ -57,27 +72,27 @@ set_project_name() {
 
 confirm() {
   local prompt="$1" answer
-  while true; do
-    printf '%s [y/N] ' "$prompt"
-    read -r answer || return 1
+  printf '%s (y/n) ' "$prompt"
+  while IFS= read -rsn1 answer; do
     case "$answer" in
-      [Yy]) return 0 ;;
-      [Nn]|'') return 1 ;;
-      *) printf 'Please answer y or n.\n' ;;
+      [Yy]) printf 'y\n'; return 0 ;;
+      [Nn]) printf 'n\n'; return 1 ;;
+      $'\n'|$'\e'|'') printf 'n\n'; return 1 ;;
     esac
   done
+  return 1
 }
 
 case "$action" in
   copy)
     require_project
-    new="$(read_new_name "Copy $project to: ")"
+    new="$(read_new_name "Copy $project to: ")" || exit 0
     cp "$dir/$project.yml" "$dir/$new.yml"
     set_project_name "$dir/$new.yml" "$new"
     ;;
   rename)
     require_project
-    new="$(read_new_name "Rename $project to: ")"
+    new="$(read_new_name "Rename $project to: " "$project")" || exit 0
     mv "$dir/$project.yml" "$dir/$new.yml"
     set_project_name "$dir/$new.yml" "$new"
     ;;
