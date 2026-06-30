@@ -21,7 +21,7 @@ case "$mode" in
     ;;
   confirm)
     while true; do
-      printf '%s [y]/n ' "$prompt"
+      printf '%s (Y/n) ' "$prompt"
       read -r answer || exit 1
       case "$answer" in
         [Yy]|'') exit 0 ;;
