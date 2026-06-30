@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+action="${1:-}"
+project="${2:-}"
+dir="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator"
+
+pause() {
+  printf 'Press Enter to continue... '
+  read -r _ || true
+}
+
+require_project() {
+  if [[ -z "$project" || ! -f "$dir/$project.yml" ]]; then
+    printf 'Project not found: %s\n' "$project"
+    pause
+    exit 1
+  fi
+}
+
+read_new_name() {
+  local prompt="$1" new
+  printf '%s' "$prompt" >&2
+  read -r new || exit 0
+  [[ -n "$new" ]] || exit 0
+  if [[ "$new" == */* || "$new" == .* ]]; then
+    printf 'Invalid project name: %s\n' "$new" >&2
+    pause
+    exit 1
+  fi
+  if [[ -e "$dir/$new.yml" ]]; then
+    printf '%s already exists\n' "$new" >&2
+    pause
+    exit 1
+  fi
+  printf '%s' "$new"
+}
+
+set_project_name() {
+  local file="$1" name="$2"
+  if grep -q '^name:' "$file"; then
+    sed -i "1,/^name:/s/^name:.*/name: $name/" "$file"
+  else
+    tmp="$(mktemp)"
+    { printf 'name: %s\n' "$name"; cat "$file"; } > "$tmp"
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
+  fi
+}
+
+case "$action" in
+  copy)
+    require_project
+    new="$(read_new_name "Copy $project to: ")"
+    cp "$dir/$project.yml" "$dir/$new.yml"
+    set_project_name "$dir/$new.yml" "$new"
+    ;;
+  rename)
+    require_project
+    new="$(read_new_name "Rename $project to: ")"
+    mv "$dir/$project.yml" "$dir/$new.yml"
+    set_project_name "$dir/$new.yml" "$new"
+    ;;
+  delete)
+    require_project
+    printf 'Delete %s? [y/N] ' "$project"
+    read -r yn || exit 0
+    [[ "$yn" == y ]] || exit 0
+    rm -f "$dir/$project.yml"
+    ;;
+  *)
+    printf 'Usage: %s {copy|rename|delete} <project>\n' "$0"
+    exit 2
+    ;;
+esac
