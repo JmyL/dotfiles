@@ -72,11 +72,11 @@ yml="$config_dir/$session.yml"
 
 if [[ -f "$yml" && "$force" -ne 1 ]]; then
   printf -v shell_cmd 'tmuxinator-save-session-notify --force %q %q' "$session" "$client"
-  tmux_cmd="if-shell '[ -z \"%%\" ] || [ \"%%\" = y ] || [ \"%%\" = Y ]' 'run-shell -b \"$shell_cmd\"'"
+  tmux_cmd="run-shell -b \"$shell_cmd\""
   if [[ -n "$client" ]]; then
-    tmux command-prompt -t "$client" -p "$session.yml already exists. Overwrite? (Y/n)" "$tmux_cmd" || true
+    tmux confirm-before -t "$client" -p "$session.yml already exists. Overwrite? (y/n)" "$tmux_cmd" || true
   else
-    tmux command-prompt -p "$session.yml already exists. Overwrite? (Y/n)" "$tmux_cmd" || true
+    tmux confirm-before -p "$session.yml already exists. Overwrite? (y/n)" "$tmux_cmd" || true
   fi
   exit 0
 fi
