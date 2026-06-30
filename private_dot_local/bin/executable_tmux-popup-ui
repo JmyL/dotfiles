@@ -1,13 +1,65 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+usage() {
+  cat <<'EOF'
+Usage:
+  tmux-popup-ui text <prompt>
+  tmux-popup-ui confirm <prompt>
+  tmux-popup-ui message <message>
+  tmux-popup-ui error <message>
+  tmux-popup-ui -- <shell-command> [argument ...]
+
+Runs prompt-ui inside a styled tmux popup. Use -- to run an arbitrary command.
+
+Environment overrides:
+  TMUX_POPUP_UI_WIDTH          default: 70
+  TMUX_POPUP_UI_HEIGHT         default: 3
+  TMUX_POPUP_UI_BG
+  TMUX_POPUP_UI_FG
+  TMUX_POPUP_UI_BORDER_FG
+  TMUX_POPUP_UI_BORDER_BG
+  TMUX_POPUP_UI_STYLE
+  TMUX_POPUP_UI_BORDER_STYLE
+EOF
+}
+
 width="${TMUX_POPUP_UI_WIDTH:-70}"
 height="${TMUX_POPUP_UI_HEIGHT:-3}"
-style="${TMUX_POPUP_UI_BORDER_STYLE:-fg=colour201,bg=default}"
 
-if [[ $# -eq 0 ]]; then
-  printf 'Usage: %s <shell-command> [argument ...]\n' "$0" >&2
-  exit 2
+popup_bg="$(tmux show-options -gqv @popup_ui_bg 2>/dev/null || true)"
+popup_fg="$(tmux show-options -gqv @popup_ui_fg 2>/dev/null || true)"
+popup_border_fg="$(tmux show-options -gqv @popup_ui_border_fg 2>/dev/null || true)"
+popup_border_bg="$(tmux show-options -gqv @popup_ui_border_bg 2>/dev/null || true)"
+
+popup_bg="${TMUX_POPUP_UI_BG:-${popup_bg:-default}}"
+popup_fg="${TMUX_POPUP_UI_FG:-${popup_fg:-default}}"
+popup_border_fg="${TMUX_POPUP_UI_BORDER_FG:-${popup_border_fg:-colour201}}"
+popup_border_bg="${TMUX_POPUP_UI_BORDER_BG:-${popup_border_bg:-default}}"
+
+style="${TMUX_POPUP_UI_STYLE:-fg=${popup_fg},bg=${popup_bg}}"
+border_style="${TMUX_POPUP_UI_BORDER_STYLE:-fg=${popup_border_fg},bg=${popup_border_bg}}"
+
+if [[ $# -eq 0 || "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
 fi
 
-tmux display-popup -x C -y C -w "$width" -h "$height" -S "$style" -E "$@"
+case "${1:-}" in
+  text|confirm|message|error)
+    tmux display-popup -x C -y 10% -w "$width" -h "$height" -s "$style" -S "$border_style" -E prompt-ui "$@"
+    ;;
+  --)
+    shift
+    if [[ $# -eq 0 ]]; then
+      usage >&2
+      exit 2
+    fi
+    tmux display-popup -x C -y 10% -w "$width" -h "$height" -s "$style" -S "$border_style" -E "$@"
+    ;;
+  *)
+    printf 'tmux-popup-ui: unknown mode or missing --: %s\n\n' "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
