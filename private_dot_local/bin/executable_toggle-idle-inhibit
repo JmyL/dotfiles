@@ -21,7 +21,7 @@ if [[ -f "$pidfile" ]]; then
   rm -f "$pidfile"
 fi
 
-systemd-inhibit --what=idle:sleep --why="Manual idle inhibitor" sleep infinity &
+systemd-inhibit --what=idle --why="Manual idle inhibitor" sleep infinity &
 echo "$!" > "$pidfile"
 notify "on"
 pkill -RTMIN+8 waybar 2>/dev/null || true
