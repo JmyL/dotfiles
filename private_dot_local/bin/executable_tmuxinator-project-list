@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+tmuxinator list | sed '1d;s/[[:space:]]\+/\n/g;/^$/d'
