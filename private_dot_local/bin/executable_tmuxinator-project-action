@@ -5,6 +5,13 @@ action="${1:-}"
 project="${2:-}"
 dir="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator"
 
+clear_screen() {
+  tput clear 2>/dev/null || printf '\033[2J\033[H'
+}
+
+trap clear_screen EXIT
+clear_screen
+
 pause() {
   printf 'Press Enter to continue... '
   read -r _ || true
