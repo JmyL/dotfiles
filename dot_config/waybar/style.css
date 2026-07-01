@@ -116,7 +116,7 @@ button:hover {
 #interactive #power-profiles-daemon,
 #interactive #custom-idle_inhibitor {
     background-color: transparent;
-    padding: 0 3px;
+    padding: 0 4px;
 }
 
 #sound #pulseaudio,
@@ -126,7 +126,7 @@ button:hover {
 #system-status #memory,
 #system-status #battery {
     background-color: transparent;
-    padding: 0 3px;
+    padding: 0 4px;
 }
 
 #pulseaudio,
