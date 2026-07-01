@@ -7,7 +7,13 @@ return {
       {
         '<leader>f',
         function()
-          require('conform').format { async = true, lsp_format = 'fallback' }
+          local format_opts = { async = true, lsp_format = 'fallback' }
+          if vim.bo.filetype == 'markdown' then
+            -- Manual Markdown formatting also formats fenced code blocks.
+            format_opts.formatters = { 'injected', 'prettier' }
+            format_opts.timeout_ms = 3000
+          end
+          require('conform').format(format_opts)
         end,
         mode = '',
         desc = '[F]ormat buffer',
@@ -24,10 +30,7 @@ return {
           return nil
         else
           return {
-            -- Markdown uses the injected formatter to format fenced code
-            -- blocks. Large Obsidian notes can need more than the default
-            -- timeout just to scan for injected languages.
-            timeout_ms = vim.bo[bufnr].filetype == 'markdown' and 3000 or 500,
+            timeout_ms = 500,
             lsp_format = 'fallback',
           }
         end
@@ -40,7 +43,9 @@ return {
         nix = { 'alejandra' },
         proto = { 'buf' },
         cmake = { 'gersemi' },
-        markdown = { 'injected', 'prettier' },
+        -- Save Markdown quickly with Prettier only. Use <leader>f when fenced
+        -- code blocks should be formatted via the injected formatter too.
+        markdown = { 'prettier' },
         c = { 'clang-format' },
         cpp = { 'clang-format' },
         -- Conform can also run multiple formatters sequentially
