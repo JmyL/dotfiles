@@ -194,7 +194,7 @@ seat * hide_cursor 3000
     bindsym $mod+space focus mode_toggle
 
     # Move focus to the parent container
-    bindsym $mod+a focus parent
+    bindsym $mod+p focus parent
 #
 # Scratchpad:
 #
@@ -245,7 +245,7 @@ bindsym $mod+r mode "resize"
     # Special key to take a screenshot with grim
     bindsym Print exec grim
     # Toggle idle/sleep inhibitor
-    bindsym $mod+c exec ~/.local/bin/toggle-idle-inhibit
+    bindsym $mod+a exec ~/.local/bin/toggle-idle-inhibit
     # Lock screen
     bindsym $mod+Shift+x exec swaylock -f -i $wallpaper -s fill
 
