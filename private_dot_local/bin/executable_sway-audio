@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+    mute)
+        if command -v swayosd-client >/dev/null 2>&1; then
+            exec swayosd-client --output-volume mute-toggle
+        fi
+        exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+        ;;
+    lower)
+        if command -v swayosd-client >/dev/null 2>&1; then
+            exec swayosd-client --output-volume lower
+        fi
+        exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+        ;;
+    raise)
+        if command -v swayosd-client >/dev/null 2>&1; then
+            exec swayosd-client --output-volume raise
+        fi
+        exec wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+
+        ;;
+    mic-mute)
+        if command -v swayosd-client >/dev/null 2>&1; then
+            exec swayosd-client --input-volume mute-toggle
+        fi
+        exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+        ;;
+    *)
+        echo "Usage: $0 {mute|lower|raise|mic-mute}" >&2
+        exit 2
+        ;;
+esac

@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+    lower)
+        if command -v swayosd-client >/dev/null 2>&1; then
+            exec swayosd-client --brightness lower
+        fi
+        exec brightnessctl set 5%-
+        ;;
+    raise)
+        if command -v swayosd-client >/dev/null 2>&1; then
+            exec swayosd-client --brightness raise
+        fi
+        exec brightnessctl set 5%+
+        ;;
+    *)
+        echo "Usage: $0 {lower|raise}" >&2
+        exit 2
+        ;;
+esac
