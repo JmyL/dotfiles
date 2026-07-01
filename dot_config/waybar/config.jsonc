@@ -8,11 +8,12 @@
 	// Choose the order of the modules
 	"modules-left": [
 		"sway/workspaces",
+		"sway/window",
 		"sway/mode",
 		"sway/scratchpad"
 	],
 	"modules-center": [
-		"sway/window"
+		"clock"
 	],
 	"modules-right": [
 		"group/interactive",
@@ -24,7 +25,6 @@
 		"temperature",
 		// "backlight",
 		// "sway/language",
-		"clock",
 		"battery"
 	],
 	"group/interactive": {
@@ -64,6 +64,9 @@
 	},
 	"sway/mode": {
 		"format": "<span style=\"italic\">{}</span>"
+	},
+	"sway/window": {
+		"max-length": 40
 	},
 	"sway/scratchpad": {
 		"format": "{icon} {count}",
