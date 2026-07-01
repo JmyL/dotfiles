@@ -17,6 +17,8 @@ set $right l
 set $term kitty
 # Your preferred application launcher
 set $menu fuzzel
+# Shared desktop and lock-screen wallpaper
+set $wallpaper /var/home/sungsik/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg
 
 ### Window appearance
 #
@@ -36,7 +38,7 @@ gaps outer 4
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
-output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
+output * bg $wallpaper fill
 #
 # Example configuration:
 #
@@ -50,10 +52,10 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
 # 30 minutes. Manual idle inhibit blocks idle timeouts, but still allows an
 # explicit suspend via keybinding or systemctl.
 exec swayidle -w \
-         timeout 300 '~/.local/bin/idle-inhibited || swaylock -f -c 000000' \
+         timeout 300 '~/.local/bin/idle-inhibited || swaylock -f -i $wallpaper -s fill' \
          timeout 600 '~/.local/bin/idle-inhibited || swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
          timeout 1800 '~/.local/bin/idle-inhibited || systemctl suspend' \
-         before-sleep 'swaylock -f -c 000000'
+         before-sleep 'swaylock -f -i $wallpaper -s fill'
 
 ### Input configuration
 #
@@ -72,6 +74,7 @@ exec swayidle -w \
 #
 # You can also configure each device individually.
 # Read `man 5 sway-input` for more information about this section.
+seat * hide_cursor 3000
 
 ### Key bindings
 #
@@ -243,6 +246,8 @@ bindsym $mod+r mode "resize"
     bindsym Print exec grim
     # Toggle idle/sleep inhibitor
     bindsym $mod+c exec ~/.local/bin/toggle-idle-inhibit
+    # Lock screen
+    bindsym $mod+Shift+x exec swaylock -f -i $wallpaper -s fill
 
 #
 # Status Bar:
