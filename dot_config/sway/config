@@ -103,8 +103,8 @@ seat * hide_cursor 3000
     # mouse button for dragging.
     floating_modifier $mod normal
 
-    # Reload Sway, then reapply the matching kanshi output profile.
-    bindsym $mod+shift+r reload, exec kanshictl reload
+    # Reload the configuration file
+    bindsym $mod+shift+r reload
 
     # Reboot the system
     bindsym $mod+Shift+b exec sh -c 'choice=$(printf "Reboot\nCancel\n" | fuzzel --dmenu --prompt "Reboot the system? "); [ "$choice" = "Reboot" ] && systemctl reboot'
