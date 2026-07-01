@@ -1,0 +1,9 @@
+name: forager-keymap
+root: ~/Projects/forager-zmk-config
+
+windows:
+  - editor:
+      layout: even-horizontal
+      panes:
+        - editor: v config/forager.keymap
+        - pi -c

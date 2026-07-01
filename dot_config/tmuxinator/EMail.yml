@@ -1,0 +1,12 @@
+name: EMail
+root: /var/home/sungsik/Downloads
+
+windows:
+  - aerc:
+      layout: 68c3,281x68,0,0,14
+      panes:
+        - aerc
+  - Files:
+      layout: 68c4,281x68,0,0,15
+      panes:
+        - vifm ~/Downloads ~/Dropbox

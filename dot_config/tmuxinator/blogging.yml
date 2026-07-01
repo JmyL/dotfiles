@@ -1,0 +1,21 @@
+name: blogging
+root: ~/Projects/jmyl.github.io/
+
+windows:
+  - editor:
+      layout: "eb03,200x60,0,0{99x60,0,0,0,100x60,100,0[100x51,100,0,1,100x8,100,52,2]}"
+      panes:
+        - editor: v
+        - pi -c
+        - |
+          bash -lc '
+            hugo serve &
+            hugo_pid=$!
+
+            until curl -fsS http://localhost:1313/ >/dev/null 2>&1; do
+              sleep 0.5
+            done
+
+            xdg-open http://localhost:1313/ >/dev/null 2>&1 &
+            wait "$hugo_pid"
+          '
