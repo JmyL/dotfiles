@@ -277,6 +277,8 @@ bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
     bindsym $mod+Shift+v exec cliphist list | fuzzel --dmenu --width 85 --prompt 'Clipboard> ' | cliphist decode | wl-copy
     # Toggle idle/sleep inhibitor
     bindsym $mod+a exec ~/.local/bin/toggle-idle-inhibit
+    # Cycle available power profiles
+    bindsym $mod+Ctrl+p exec ~/.local/bin/cycle-power-profile
     # Lock screen
     bindsym $mod+Shift+x exec $lock
 
