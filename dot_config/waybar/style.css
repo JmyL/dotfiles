@@ -100,18 +100,31 @@ button:hover {
     font-weight: bold;
 }
 
-#interactive {
-    margin: 3px 4px;
+#interactive,
+#sound,
+#connectivity,
+#system-status {
+    margin: 3px 1px;
     padding: 0 3px;
-    background-color: rgba(43, 48, 59, 0.9);
-    border-radius: 999px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
 }
 
 #interactive #tray,
 #interactive #custom-recording,
 #interactive #power-profiles-daemon,
 #interactive #custom-idle_inhibitor {
+    background-color: transparent;
+    padding: 0 5px;
+}
+
+#sound #pulseaudio,
+#connectivity #network,
+#connectivity #bluetooth,
+#system-status #cpu,
+#system-status #memory,
+#system-status #battery {
     background-color: transparent;
     padding: 0 5px;
 }

@@ -17,15 +17,9 @@
 	],
 	"modules-right": [
 		"group/interactive",
-		"pulseaudio",
-		"network",
-		"bluetooth",
-		"cpu",
-		"memory",
-		// "temperature",
-		// "backlight",
-		// "sway/language",
-		"battery"
+		"group/sound",
+		"group/connectivity",
+		"group/system-status"
 	],
 	"group/interactive": {
 		"orientation": "horizontal",
@@ -34,6 +28,30 @@
 			"custom/recording",
 			"power-profiles-daemon",
 			"custom/idle_inhibitor"
+		]
+	},
+	"group/sound": {
+		"orientation": "horizontal",
+		"modules": [
+			"pulseaudio"
+		]
+	},
+	"group/connectivity": {
+		"orientation": "horizontal",
+		"modules": [
+			"network",
+			"bluetooth"
+		]
+	},
+	"group/system-status": {
+		"orientation": "horizontal",
+		"modules": [
+			"cpu",
+			"memory",
+			// "temperature",
+			// "backlight",
+			// "sway/language",
+			"battery"
 		]
 	},
 	// Modules configuration
