@@ -15,10 +15,7 @@
 		"sway/window"
 	],
 	"modules-right": [
-		"tray",
-		"custom/recording",
-		"power-profiles-daemon",
-		"custom/idle_inhibitor",
+		"group/interactive",
 		"pulseaudio",
 		"network",
 		"bluetooth",
@@ -30,6 +27,15 @@
 		"clock",
 		"battery"
 	],
+	"group/interactive": {
+		"orientation": "horizontal",
+		"modules": [
+			"tray",
+			"custom/recording",
+			"power-profiles-daemon",
+			"custom/idle_inhibitor"
+		]
+	},
 	// Modules configuration
 	// "sway/workspaces": {
 	//     "disable-scroll": true,
