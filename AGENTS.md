@@ -18,7 +18,7 @@ When an agent is launched from this home directory, assume the task is to modify
 - Chezmoi source directory: `~/.local/share/chezmoi`.
 - Prefer editing the live dotfile in `$HOME` first, then run `chezmoi add <path>` to update the chezmoi source from the live file.
 - For existing unmanaged home files, use `chezmoi add <path>` after making or verifying the desired live-file change.
-- If the user says to "manage this change using chezmoi" or asks to "manage" dotfile changes, that means: edit the live dotfile, run `chezmoi add <path>`, review with `chezmoi diff` when practical, then commit the chezmoi repository. Push only if requested.
+- For dotfile changes in this home workspace, treat the full default workflow as: edit the live dotfile, run `chezmoi add <path>`, review with `chezmoi diff` when practical, then commit the chezmoi repository. Do this for normal dotfile change requests, not only when the user explicitly says "manage". Skip the commit only when the user asks not to commit, asks to inspect/test only, or the change is intentionally incomplete. Push only if requested.
 - Use `chezmoi diff` after `chezmoi add` when practical to review what will be tracked.
 - Do not edit files in `~/.local/share/chezmoi` directly for normal dotfile changes unless the user explicitly asks, the live file cannot be safely edited, or a chezmoi template/source-only file requires direct source edits.
 - Keep secrets out of tracked files. Use chezmoi private/encrypted/ignored mechanisms for sensitive data.
