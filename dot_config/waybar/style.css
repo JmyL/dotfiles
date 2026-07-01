@@ -111,6 +111,10 @@ button:hover {
     border-radius: 8px;
 }
 
+#system-status {
+    margin-right: 3px;
+}
+
 #interactive #tray,
 #interactive #custom-recording,
 #interactive #power-profiles-daemon,

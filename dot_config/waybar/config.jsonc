@@ -145,10 +145,9 @@
 	},
 	"clock": {
 		// "timezone": "America/New_York",
-		"markup": true,
-		"format": "<span foreground=\"#72b7f2\"></span> {:%Y-%m-%d}  <span foreground=\"#72b7f2\"></span> {:%H:%M}",
+		"format": " {:%Y-%m-%d}   {:%H:%M}",
 		"tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-		"format-alt": "<span foreground=\"#72b7f2\"></span> {:%A, %B %d}  <span foreground=\"#72b7f2\"></span> {:%H:%M}"
+		"format-alt": " {:%A, %B %d}   {:%H:%M}"
 	},
 	"cpu": {
 		"markup": true,
