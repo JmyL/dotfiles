@@ -254,13 +254,7 @@ mode "$recording_start_mode" {
     bindsym Return mode "default"
     bindsym Escape mode "default"
 }
-set $recording_stop_mode Recording: [s]top
-mode "$recording_stop_mode" {
-    bindsym s mode "default", exec ~/.local/bin/sway-recording stop
-    bindsym Return mode "default"
-    bindsym Escape mode "default"
-}
-bindsym $mod+Shift+c exec ~/.local/bin/sway-recording menu
+bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
 #
 # Utilities:
 #

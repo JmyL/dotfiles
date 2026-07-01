@@ -63,9 +63,9 @@ recording_status() {
     fi
 }
 
-show_recording_menu() {
+toggle_recording() {
     if recording_active; then
-        swaymsg 'mode "Recording: [s]top"'
+        stop_recording
     else
         swaymsg 'mode "Recording: [a]rea [f]ull"'
     fi
@@ -75,6 +75,6 @@ case "${1:-}" in
     area|full) start_recording "$1" ;;
     stop) stop_recording ;;
     status) recording_status ;;
-    menu) show_recording_menu ;;
-    *) echo "Usage: $0 {area|full|stop|status|menu}" >&2; exit 2 ;;
+    toggle) toggle_recording ;;
+    *) echo "Usage: $0 {area|full|stop|status|toggle}" >&2; exit 2 ;;
 esac
