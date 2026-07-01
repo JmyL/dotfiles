@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+screenshot_dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
+mkdir -p "$screenshot_dir"
+
+screenshot="$screenshot_dir/screenshot-$(date +%Y%m%d-%H%M%S-%N).png"
+temporary=$(mktemp --tmpdir="$screenshot_dir" .screenshot-XXXXXX.png)
+trap 'rm -f "$temporary"' EXIT
+
+if ! wl-paste --type image/png >"$temporary"; then
+    notify-send --urgency=critical "Screenshot not saved" "The clipboard does not contain a PNG image."
+    exit 1
+fi
+
+mv "$temporary" "$screenshot"
+trap - EXIT
+notify-send "Screenshot saved" "$screenshot"
