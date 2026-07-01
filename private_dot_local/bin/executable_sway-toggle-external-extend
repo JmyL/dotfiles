@@ -11,9 +11,7 @@ def run(*args):
 
 
 def notify(title, body=""):
-    if shutil.which("swaync-client"):
-        subprocess.run(["swaync-client", "-t", title if not body else f"{title}: {body}"], check=False)
-    elif shutil.which("notify-send"):
+    if shutil.which("notify-send"):
         subprocess.run(["notify-send", title, body], check=False)
 
 
