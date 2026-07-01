@@ -6,21 +6,23 @@ pid_file="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.pid"
 log_file="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.log"
 mkdir -p "$recording_dir"
 
+recording_active() {
+    [ -s "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null
+}
+
 stop_recording() {
-    if [ -s "$pid_file" ]; then
+    if recording_active; then
         pid=$(cat "$pid_file")
-        if kill -0 "$pid" 2>/dev/null; then
-            kill -INT "$pid"
-            rm -f "$pid_file"
-            return 0
-        fi
+        kill -INT "$pid"
+        rm -f "$pid_file"
+        return 0
     fi
     rm -f "$pid_file"
     command -v notify-send >/dev/null 2>&1 && notify-send "No active screen recording" || true
 }
 
 start_recording() {
-    if [ -s "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+    if recording_active; then
         command -v notify-send >/dev/null 2>&1 && notify-send "Screen recording is already running" || true
         exit 1
     fi
@@ -56,8 +58,16 @@ start_recording() {
 }
 
 recording_status() {
-    if [ -s "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+    if recording_active; then
         printf '● REC\n'
+    fi
+}
+
+show_recording_menu() {
+    if recording_active; then
+        swaymsg mode 'Recording: [s]top'
+    else
+        swaymsg mode 'Recording: [a]rea [f]ull'
     fi
 }
 
@@ -65,5 +75,6 @@ case "${1:-}" in
     area|full) start_recording "$1" ;;
     stop) stop_recording ;;
     status) recording_status ;;
-    *) echo "Usage: $0 {area|full|stop|status}" >&2; exit 2 ;;
+    menu) show_recording_menu ;;
+    *) echo "Usage: $0 {area|full|stop|status|menu}" >&2; exit 2 ;;
 esac
