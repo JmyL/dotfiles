@@ -105,8 +105,8 @@ seat * hide_cursor 3000
     # Reload the configuration file
     bindsym $mod+Shift+c reload
 
-    # Restart sway
-    bindsym $mod+Shift+r exec sh -c 'choice=$(printf "Restart sway\nCancel\n" | fuzzel --dmenu --prompt "Restart sway? "); [ "$choice" = "Restart sway" ] && swaymsg restart'
+    # Reboot the system
+    bindsym $mod+Shift+r exec sh -c 'choice=$(printf "Reboot\nCancel\n" | fuzzel --dmenu --prompt "Reboot the system? "); [ "$choice" = "Reboot" ] && systemctl reboot'
 
     # Suspend the system
     bindsym $mod+Shift+s exec sh -c 'choice=$(printf "Suspend\nCancel\n" | fuzzel --dmenu --prompt "Suspend the system? "); [ "$choice" = "Suspend" ] && systemctl suspend'
