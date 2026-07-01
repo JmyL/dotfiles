@@ -195,7 +195,7 @@ seat * hide_cursor 3000
     bindsym $mod+space focus mode_toggle
 
     # Move focus to the parent container
-    bindsym $mod+p focus parent
+    bindsym $mod+u focus parent
 #
 # Scratchpad:
 #
@@ -278,7 +278,7 @@ bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
     # Toggle idle/sleep inhibitor
     bindsym $mod+a exec ~/.local/bin/toggle-idle-inhibit
     # Cycle available power profiles
-    bindsym $mod+Ctrl+p exec ~/.local/bin/cycle-power-profile
+    bindsym $mod+p exec ~/.local/bin/cycle-power-profile
     # Lock screen
     bindsym $mod+Shift+x exec $lock
 
