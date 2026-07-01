@@ -152,7 +152,7 @@
 	},
 	"cpu": {
 		"markup": true,
-		"format": "<span foreground=\"#ff7b86\"></span> {usage}%",
+		"format": "<span foreground=\"#72b7f2\"></span> {usage}%",
 		"tooltip": false
 	},
 	"memory": {
@@ -234,8 +234,8 @@
 	"bluetooth": {
 		"markup": true,
 		"format": "<span foreground=\"#aeb4ba\"></span> {status}",
-		"format-connected": "<span foreground=\"#0082fc\"></span> {num_connections}",
-		"format-connected-battery": "<span foreground=\"#0082fc\"></span> {num_connections}",
+		"format-connected": "<span foreground=\"#72b7f2\"></span> {num_connections}",
+		"format-connected-battery": "<span foreground=\"#72b7f2\"></span> {num_connections}",
 		"format-disabled": "<span foreground=\"#aeb4ba\"></span> off",
 		"format-off": "<span foreground=\"#aeb4ba\"></span> off",
 		"format-no-controller": "",
