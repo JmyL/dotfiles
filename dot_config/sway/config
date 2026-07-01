@@ -19,6 +19,7 @@ set $term kitty
 set $menu fuzzel
 # Shared desktop and lock-screen wallpaper
 set $wallpaper /var/home/sungsik/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg
+set $lock swaylock -f -i $wallpaper -s fill
 
 ### Window appearance
 #
@@ -52,10 +53,10 @@ output * bg $wallpaper fill
 # 30 minutes. Manual idle inhibit blocks idle timeouts, but still allows an
 # explicit suspend via keybinding or systemctl.
 exec swayidle -w \
-         timeout 300 '~/.local/bin/idle-inhibited || swaylock -f -i $wallpaper -s fill' \
+         timeout 300 '~/.local/bin/idle-inhibited || $lock' \
          timeout 600 '~/.local/bin/idle-inhibited || swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
          timeout 1800 '~/.local/bin/idle-inhibited || systemctl suspend' \
-         before-sleep 'swaylock -f -i $wallpaper -s fill'
+         before-sleep '$lock'
 
 ### Input configuration
 #
@@ -276,7 +277,7 @@ bindsym $mod+Shift+c mode "$recording_mode"
     # Toggle idle/sleep inhibitor
     bindsym $mod+a exec ~/.local/bin/toggle-idle-inhibit
     # Lock screen
-    bindsym $mod+Shift+x exec swaylock -f -i $wallpaper -s fill
+    bindsym $mod+Shift+x exec $lock
 
 #
 # Status Bar:
