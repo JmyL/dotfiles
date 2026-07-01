@@ -275,7 +275,7 @@ bindsym $mod+Shift+c mode "$recording_mode"
     # Clear all notifications
     bindsym $mod+Shift+n exec swaync-client -C
     # Show clipboard history
-    bindsym $mod+Shift+v exec cliphist list | fuzzel --dmenu --prompt 'Clipboard> ' | cliphist decode | wl-copy
+    bindsym $mod+Shift+v exec cliphist list | fuzzel --dmenu --width 85 --prompt 'Clipboard> ' | cliphist decode | wl-copy
     # Toggle idle/sleep inhibitor
     bindsym $mod+a exec ~/.local/bin/toggle-idle-inhibit
     # Lock screen
