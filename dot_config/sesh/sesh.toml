@@ -1,3 +1,5 @@
+blacklist = ["^scratch$"]
+
 [[session]]
 name = "dotfiles"
 path = "~"
