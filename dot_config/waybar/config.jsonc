@@ -16,6 +16,7 @@
 	],
 	"modules-right": [
 		"tray",
+		"custom/recording",
 		"power-profiles-daemon",
 		"custom/idle_inhibitor",
 		"pulseaudio",
@@ -100,6 +101,12 @@
 		"interval": "once",
 		"signal": 8,
 		"on-click": "~/.local/bin/toggle-idle-inhibit"
+	},
+	"custom/recording": {
+		"exec": "~/.local/bin/sway-recording status",
+		"interval": 1,
+		"tooltip": false,
+		"on-click": "~/.local/bin/sway-recording stop"
 	},
 	"tray": {
 		// "icon-size": 21,

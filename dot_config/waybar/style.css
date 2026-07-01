@@ -92,12 +92,18 @@ button:hover {
 #mode,
 #idle_inhibitor,
 #custom-idle_inhibitor,
+#custom-recording,
 #bluetooth,
 #scratchpad,
 #power-profiles-daemon,
 #mpd {
     padding: 0 10px;
     color: #ffffff;
+}
+
+#custom-recording {
+    background-color: #c01c28;
+    font-weight: bold;
 }
 
 #window,

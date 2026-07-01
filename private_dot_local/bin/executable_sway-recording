@@ -11,17 +11,17 @@ stop_recording() {
         if kill -0 "$pid" 2>/dev/null; then
             kill -INT "$pid"
             rm -f "$pid_file"
-            command -v swaync-client >/dev/null 2>&1 && swaync-client -t "Screen recording saved" || true
+            command -v notify-send >/dev/null 2>&1 && notify-send "Screen recording saved" || true
             return 0
         fi
     fi
     rm -f "$pid_file"
-    command -v swaync-client >/dev/null 2>&1 && swaync-client -t "No active screen recording" || true
+    command -v notify-send >/dev/null 2>&1 && notify-send "No active screen recording" || true
 }
 
 start_recording() {
     if [ -s "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
-        command -v swaync-client >/dev/null 2>&1 && swaync-client -t "Screen recording is already running" || true
+        command -v notify-send >/dev/null 2>&1 && notify-send "Screen recording is already running" || true
         exit 1
     fi
 
@@ -42,11 +42,18 @@ start_recording() {
     esac
 
     echo $! > "$pid_file"
-    command -v swaync-client >/dev/null 2>&1 && swaync-client -t "Screen recording started" || true
+    command -v notify-send >/dev/null 2>&1 && notify-send "Screen recording started" || true
+}
+
+recording_status() {
+    if [ -s "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+        printf '● REC\n'
+    fi
 }
 
 case "${1:-}" in
     area|full) start_recording "$1" ;;
     stop) stop_recording ;;
-    *) echo "Usage: $0 {area|full|stop}" >&2; exit 2 ;;
+    status) recording_status ;;
+    *) echo "Usage: $0 {area|full|stop|status}" >&2; exit 2 ;;
 esac
