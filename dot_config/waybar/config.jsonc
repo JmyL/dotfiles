@@ -145,16 +145,19 @@
 	},
 	"clock": {
 		// "timezone": "America/New_York",
-		"format": " {:%Y-%m-%d   %H:%M}",
+		"markup": true,
+		"format": "<span foreground=\"#72b7f2\"></span> {:%Y-%m-%d}  <span foreground=\"#72b7f2\"></span> {:%H:%M}",
 		"tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-		"format-alt": " {:%A, %B %d   %H:%M}"
+		"format-alt": "<span foreground=\"#72b7f2\"></span> {:%A, %B %d}  <span foreground=\"#72b7f2\"></span> {:%H:%M}"
 	},
 	"cpu": {
-		"format": " {usage}%",
+		"markup": true,
+		"format": "<span foreground=\"#ff7b86\"></span> {usage}%",
 		"tooltip": false
 	},
 	"memory": {
-		"format": " {}%"
+		"markup": true,
+		"format": "<span foreground=\"#72b7f2\"></span> {}%"
 	},
 	"temperature": {
 		// "thermal-zone": 2,
@@ -180,16 +183,17 @@
 		]
 	},
 	"battery": {
+		"markup": true,
 		"states": {
 			// "good": 95,
 			"warning": 30,
 			"critical": 15
 		},
-		"format": "{icon} {capacity}%",
-		"format-full": "{icon} {capacity}%",
-		"format-charging": " {capacity}%",
-		"format-plugged": " {capacity}%",
-		"format-alt": "{icon} {time}",
+		"format": "<span foreground=\"#69db8b\">{icon}</span> {capacity}%",
+		"format-full": "<span foreground=\"#69db8b\">{icon}</span> {capacity}%",
+		"format-charging": "<span foreground=\"#69db8b\"></span> {capacity}%",
+		"format-plugged": "<span foreground=\"#69db8b\"></span> {capacity}%",
+		"format-alt": "<span foreground=\"#69db8b\">{icon}</span> {time}",
 		// "format-good": "", // An empty format will hide the module
 		// "format-full": "",
 		"format-icons": [
@@ -215,23 +219,25 @@
 		}
 	},
 	"network": {
+		"markup": true,
 		// "interface": "wlp2*", // (Optional) To force the use of this interface
-		"format-wifi": " {signalStrength}%",
-		"format-ethernet": " {ipaddr}/{cidr}",
+		"format-wifi": "<span foreground=\"#72b7f2\"></span> {signalStrength}%",
+		"format-ethernet": "<span foreground=\"#72b7f2\"></span> {ipaddr}/{cidr}",
 		"tooltip-format": "{ifname} via {gwaddr} ",
-		"format-linked": " {ifname} (No IP)",
-		"format-disconnected": "⚠ Disconnected",
-		"format-alt": " {ifname}: {ipaddr}/{cidr}",
+		"format-linked": "<span foreground=\"#72b7f2\"></span> {ifname} (No IP)",
+		"format-disconnected": "<span foreground=\"#ff7b86\">⚠</span> Disconnected",
+		"format-alt": "<span foreground=\"#72b7f2\"></span> {ifname}: {ipaddr}/{cidr}",
 		"on-click": "gnome-control-center wifi",
 		"on-click-right": "nm-connection-editor",
 		"on-click-middle": "ptyxis -- nmtui"
 	},
 	"bluetooth": {
-		"format": " {status}",
-		"format-connected": " {num_connections}",
-		"format-connected-battery": " {num_connections}",
-		"format-disabled": " off",
-		"format-off": " off",
+		"markup": true,
+		"format": "<span foreground=\"#aeb4ba\"></span> {status}",
+		"format-connected": "<span foreground=\"#0082fc\"></span> {num_connections}",
+		"format-connected-battery": "<span foreground=\"#0082fc\"></span> {num_connections}",
+		"format-disabled": "<span foreground=\"#aeb4ba\"></span> off",
+		"format-off": "<span foreground=\"#aeb4ba\"></span> off",
 		"format-no-controller": "",
 		"tooltip-format": "{controller_alias}\t{controller_address}",
 		"tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
@@ -240,11 +246,12 @@
 		"on-click-right": "blueman-manager"
 	},
 	"pulseaudio": {
+		"markup": true,
 		// "scroll-step": 1, // %, can be a float
-		"format": "{icon} {volume}%",
-		"format-bluetooth": "{icon} {volume}%",
-		"format-bluetooth-muted": " {icon}",
-		"format-muted": "",
+		"format": "<span foreground=\"#72b7f2\">{icon}</span> {volume}%",
+		"format-bluetooth": "<span foreground=\"#72b7f2\">{icon}</span> {volume}%",
+		"format-bluetooth-muted": "<span foreground=\"#aeb4ba\"></span> <span foreground=\"#72b7f2\">{icon}</span>",
+		"format-muted": "<span foreground=\"#aeb4ba\"></span>",
 		"format-icons": {
 			"headphone": "",
 			"hands-free": "",
