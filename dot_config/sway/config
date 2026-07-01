@@ -272,6 +272,8 @@ bindsym $mod+Shift+c mode "$recording_mode"
     bindsym $mod+m exec ~/.local/bin/sway-toggle-external-extend
     # Toggle notification center
     bindsym $mod+n exec swaync-client -t -sw
+    # Clear all notifications
+    bindsym $mod+Shift+n exec swaync-client -C
     # Show clipboard history
     bindsym $mod+Shift+v exec cliphist list | fuzzel --dmenu --prompt 'Clipboard> ' | cliphist decode | wl-copy
     # Toggle idle/sleep inhibitor
