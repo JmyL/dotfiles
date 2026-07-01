@@ -24,7 +24,10 @@ return {
           return nil
         else
           return {
-            timeout_ms = 500,
+            -- Markdown uses the injected formatter to format fenced code
+            -- blocks. Large Obsidian notes can need more than the default
+            -- timeout just to scan for injected languages.
+            timeout_ms = vim.bo[bufnr].filetype == 'markdown' and 3000 or 500,
             lsp_format = 'fallback',
           }
         end
@@ -37,10 +40,7 @@ return {
         nix = { 'alejandra' },
         proto = { 'buf' },
         cmake = { 'gersemi' },
-        -- Keep Markdown formatting simple for Obsidian notes. The injected
-        -- formatter can time out while scanning large wiki-style notes, and
-        -- Prettier already handles the Markdown document itself.
-        markdown = { 'prettier' },
+        markdown = { 'injected', 'prettier' },
         c = { 'clang-format' },
         cpp = { 'clang-format' },
         -- Conform can also run multiple formatters sequentially
