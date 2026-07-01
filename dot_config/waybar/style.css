@@ -91,7 +91,7 @@ button:hover {
 #scratchpad,
 #power-profiles-daemon,
 #mpd {
-    padding: 0 10px;
+    padding: 0 8px;
     color: #ffffff;
 }
 
@@ -102,7 +102,7 @@ button:hover {
 
 #interactive {
     margin: 3px 4px;
-    padding: 0 4px;
+    padding: 0 3px;
     background-color: rgba(43, 48, 59, 0.9);
     border-radius: 999px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
@@ -113,6 +113,7 @@ button:hover {
 #interactive #power-profiles-daemon,
 #interactive #custom-idle_inhibitor {
     background-color: transparent;
+    padding: 0 5px;
 }
 
 #pulseaudio,
@@ -151,10 +152,6 @@ button:hover {
 #battery.critical:not(.charging) {
     color: #ffffff;
     background-color: transparent;
-}
-
-#power-profiles-daemon {
-    padding-right: 15px;
 }
 
 #power-profiles-daemon.performance {
@@ -232,8 +229,6 @@ label:focus {
 #idle_inhibitor,
 #custom-idle_inhibitor {
     background-color: transparent;
-    padding-left: 14px;
-    padding-right: 14px;
 }
 
 #idle_inhibitor.activated,
