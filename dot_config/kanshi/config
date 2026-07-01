@@ -1,0 +1,37 @@
+# kanshi output profiles for Sway.
+#
+# Check real output names with:
+#   swaymsg -t get_outputs
+#
+# Defaults:
+# - Laptop only: enable the internal display.
+# - Docked: when a common external output is connected, disable the laptop
+#   display and use the external monitor only.
+# - Presentation: uncomment a profile and set both outputs to the same
+#   position if you want mirroring for a known projector.
+
+profile laptop {
+    output eDP-1 enable position 0,0
+}
+
+profile docked-hdmi {
+    output eDP-1 disable
+    output HDMI-A-1 enable position 0,0
+}
+
+profile docked-dp1 {
+    output eDP-1 disable
+    output DP-1 enable position 0,0
+}
+
+profile docked-dp2 {
+    output eDP-1 disable
+    output DP-2 enable position 0,0
+}
+
+# Example presentation mirror profile. Adjust the external output name if
+# needed, then uncomment when you want this to take priority over docked-hdmi.
+# profile presentation-hdmi {
+#     output eDP-1 enable position 0,0
+#     output HDMI-A-1 enable position 0,0
+# }

@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+import json
+import math
+import shutil
+import subprocess
+import sys
+
+
+def run(*args):
+    return subprocess.run(args, check=True, text=True, capture_output=True)
+
+
+def notify(title, body=""):
+    if shutil.which("swaync-client"):
+        subprocess.run(["swaync-client", "-t", title if not body else f"{title}: {body}"], check=False)
+    elif shutil.which("notify-send"):
+        subprocess.run(["notify-send", title, body], check=False)
+
+
+def logical_width(output):
+    rect = output.get("rect") or {}
+    if rect.get("width"):
+        return int(rect["width"])
+
+    mode = output.get("current_mode") or {}
+    width = mode.get("width") or 1920
+    scale = output.get("scale") or 1
+    transform = output.get("transform") or "normal"
+    if transform in {"90", "270", "flipped-90", "flipped-270"}:
+        width = mode.get("height") or width
+    return int(math.ceil(width / scale))
+
+
+def main():
+    outputs = json.loads(run("swaymsg", "-t", "get_outputs").stdout)
+    connected = [output for output in outputs if output.get("active") or output.get("dpms", True)]
+
+    internal = next((output for output in outputs if output.get("name", "").startswith("eDP-")), None)
+    external = next(
+        (
+            output
+            for output in outputs
+            if not output.get("name", "").startswith("eDP-") and output.get("current_mode")
+        ),
+        None,
+    )
+
+    if internal is None:
+        notify("Display toggle failed", "No internal eDP output found")
+        return 1
+    if external is None:
+        notify("Display toggle failed", "No external output found")
+        return 1
+
+    internal_name = internal["name"]
+    external_name = external["name"]
+
+    if internal.get("active"):
+        # Extended/presentation mode -> external-only mode.
+        subprocess.run(["swaymsg", "output", internal_name, "disable"], check=True)
+        subprocess.run(["swaymsg", "output", external_name, "enable", "position", "0", "0"], check=True)
+        notify("External-only display", external_name)
+    else:
+        # External-only mode -> extended/presenter mode.
+        width = logical_width(internal)
+        subprocess.run(["swaymsg", "output", internal_name, "enable", "position", "0", "0"], check=True)
+        subprocess.run(["swaymsg", "output", external_name, "enable", "position", str(width), "0"], check=True)
+        notify("Extended display", f"{internal_name} + {external_name}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
