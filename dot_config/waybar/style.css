@@ -198,6 +198,14 @@ label:focus {
     background-color: transparent;
 }
 
+#bluetooth {
+    color: #aeb4ba;
+}
+
+#bluetooth.connected {
+    color: #0082fc;
+}
+
 #pulseaudio.muted {
     background-color: transparent;
     color: #ffffff;
