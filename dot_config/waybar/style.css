@@ -244,6 +244,11 @@ label:focus {
     background-color: transparent;
 }
 
+#idle_inhibitor.deactivated,
+#custom-idle_inhibitor.deactivated {
+    color: #aeb4ba;
+}
+
 #idle_inhibitor.activated,
 #custom-idle_inhibitor.activated {
     background-color: transparent;
