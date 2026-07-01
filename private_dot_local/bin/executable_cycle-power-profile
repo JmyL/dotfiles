@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v powerprofilesctl >/dev/null 2>&1; then
-  exit 1
-fi
+service="org.freedesktop.UPower.PowerProfiles"
+object="/org/freedesktop/UPower/PowerProfiles"
+interface="org.freedesktop.UPower.PowerProfiles"
 
-available="$(powerprofilesctl list)"
+available="$(busctl --system get-property "$service" "$object" "$interface" Profiles)"
 profiles=()
 
 for profile in power-saver balanced performance; do
-  if grep -qE "^[[:space:]*]*${profile}:" <<<"$available"; then
+  if grep -qF "\"Profile\" s \"$profile\"" <<<"$available"; then
     profiles+=("$profile")
   fi
 done
@@ -18,7 +18,9 @@ if ((${#profiles[@]} == 0)); then
   exit 1
 fi
 
-current="$(powerprofilesctl get)"
+current="$(busctl --system get-property "$service" "$object" "$interface" ActiveProfile)"
+current="${current#s \"}"
+current="${current%\"}"
 next="${profiles[0]}"
 
 for i in "${!profiles[@]}"; do
@@ -28,4 +30,4 @@ for i in "${!profiles[@]}"; do
   fi
 done
 
-powerprofilesctl set "$next"
+busctl --system set-property "$service" "$object" "$interface" ActiveProfile s "$next"
