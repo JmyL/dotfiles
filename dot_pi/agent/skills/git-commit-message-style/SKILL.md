@@ -4,23 +4,32 @@ description: Apply the user's preferred git commit message style. Use whenever c
 disable-model-invocation: true
 ---
 
-When creating or amending a git commit for the user, write the commit message according to these rules:
+When creating or amending a git commit for the user, follow Chris Beams' seven rules, with emphasis on describing the resulting behavior rather than the editing process.
 
-- Start the subject with an imperative verb.
-- End the subject with a period.
+## Seven rules
+
+1. Separate subject from body with a blank line.
+2. Limit the subject line to about 50 characters when practical.
+3. Capitalize the subject line.
+4. Do not end the subject line with a period.
+5. Use the imperative mood in the subject line.
+6. Wrap the body at 72 characters when writing one.
+7. Use the body to explain what and why, not how.
+
+## User preference
+
 - Describe what the resulting change does, not what the user or agent did.
-- Describe the effect of the change, not just the files touched.
-- Keep it concise, but specific enough to explain what the change accomplishes.
 - Prefer concrete behavior changes over vague summaries.
 - Avoid generic implementation/process verbs like "Update", "Modify", "Refactor", or "Change" when a more specific behavior verb fits.
+- A good subject should fit: "If applied, this commit will <subject>".
 
 Examples:
 
 Good:
-- `Configure tmux bindings to confirm pane termination.`
-- `Reassign tmux split shortcuts to reserve M-x for guarded pane termination.`
-- `Omit generated comments from tmuxinator sessions.`
-- `Stop adding generated comments to tmuxinator sessions.`
+- `Configure tmux bindings to confirm pane termination`
+- `Reassign tmux split shortcuts to preserve M-x`
+- `Omit generated comments from tmuxinator sessions`
+- `Stop adding generated comments to tmuxinator sessions`
 
 Bad:
 - `Update tmux pane keybindings`
@@ -28,5 +37,3 @@ Bad:
 - `tmux config`
 - `Changed stuff`
 - `Configure tmux.`
-
-If a commit body is useful, keep the subject compliant with the rules above and use the body for extra context. The body may be longer, but should still explain the user-visible or operational effect of the change.
