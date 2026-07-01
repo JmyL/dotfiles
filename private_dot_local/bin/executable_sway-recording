@@ -65,9 +65,9 @@ recording_status() {
 
 show_recording_menu() {
     if recording_active; then
-        swaymsg mode 'Recording: [s]top'
+        swaymsg 'mode "Recording: [s]top"'
     else
-        swaymsg mode 'Recording: [a]rea [f]ull'
+        swaymsg 'mode "Recording: [a]rea [f]ull"'
     fi
 }
 
