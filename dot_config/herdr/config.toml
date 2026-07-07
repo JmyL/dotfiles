@@ -1,22 +1,81 @@
 onboarding = false
 
-focus_pane_left = "prefix+h"
-focus_pane_down = "prefix+j"
-focus_pane_up = "prefix+k"
-focus_pane_right = "prefix+l"
+[keys]
+# Prefix key to enter prefix mode (default: "ctrl+b")
 
-split_vertical = ""
-split_horizontal = ""
+# Action bindings use explicit syntax: "prefix+n" requires the prefix;
+# "ctrl+alt+n" is a direct terminal-mode shortcut.
+# Accepted key syntax: plain keys, ctrl/shift/alt/cmd/super modifiers, and special keys like enter/tab/esc/left/right/up/down.
+# Named punctuation such as minus, comma, ampersand, plus, and backtick is also accepted.
+# Most reliable direct bindings are ctrl+letter, function keys, and explicit modified chords.
+# alt+..., cmd/super, and punctuation-with-modifiers may depend on your terminal/tmux setup.
+prefix = "alt+a"
 
-[[keys.command]]
-key = 'alt+x'
-type = "shell"
-command = "herdr-navigator split right"
+# Prefix-mode actions
+# help = "prefix+?"
+# settings = "prefix+s"
+# detach = "prefix+q"
+reload_config = ["prefix+shift+r", "alt+shift+r"]
 
-[[keys.command]]
-key = "alt+d"
-type = "shell"
-command = "herdr-navigator split down"
+# open_notification_target = "prefix+o"
+workspace_picker = ["prefix+w", "ctrl+alt+o"]
+goto = "prefix+g"
+new_workspace = ["prefix+shift+n", "ctrl+alt+t"]
+new_worktree = ["prefix+shift+g", "ctrl+alt+g"]
+# open_worktree = ""    # optional, unset by default
+# remove_worktree = ""  # optional, unset by default; opens confirmation
+rename_workspace = ["prefix+shift+w", "ctrl+alt+r"]
+close_workspace = ["prefix+shift+d", "ctrl+alt+q"]
+previous_workspace = "ctrl+alt+k" # optional, unset by default
+next_workspace = "ctrl+alt+j"     # optional, unset by default
+previous_agent = "ctrl+k"     # optional, unset by default
+next_agent = "ctrl+j"         # optional, unset by default
+focus_agent = ["prefix+alt+1..9", "ctrl+1..9"]
+
+# remote_image_paste = "ctrl+v" # only active in herdr --remote; empty disables raw-key image paste
+new_tab = ["prefix+c","alt+t"]
+
+rename_tab = ["prefix+shift+t", "alt+r"]
+previous_tab = ["prefix+p"]
+next_tab = ["prefix+n"]
+switch_tab = ["prefix+1..9", "alt+1..9"]
+switch_workspace = ["prefix+shift+1..9", "ctrl+alt+1..9"]
+# close_tab = "prefix+shift+x"
+copy_mode = ["prefix+[", "alt+y"]
+# rename_pane = "prefix+shift+p"
+edit_scrollback = ["prefix+e", "alt+e"]
+# focus_pane_left = "prefix+h"
+# focus_pane_down = "prefix+j"
+# focus_pane_up = "prefix+k"
+# focus_pane_right = "prefix+l"
+# cycle_pane_next = "prefix+tab"
+# cycle_pane_previous = "prefix+shift+tab"
+last_pane = "alt+p"          # optional, unset by default; bind e.g. "prefix+tab" for global back-and-forth
+split_vertical = ["prefix+v", "alt+x"]
+split_horizontal = ["prefix+minus", "alt+d"]
+close_pane = ["prefix+x", "alt+q"]
+zoom = ["prefix+z", "alt+m"]
+# resize_mode = "prefix+r"
+toggle_sidebar = ["prefix+b", "alt+b"]
+
+# Navigate-mode movement. These local shortcuts win while navigate mode is open.
+# They are independent from focus_pane_*. Do not include prefix+, esc, enter, tab, or 1..9 here.
+# navigate_workspace_up = "up"
+# navigate_workspace_down = "down"
+# navigate_pane_left = "h"      # left arrow always focuses the pane to the left
+# navigate_pane_down = "j"
+# navigate_pane_up = "k"
+# navigate_pane_right = "l"     # right arrow always focuses the pane to the right
+
+
+
+[update]
+channel = "stable"
+version_check = true
+manifest_check = true
+
+[terminal]
+new_cwd = "follow"
 
 [[keys.command]]
 key = "alt+h"
@@ -59,9 +118,24 @@ type = "plugin_action"
 command = "herdr-splits.resize-right"
 
 [[keys.command]]
-key = "alt+shift+r"
-type = "shell"
-command = "herdr server reload-config"
+key = "alt+o"
+type = "plugin_action"
+command = "cloudmanic.herdr-plus.projects"
+description = "herdr-plus: projects"
 
+[[keys.command]]
+key = "alt+space"
+type = "plugin_action"
+command = "cloudmanic.herdr-plus.quick-actions"
+description = "herdr-plus: quick actions"
 [ui.toast]
 delivery = "herdr"
+
+[[keys.command]]
+key = ["alt+shift+y"]
+type = "plugin_action"
+command = "rmarganti.herdr-pluck.pluck"
+description = "pluck visible token"
+
+[ui]
+agent_panel_sort = "spaces"

@@ -1,0 +1,3 @@
+# Herdr plugins to install
+# Run: xargs -a ~/.config/herdr/plugins.list -I{} herdr plugin install {}
+lmilojevicc/herdr-splits.nvim
