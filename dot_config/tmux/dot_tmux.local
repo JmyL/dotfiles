@@ -1,6 +1,0 @@
-# Local machine overrides for ~/.tmux.conf
-# Waybar already shows system stats, date/time, and battery on the local desktop.
-set -g @show_system_stats 0
-set -g @show_uptime 0
-set -g @show_date_time 0
-set -g @show_battery 0
