@@ -1,5 +1,5 @@
 name: nvim
-root: /var/home/sungsik/.config/nvim
+root: ~/.config/nvim
 
 windows:
   - config:

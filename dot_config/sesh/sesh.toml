@@ -1,6 +1,1 @@
 blacklist = ["^scratch$"]
-
-[[session]]
-name = "dotfiles"
-path = "~"
-startup_command = "nvim"

@@ -1,5 +1,5 @@
 name: dotfiles
-root: /var/home/sungsik
+root: /var/home/sungsik/.config
 
 windows:
   - editor:
