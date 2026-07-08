@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+file=${1:?}
+
+if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+	exec tmux popup -E -w 90% -h 90% -- nvim "$file"
+fi
+
+if command -v xdg-terminal-exec >/dev/null 2>&1; then
+	exec xdg-terminal-exec nvim "$file"
+elif command -v gnome-terminal >/dev/null 2>&1; then
+	exec gnome-terminal -- nvim "$file"
+elif command -v kitty >/dev/null 2>&1; then
+	exec kitty nvim "$file"
+elif command -v alacritty >/dev/null 2>&1; then
+	exec alacritty -e nvim "$file"
+elif command -v wezterm >/dev/null 2>&1; then
+	exec wezterm start -- nvim "$file"
+elif command -v xterm >/dev/null 2>&1; then
+	exec xterm -e nvim "$file"
+else
+	exec nvim "$file"
+fi
