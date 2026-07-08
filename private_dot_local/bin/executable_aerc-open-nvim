@@ -4,7 +4,12 @@ set -eu
 file=${1:?}
 
 if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
-	exec tmux popup -E -w 90% -h 90% -- nvim "$file"
+	signal="aerc-open-nvim-$$"
+	tmux split-window -h \
+		-e AERC_OPEN_NVIM_FILE="$file" \
+		-e AERC_OPEN_NVIM_SIGNAL="$signal" \
+		'nvim "$AERC_OPEN_NVIM_FILE"; tmux wait-for -S "$AERC_OPEN_NVIM_SIGNAL"'
+	exec tmux wait-for "$signal"
 fi
 
 if command -v kitty >/dev/null 2>&1; then
