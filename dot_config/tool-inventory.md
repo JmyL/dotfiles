@@ -133,6 +133,7 @@ Current IMAP/aerc setup:
 - `pandoc`
 - `zathura`
 - `vimiv`
+- `vlc`
 
 Planned local mail/notmuch migration, documented in `~/.config/aerc/notmuch-migration.md`:
 
@@ -159,6 +160,8 @@ Preview/open helpers referenced by config:
 - `binutils` / `nm`
 - `transmission`
 - `dumptorrent`
+- `vlc` — video opener
+- `ffprobe` / FFmpeg — video metadata preview
 - `unrar`
 - `p7zip` / `7z`
 - `catdoc`
@@ -188,11 +191,11 @@ This is the broad workstation-oriented install set. Some packages may vary by Fe
 ```sh
 sudo dnf install \
   aerc bat binutils catdoc chezmoi cliphist curl direnv dnf-plugins-core \
-  docx2txt eza fcitx5 fd-find flatpak fuzzel fzf git gnupg2 grim \
+  docx2txt eza fcitx5 fd-find ffmpeg-free flatpak fuzzel fzf git gnupg2 grim \
   grimshot isync jq kanshi kitty less libnotify links lynx man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
-  swaylock thunar tmux transmission unrar vifm vimiv waybar wf-recorder \
+  swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
   wl-clipboard xclip xdg-utils xterm zathura zip zoxide
 ```
 
@@ -225,11 +228,11 @@ Test/package names may vary by Ubuntu release. This is aimed at recent Ubuntu ve
 sudo apt update
 sudo apt install \
   aerc bat binutils catdoc cliphist curl direnv docx2txt eza fcitx5 \
-  fd-find flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
+  fd-find ffmpeg flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
   libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
   slurp sox starship swappy sway swayidle swaylock thunar tmux \
-  transmission-cli unrar vifm vimiv waybar wf-recorder wl-clipboard \
+  transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
   xclip xdg-utils xterm zathura zip zoxide
 ```
 
