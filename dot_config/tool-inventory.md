@@ -13,6 +13,32 @@ This is a practical checklist of tools referenced by the current dotfiles. It is
 - `zoxide` — directory jumper, referenced by tmux/sesh workflows.
 - `direnv` — per-directory environment loader.
 
+## Bash startup expectations
+
+Config: `~/.bashrc`, `~/.bashrc.d/browser`
+
+Expected tools and paths:
+
+- `nvim` — exported as both `VISUAL` and `EDITOR`; alias `v=nvim`.
+- `toolbox` — alias `dv='toolbox enter f44'` for Fedora toolbox workflow.
+- `dnf` — alias `dnf-backup` uses `dnf repoquery`.
+- `sesh` + `fzf` — alias `tmo='sesh connect "$(sesh list | fzf)"'`.
+- `tmuxinator` + `fzf` + `tail` — aliases `tm` and `tmp`.
+- Rust/Cargo environment at `~/.cargo/env`.
+- `starship` — initialized with `starship init bash`.
+- `zoxide` — initialized with `zoxide init bash`.
+- `direnv` — optional hook is present but currently commented out.
+- `fcitx5` — bash exports `XMODIFIERS`, `GTK_IM_MODULE`, `QT_IM_MODULE`,
+  `SDL_IM_MODULE`, and `INPUT_METHOD` for fcitx.
+- `~/.local/bin/open-url` — exported as `BROWSER` from `~/.bashrc.d/browser`.
+
+PATH additions expected by shell startup:
+
+- `~/.local/bin`
+- `~/bin`
+- `~/.npm-global/bin`
+- `~/go/bin`
+
 Useful CLI utilities commonly expected by configs/workflows:
 
 - `git`
@@ -219,22 +245,66 @@ Tracked under `~/.local/bin` via chezmoi:
 - `tmuxinator-save-session-notify`
 - `toggle-idle-inhibit`
 
+Script dependency notes:
+
+- `aerc-open-nvim` expects `nvim`; in tmux it uses `tmux split-window` and
+  `tmux wait-for`; outside tmux it prefers `kitty`, then `xdg-terminal-exec`,
+  `gnome-terminal`, `alacritty`, `wezterm`, `xterm`.
+- `open-url` expects `xdg-open`; inside toolbox/container it prefers
+  `flatpak-spawn --host xdg-open`.
+- `clipwrite` expects Wayland `wl-copy` for clipboard writes.
+- `cycle-power-profile` expects `powerprofilesctl` and optionally
+  `notify-send`.
+- `idle-inhibited`, `idle-inhibit-status`, and `toggle-idle-inhibit` expect
+  D-Bus/systemd tooling such as `busctl`/`systemctl` plus `notify-send` for
+  user feedback.
+- `save-screenshot` is used by the Sway screenshot mode and expects screenshot
+  output from `grimshot`/`grim`; it uses standard shell tools and
+  `notify-send`.
+- `sway-recording` expects `swaymsg`, `jq`, `wf-recorder`, and optionally
+  `notify-send`.
+- `sway-toggle-external-extend` expects `swaymsg` and Python 3.
+- `swap-pane-direction` expects `tmux`.
+- `tmux-kill-current-session` expects `tmux`.
+- `tmux-popup-ui` expects `tmux` and uses shell UI helpers internally.
+- `prompt-ui` is a reusable prompt helper for scripts/popups; keep it with the
+  rest of `~/.local/bin`.
+- `tmuxinator-*` scripts expect `tmux`, `tmuxinator`, `fzf`/`fzf-tmux`, and
+  project YAML files under `~/.config/tmuxinator`.
+- `install-dropbox-tray-icons` expects `gtk-update-icon-cache` and Dropbox icon
+  assets.
+
+Additional executables currently present in `~/.local/bin` but not all managed
+by chezmoi or not necessarily required by the dotfiles:
+
+- `act`
+- `gh`
+- `k6`
+- `pop-launcher`
+- `tuxedo`
+- `uv`, `uvx`
+- `zellij`
+
 ## Fedora package name hints
 
 Approximate Fedora package names for many external tools:
 
 ```sh
 sudo dnf install \
-  aerc bat direnv eza fd-find fzf git gnupg2 isync jq kitty less man-db \
-  neovim notmuch pass pandoc poppler-utils ripgrep starship sway swayidle \
-  swaylock thunar tmux vifm waybar wl-clipboard zathura zip p7zip p7zip-plugins
+  aerc bat direnv dnf-plugins-core eza fd-find fzf git gnupg2 isync jq kitty \
+  less man-db neovim notmuch pass pandoc poppler-utils ripgrep starship sway \
+  swayidle swaylock thunar tmux vifm waybar wl-clipboard xdg-utils zathura \
+  zip p7zip p7zip-plugins
 ```
 
 Some tools may need COPR, cargo/go install, Flatpak, or manual installation depending on the machine:
 
 - Brave Browser: Flatpak `com.brave.Browser` or vendor repo.
+- `swayosd-client`, `swaync-client`, `cliphist`, `grimshot`, `swappy`, `vimiv`, `kanshi`, `fcitx5`, `wf-recorder`: package availability varies by distro/release.
+- `toolbox` is Fedora-specific; on non-Fedora machines replace the `dv` alias or install an equivalent container workflow.
 - `sesh`: often installed via Go/Cargo/project release.
 - `herdr`, `pi`: user-level installers.
 - `tmuxinator`: Ruby gem or package.
-- `swayosd-client`, `swaync-client`, `cliphist`, `grimshot`, `swappy`, `vimiv`, `kanshi`, `fcitx5`: package availability varies by distro/release.
+- `uv`/`uvx`: Astral installer or distro package.
+- `act`, `gh`, `k6`, `zellij`, `tuxedo`, `pop-launcher`: optional/user-installed tools currently present in `~/.local/bin`.
 - `kitty_scrollback_nvim`: Neovim/Kitty integration, usually installed through Neovim plugin setup.
