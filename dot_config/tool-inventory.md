@@ -1,99 +1,84 @@
 # Tool inventory for non-NixOS setup
 
-This is a practical checklist of tools referenced by the current dotfiles. It is intended for setting up a work laptop or other non-NixOS/Fedora-Silverblue machine where Home Manager is not available.
+This checklist is for setting up these dotfiles on a work laptop or other non-NixOS machine. It intentionally lists **external tools to install**, not scripts that are already managed by chezmoi under `~/.local/bin`, and not tmux plugins that TPM installs from `~/.config/tmux/tmux.conf`.
 
-## Core terminal/editor stack
+## Assumptions
 
-- `bash` — shell config is managed in `~/.bashrc` and `~/.bashrc.d/`.
-- `nvim` — primary editor; config in `~/.config/nvim`.
-- `kitty` — terminal emulator; config in `~/.config/kitty/kitty.conf`.
-- `tmux` — terminal multiplexer; config in `~/.config/tmux/tmux.conf`.
-- `vifm` — terminal file manager; config in `~/.config/vifm/vifmrc`.
-- `starship` — shell prompt; config in `~/.config/starship.toml`.
-- `zoxide` — directory jumper, referenced by tmux/sesh workflows.
-- `direnv` — per-directory environment loader.
+- Dotfiles are applied with `chezmoi`.
+- Custom scripts in `~/.local/bin` come from chezmoi and do not need separate installation.
+- tmux plugins are installed by TPM after `tmux` starts; only TPM itself needs manual bootstrap.
+- Some desktop tools are only useful on a Wayland/Sway workstation and can be skipped on server/headless setups.
 
-## Bash startup expectations
+## Must-have CLI/editor stack
+
+These are expected by shell, tmux, vifm, aerc, or general workflows:
+
+- `bash`
+- `git`
+- `curl`, `wget`
+- `chezmoi`
+- `nvim`
+- `tmux`
+- `vifm`
+- `fzf` including `fzf-tmux`
+- `fd`
+- `rg` / ripgrep
+- `bat`
+- `eza`
+- `jq`
+- `less`, `man`, `col`
+- `zip`, `unzip`, `tar`, `xz`, `7z`
+- `starship`
+- `zoxide`
+- `direnv`
+- `pass`
+- `gpg`
+
+## Shell-specific expectations
 
 Config: `~/.bashrc`, `~/.bashrc.d/browser`
 
-Expected tools and paths:
+- `nvim` is exported as `VISUAL` and `EDITOR`.
+- `starship` is initialized with `starship init bash`.
+- `zoxide` is initialized with `zoxide init bash`.
+- `direnv` hook exists but is currently commented out.
+- `fcitx5` environment variables are exported for input method support.
+- `toolbox` is referenced by alias `dv='toolbox enter f44'` on Fedora.
+- `dnf` is referenced by alias `dnf-backup` on Fedora.
+- `sesh`, `tmuxinator`, and `fzf` are referenced by tmux/session aliases.
 
-- `nvim` — exported as both `VISUAL` and `EDITOR`; alias `v=nvim`.
-- `toolbox` — alias `dv='toolbox enter f44'` for Fedora toolbox workflow.
-- `dnf` — alias `dnf-backup` uses `dnf repoquery`.
-- `sesh` + `fzf` — alias `tmo='sesh connect "$(sesh list | fzf)"'`.
-- `tmuxinator` + `fzf` + `tail` — aliases `tm` and `tmp`.
-- Rust/Cargo environment at `~/.cargo/env`.
-- `starship` — initialized with `starship init bash`.
-- `zoxide` — initialized with `zoxide init bash`.
-- `direnv` — optional hook is present but currently commented out.
-- `fcitx5` — bash exports `XMODIFIERS`, `GTK_IM_MODULE`, `QT_IM_MODULE`,
-  `SDL_IM_MODULE`, and `INPUT_METHOD` for fcitx.
-- `~/.local/bin/open-url` — exported as `BROWSER` from `~/.bashrc.d/browser`.
-
-PATH additions expected by shell startup:
+Expected user-level bin paths:
 
 - `~/.local/bin`
 - `~/bin`
 - `~/.npm-global/bin`
 - `~/go/bin`
 
-Useful CLI utilities commonly expected by configs/workflows:
-
-- `git`
-- `fd`
-- `rg` / ripgrep
-- `fzf` and `fzf-tmux`
-- `bat`
-- `eza`
-- `jq`
-- `curl`
-- `wget`
-- `unzip`, `zip`, `tar`, `xz`, `7z`
-- `man`, `col`, `less`
-
-## Dotfile/bootstrap tools
-
-- `chezmoi` — dotfile manager.
-- `pass` — password store for mail credentials.
-- `gpg` — required by `pass`.
-- `pi` — coding agent CLI/config under `~/.pi` / `~/.config/.pi`.
-- `herdr` — terminal workspace/session tool.
-
-## tmux ecosystem
+## tmux/session tools
 
 Config: `~/.config/tmux/tmux.conf`
 
-Required/referenced tools:
+Install manually:
 
 - `tmux`
-- `tpm` — tmux plugin manager, configured through TPM in tmux config.
-- `tmux-plugins/tmux-sensible`
-- `Morantron/tmux-fingers`
-- `mrjones2014/smart-splits.nvim`
-- `omerxx/tmux-floax`
-- `tmux-plugins/tmux-yank`
-- `tmux-plugins/tmux-cpu`
-- `tmux-plugins/tmux-battery`
-- `catppuccin/tmux`
-- `fzf`, `fzf-tmux`
+- `fzf`
 - `sesh`
 - `tmuxinator`
-- custom scripts in `~/.local/bin`:
-  - `swap-pane-direction`
-  - `tmux-kill-current-session`
-  - `tmuxinator-edit-session`
-  - `tmuxinator-project-list`
-  - `tmuxinator-project-action`
-  - `tmuxinator-project-preview`
-  - `tmuxinator-save-session-notify`
+- TPM, the tmux plugin manager
 
-## Wayland/Sway desktop stack
+TPM bootstrap:
 
-Config: `~/.config/sway/config`
+```sh
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+```
 
-Core:
+After starting tmux, install plugins with TPM's prefix + `I` binding.
+
+## Desktop/Wayland/Sway stack
+
+Config: `~/.config/sway/config`, `~/.config/waybar/`, `~/.config/kitty/`
+
+Core desktop tools:
 
 - `sway`
 - `waybar`
@@ -101,83 +86,60 @@ Core:
 - `fuzzel`
 - `swayidle`
 - `swaylock`
-- `swaymsg`
 - `thunar`
-- `flatpak` + Brave browser app ID `com.brave.Browser`
+- `flatpak`
+- Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup
 
-Screenshots/recording/clipboard:
+Screenshot/recording/clipboard:
 
 - `grim`
-- `grimshot`
+- `grimshot` / sway screenshot helper
+- `slurp`
 - `swappy`
 - `wl-clipboard` (`wl-copy`, `wl-paste`)
 - `cliphist`
-- custom scripts:
-  - `save-screenshot`
-  - `sway-recording`
+- `wf-recorder`
 
-System controls/notifications:
+Notifications/system controls:
 
-- `swayosd-client`
+- `libnotify` / `notify-send`
 - `swaync-client`
+- `swayosd-client`
 - `powerprofilesctl`
-- custom scripts:
-  - `toggle-idle-inhibit`
-  - `idle-inhibited`
-  - `idle-inhibit-status`
-  - `cycle-power-profile`
-  - `sway-toggle-external-extend`
+- `xdg-utils` (`xdg-open`)
+- `flatpak-spawn` when using toolbox/container URL opening
 
-Display/input extras tracked in dotfiles:
+Display/input extras:
 
-- `kanshi` — config in `~/.config/kanshi/config`.
-- `fcitx5` — config under `~/.config/fcitx5`.
+- `kanshi`
+- `fcitx5`
 
-## Waybar
+Fonts/integrations:
 
-Config: `~/.config/waybar/config.jsonc`, `~/.config/waybar/style.css`
-
-Referenced custom commands/scripts:
-
-- `~/.local/bin/idle-inhibit-status`
-- `~/.local/bin/sway-recording status`
-- `~/.config/waybar/mediaplayer.py` if used later
-- `~/.config/waybar/power_menu.xml` if using menu actions
-
-## Kitty
-
-Config: `~/.config/kitty/kitty.conf`
-
-Notable dependencies:
-
-- Font: `JetBrainsMonoNL Nerd Font Mono`
-- `kitty_scrollback_nvim` integration
-- `nvim`
-- `open_url_with_hints`
+- `JetBrainsMonoNL Nerd Font Mono`
+- `kitty_scrollback_nvim` is handled by Neovim/Kitty plugin setup, not by system package install.
 
 ## aerc/mail stack
 
 Config: `~/.config/aerc/`
 
-Required/current:
+Current IMAP/aerc setup:
 
 - `aerc`
 - `nvim`
 - `pass`
 - `gpg`
 - `notify-send`
-- `pandoc` — HTML-to-text filter
-- `zathura` — PDF opener
-- `vimiv` — image opener
-- custom script:
-  - `aerc-open-nvim`
+- `pandoc`
+- `zathura`
+- `vimiv`
 
-For planned local mail/notmuch migration, see `~/.config/aerc/notmuch-migration.md`:
+Planned local mail/notmuch migration, documented in `~/.config/aerc/notmuch-migration.md`:
 
 - `isync` / `mbsync`
 - `notmuch`
 
-## vifm file-manager stack
+## vifm helper tools
 
 Config: `~/.config/vifm/vifmrc`
 
@@ -186,125 +148,134 @@ Core:
 - `vifm`
 - `nvim`
 - `tmux`
-- `wl-copy` / `wl-clipboard`
-- custom script: `clipwrite`
+- `wl-clipboard`
 
 Preview/open helpers referenced by config:
 
-- `pdftotext` — PDF preview
-- `mp3info` — MP3 metadata preview
-- `soxi` — FLAC/audio metadata preview
-- `links` or `lynx` — HTML viewing
-- `nm`, `less`, `man`, `col` — object/man page viewing
-- `transmission` — torrent opener
-- `dumptorrent` — torrent preview
-- `zip`
-- `tar`
-- `xz`
+- `poppler-utils` / `pdftotext`
+- `mp3info`
+- `sox` / `soxi`
+- `links` or `lynx`
+- `binutils` / `nm`
+- `transmission`
+- `dumptorrent`
 - `unrar`
-- `7z`
+- `p7zip` / `7z`
 - `catdoc`
-- `docx2txt.pl`
+- `docx2txt`
 - `tudu`
-- legacy/fallback clipboard tools in config: `xclip`
-- legacy GUI file managers/terminals referenced in old mappings: `nautilus`, `xterm`
+- `xclip` for legacy/fallback clipboard mappings
+- `nautilus` and `xterm` for legacy mappings; optional if not used
 
-## Document/PDF/image tools
+## Coding-agent / optional user tools
 
-- `zathura`
-- `vimiv`
-- `pandoc`
-- `pdftotext`
-- `swappy`
+These are useful for reproducing the full environment but may be installed by their own upstream installers rather than OS packages:
 
-## Custom scripts managed in dotfiles
-
-Tracked under `~/.local/bin` via chezmoi:
-
-- `aerc-open-nvim`
-- `clipwrite`
-- `cycle-power-profile`
-- `idle-inhibit-status`
-- `idle-inhibited`
-- `install-dropbox-tray-icons`
-- `open-url`
-- `prompt-ui`
-- `save-screenshot`
-- `swap-pane-direction`
-- `sway-recording`
-- `sway-toggle-external-extend`
-- `tmux-kill-current-session`
-- `tmux-popup-ui`
-- `tmuxinator-edit-session`
-- `tmuxinator-new-popup`
-- `tmuxinator-new-session`
-- `tmuxinator-project-action`
-- `tmuxinator-project-list`
-- `tmuxinator-project-preview`
-- `tmuxinator-save-session`
-- `tmuxinator-save-session-notify`
-- `toggle-idle-inhibit`
-
-Script dependency notes:
-
-- `aerc-open-nvim` expects `nvim`; in tmux it uses `tmux split-window` and
-  `tmux wait-for`; outside tmux it prefers `kitty`, then `xdg-terminal-exec`,
-  `gnome-terminal`, `alacritty`, `wezterm`, `xterm`.
-- `open-url` expects `xdg-open`; inside toolbox/container it prefers
-  `flatpak-spawn --host xdg-open`.
-- `clipwrite` expects Wayland `wl-copy` for clipboard writes.
-- `cycle-power-profile` expects `powerprofilesctl` and optionally
-  `notify-send`.
-- `idle-inhibited`, `idle-inhibit-status`, and `toggle-idle-inhibit` expect
-  D-Bus/systemd tooling such as `busctl`/`systemctl` plus `notify-send` for
-  user feedback.
-- `save-screenshot` is used by the Sway screenshot mode and expects screenshot
-  output from `grimshot`/`grim`; it uses standard shell tools and
-  `notify-send`.
-- `sway-recording` expects `swaymsg`, `jq`, `wf-recorder`, and optionally
-  `notify-send`.
-- `sway-toggle-external-extend` expects `swaymsg` and Python 3.
-- `swap-pane-direction` expects `tmux`.
-- `tmux-kill-current-session` expects `tmux`.
-- `tmux-popup-ui` expects `tmux` and uses shell UI helpers internally.
-- `prompt-ui` is a reusable prompt helper for scripts/popups; keep it with the
-  rest of `~/.local/bin`.
-- `tmuxinator-*` scripts expect `tmux`, `tmuxinator`, `fzf`/`fzf-tmux`, and
-  project YAML files under `~/.config/tmuxinator`.
-- `install-dropbox-tray-icons` expects `gtk-update-icon-cache` and Dropbox icon
-  assets.
-
-Additional executables currently present in `~/.local/bin` but not all managed
-by chezmoi or not necessarily required by the dotfiles:
-
-- `act`
-- `gh`
-- `k6`
-- `pop-launcher`
-- `tuxedo`
+- `pi`
+- `herdr`
 - `uv`, `uvx`
+- `gh`
+- `act`
+- `k6`
 - `zellij`
+- `tuxedo`
+- `pop-launcher`
 
-## Fedora package name hints
+## Fedora install command
 
-Approximate Fedora package names for many external tools:
+This is the broad workstation-oriented install set. Some packages may vary by Fedora release or repositories.
 
 ```sh
 sudo dnf install \
-  aerc bat direnv dnf-plugins-core eza fd-find fzf git gnupg2 isync jq kitty \
-  less man-db neovim notmuch pass pandoc poppler-utils ripgrep starship sway \
-  swayidle swaylock thunar tmux vifm waybar wl-clipboard xdg-utils zathura \
-  zip p7zip p7zip-plugins
+  aerc bat binutils catdoc chezmoi cliphist curl direnv dnf-plugins-core \
+  docx2txt eza fcitx5 fd-find flatpak fuzzel fzf git gnupg2 grim \
+  grimshot isync jq kanshi kitty less libnotify links lynx man-db \
+  mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils \
+  power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
+  swaylock thunar tmux transmission unrar vifm vimiv waybar wf-recorder \
+  wl-clipboard xclip xdg-utils xterm zathura zip zoxide
 ```
 
-Some tools may need COPR, cargo/go install, Flatpak, or manual installation depending on the machine:
+Fedora follow-ups:
 
-- Brave Browser: Flatpak `com.brave.Browser` or vendor repo.
-- `swayosd-client`, `swaync-client`, `cliphist`, `grimshot`, `swappy`, `vimiv`, `kanshi`, `fcitx5`, `wf-recorder`: package availability varies by distro/release.
-- `toolbox` is Fedora-specific; on non-Fedora machines replace the `dv` alias or install an equivalent container workflow.
-- `sesh`: often installed via Go/Cargo/project release.
-- `herdr`, `pi`: user-level installers.
-- `tmuxinator`: Ruby gem or package.
-- `uv`/`uvx`: Astral installer or distro package.
-- `act`, `gh`, `k6`, `zellij`, `tuxedo`, `pop-launcher`: optional/user-installed tools currently present in `~/.local/bin`.
-- `kitty_scrollback_nvim`: Neovim/Kitty integration, usually installed through Neovim plugin setup.
+```sh
+# tmux plugin manager
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
+# Brave browser, if using the Flatpak app expected by sway config
+flatpak install flathub com.brave.Browser
+```
+
+May need separate installation depending on Fedora version/repositories:
+
+- `swayosd-client`
+- `swaync-client`
+- `sesh`
+- `tmuxinator`
+- `pi`
+- `herdr`
+- `uv`
+- `JetBrainsMonoNL Nerd Font Mono`
+
+## Ubuntu install command
+
+Test/package names may vary by Ubuntu release. This is aimed at recent Ubuntu versions.
+
+```sh
+sudo apt update
+sudo apt install \
+  aerc bat binutils catdoc cliphist curl direnv docx2txt eza fcitx5 \
+  fd-find flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
+  libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
+  p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
+  slurp sox starship swappy sway swayidle swaylock thunar tmux \
+  transmission-cli unrar vifm vimiv waybar wf-recorder wl-clipboard \
+  xclip xdg-utils xterm zathura zip zoxide
+```
+
+Ubuntu follow-ups:
+
+```sh
+# chezmoi if the Ubuntu package is too old or unavailable
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+
+# tmux plugin manager
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+
+# Brave browser, if using the Flatpak app expected by sway config
+flatpak install flathub com.brave.Browser
+```
+
+Ubuntu packages that may be missing, renamed, too old, or better installed another way:
+
+- `grimshot` may come from `sway-contrib` or need a manual install depending on release.
+- `swayosd-client`
+- `swaync-client`
+- `sesh`
+- `tmuxinator` (`sudo apt install tmuxinator` if available, otherwise Ruby gem)
+- `pi`
+- `herdr`
+- `uv`
+- `dumptorrent`
+- `tudu`
+- `JetBrainsMonoNL Nerd Font Mono`
+
+## Minimal non-desktop/server install
+
+For a terminal-only setup without Sway/Waybar desktop pieces:
+
+```sh
+# Fedora
+sudo dnf install \
+  aerc bat binutils chezmoi curl direnv eza fd-find fzf git gnupg2 isync \
+  jq kitty less man-db neovim notmuch pandoc pass p7zip p7zip-plugins \
+  poppler-utils ripgrep starship tmux vifm wl-clipboard xdg-utils zathura \
+  zip zoxide
+
+# Ubuntu
+sudo apt update
+sudo apt install \
+  aerc bat binutils curl direnv eza fd-find fzf git gnupg isync jq kitty \
+  less man-db neovim notmuch p7zip-full pandoc pass poppler-utils ripgrep \
+  starship tmux vifm wl-clipboard xdg-utils zathura zip zoxide
+```
