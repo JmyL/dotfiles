@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# Keep folder-derived notmuch tags in sync with the current Maildir layout.
+# Personal/state tags such as unread, flagged, and waiting are intentionally
+# left untouched.
+
+notmuch tag +inbox -- 'folder:INBOX and not tag:inbox'
+notmuch tag +sent -- 'folder:"Sent Messages" and not tag:sent'
+notmuch tag +archive -- 'folder:Archive and not tag:archive'
+notmuch tag +draft -- 'folder:Drafts and not tag:draft'
+notmuch tag +trash -- 'folder:"Deleted Messages" and not tag:trash'
+notmuch tag +spam -- 'folder:Junk and not tag:spam'
+
+notmuch tag -inbox -- 'tag:inbox and not folder:INBOX'
+notmuch tag -sent -- 'tag:sent and not folder:"Sent Messages"'
+notmuch tag -archive -- 'tag:archive and not folder:Archive'
+notmuch tag -draft -- 'tag:draft and not folder:Drafts'
+notmuch tag -trash -- 'tag:trash and not folder:"Deleted Messages"'
+notmuch tag -spam -- 'tag:spam and not folder:Junk'
