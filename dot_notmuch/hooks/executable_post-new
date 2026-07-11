@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # Keep folder-derived notmuch tags in sync with the current Maildir layout.
-# Personal/state tags such as unread, flagged, and waiting are intentionally
-# left untouched.
+# Personal/state tags such as unread, flagged, and done are intentionally
+# left untouched. Waiting is derived from sent messages without done.
 
 notmuch tag +inbox -- 'folder:INBOX and not tag:inbox'
 notmuch tag +sent -- 'folder:"Sent Messages" and not tag:sent'
@@ -17,3 +17,6 @@ notmuch tag -archive -- 'tag:archive and not folder:Archive'
 notmuch tag -draft -- 'tag:draft and not folder:Drafts'
 notmuch tag -trash -- 'tag:trash and not folder:"Deleted Messages"'
 notmuch tag -spam -- 'tag:spam and not folder:Junk'
+
+notmuch tag +waiting -- 'tag:sent and not tag:done and not tag:waiting'
+notmuch tag -waiting -- 'tag:waiting and (tag:done or not tag:sent)'
