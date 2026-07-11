@@ -1,0 +1,9 @@
+INBOX=tag:inbox or tag:waiting
+Sent=tag:sent
+Drafts=tag:draft
+Archive=tag:archive
+Waiting=tag:waiting
+Unread=tag:unread
+Flagged=tag:flagged
+All=*
+Conversations=thread:"{tag:inbox or tag:waiting}" and (tag:inbox or tag:sent or tag:waiting)
