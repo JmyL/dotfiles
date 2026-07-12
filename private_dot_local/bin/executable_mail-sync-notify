@@ -22,8 +22,17 @@ new_delta=$((new_count - old_count))
 log "finish new_count=$new_count delta=$new_delta"
 
 if [ "$new_delta" -gt 0 ]; then
-    notify-send -i mail-message-new-symbolic \
-        "New mail" \
-        "$new_delta new unread inbox message(s)"
+    notmuch search --format=text --output=messages --sort=newest-first -- "$query" |
+        sed -n "1,${new_delta}p" |
+        while IFS= read -r message_id; do
+            headers="$(notmuch show --format=text --body=false --entire-thread=false -- "$message_id" 2>/dev/null || true)"
+            from="$(printf '%s\n' "$headers" | sed -n 's/^From: //p' | head -n 1)"
+            subject="$(printf '%s\n' "$headers" | sed -n 's/^Subject: //p' | head -n 1)"
+            from_name="$(printf '%s\n' "$from" | sed -E 's/[[:space:]]*<[^>]+>[[:space:]]*$//; s/^"([^"]*)"$/\1/')"
+
+            notify-send -i mail-message-new-symbolic \
+                "${from_name:-${from:-New mail}}" \
+                "${subject:-(no subject)}"
+        done
     log "notify sent"
 fi
