@@ -12,7 +12,7 @@ log() {
     printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" >> "$log_file"
 }
 
-query='tag:unread and tag:inbox'
+query='folder:INBOX'
 notmuch search --output=messages --format=text -- "$query" 2>/dev/null | sort > "$before_file" || :
 old_count="$(wc -l < "$before_file" | tr -d ' ')"
 log "start old_count=$old_count"
