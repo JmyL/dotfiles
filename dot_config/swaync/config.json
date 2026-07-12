@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "notification-sound": {
+      "exec": "canberra-gtk-play -i message-new-instant"
+    }
+  }
+}

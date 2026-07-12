@@ -103,6 +103,7 @@ Screenshot/recording/clipboard:
 Notifications/system controls:
 
 - `libnotify` / `notify-send`
+- `canberra-gtk-play` for notification sounds
 - `swaync-client`
 - `swayosd-client`
 - `powerprofilesctl`
@@ -192,7 +193,7 @@ This is the broad workstation-oriented install set. Some packages may vary by Fe
 sudo dnf install \
   aerc bat binutils catdoc chezmoi cliphist curl direnv dnf-plugins-core \
   docx2txt eza fcitx5 fd-find ffmpeg-free flatpak fuzzel fzf git gnupg2 grim \
-  grimshot isync jq kanshi kitty less libnotify links lynx man-db \
+  grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
@@ -229,7 +230,7 @@ sudo apt update
 sudo apt install \
   aerc bat binutils catdoc cliphist curl direnv docx2txt eza fcitx5 \
   fd-find ffmpeg flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
-  libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
+  libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
   slurp sox starship swappy sway swayidle swaylock thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
