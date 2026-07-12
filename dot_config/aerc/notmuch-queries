@@ -1,6 +1,5 @@
 INBOX=tag:inbox or tag:waiting
 Sent Messages=tag:sent
-Drafts=tag:draft
 Archived=thread:"{tag:archive}" and (tag:archive or tag:sent)
 Waiting=tag:waiting
 Unread=tag:unread
