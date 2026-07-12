@@ -175,3 +175,5 @@ Keep `reply-to-self=false` in `aerc.conf`.
 7. `Conversations` plus thread mode shows both received and sent mail in one thread.
 8. Sending mail still works through SMTP.
 9. Archive/delete behavior is tested on non-important messages before trusting it.
+
+## How to check delete/archive behavior and change Expunge setting?

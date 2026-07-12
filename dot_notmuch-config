@@ -12,8 +12,8 @@
 # the database location (in a subdirectory called ".notmuch").
 #
 [database]
-path=/var/home/sungsik/Mail/JmyL
-hook_dir=/var/home/sungsik/.config/notmuch/hooks
+path=Mail/JmyL
+hook_dir=.config/notmuch/hooks
 # User configuration
 #
 # Here is where you can let notmuch know how you would like to be
