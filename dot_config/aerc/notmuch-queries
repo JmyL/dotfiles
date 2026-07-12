@@ -7,4 +7,4 @@ Waiting=tag:waiting
 Unread=tag:unread
 Flagged=tag:flagged
 All=*
-Conversations=thread:"{tag:inbox or tag:waiting}" and (tag:inbox or tag:sent or tag:waiting)
+INBOX+=thread:"{tag:inbox or tag:waiting}" and (tag:inbox or tag:sent or tag:waiting)
