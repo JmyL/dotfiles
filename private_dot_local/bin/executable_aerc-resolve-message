@@ -98,7 +98,7 @@ def archive_inbox_files(query: str) -> bool:
 
     if moved:
         run("notmuch", "new")
-        run("notmuch", "tag", "+archive", "-inbox", "--", query)
+        run("notmuch", "tag", "+archive", "-inbox", "-unread", "--", query)
 
     return moved
 
@@ -115,7 +115,7 @@ def resolve_message(message_id: str) -> None:
         return
 
     if "inbox" in tags:
-        run("notmuch", "tag", "+archive", "-inbox", "--", query)
+        run("notmuch", "tag", "+archive", "-inbox", "-unread", "--", query)
 
 
 def main() -> int:
