@@ -1,5 +1,29 @@
 #!/bin/sh
 set -eu
 
-mbsync icloud
-notmuch new
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/mail-sync-notify"
+log_file="$state_dir/sync.log"
+mkdir -p "$state_dir"
+
+log() {
+    printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" >> "$log_file"
+}
+
+query='tag:unread and tag:inbox'
+old_count="$(notmuch count -- "$query" 2>/dev/null || printf '0')"
+log "start old_count=$old_count"
+
+mbsync icloud 2>&1 | while IFS= read -r line; do log "mbsync: $line"; done
+
+notmuch new 2>&1 | while IFS= read -r line; do log "notmuch: $line"; done
+
+new_count="$(notmuch count -- "$query" 2>/dev/null || printf '0')"
+new_delta=$((new_count - old_count))
+log "finish new_count=$new_count delta=$new_delta"
+
+if [ "$new_delta" -gt 0 ]; then
+    notify-send -i mail-message-new-symbolic \
+        "New mail" \
+        "$new_delta new unread inbox message(s)"
+    log "notify sent"
+fi
