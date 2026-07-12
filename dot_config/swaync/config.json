@@ -1,16 +1,9 @@
 {
   "scripts": {
-    "notification-sound-low": {
+    "notification-sound": {
       "exec": "canberra-gtk-play -i message-new-instant",
-      "urgency": "Low"
-    },
-    "notification-sound-normal": {
-      "exec": "canberra-gtk-play -i message-new-instant",
-      "urgency": "Normal"
-    },
-    "notification-sound-critical": {
-      "exec": "canberra-gtk-play -i message-new-instant",
-      "urgency": "Critical"
+      "summary": ".*",
+      "run-on": "receive"
     }
   }
 }
