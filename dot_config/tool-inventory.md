@@ -141,6 +141,12 @@ Planned local mail/notmuch migration, documented in `~/.config/aerc/notmuch-migr
 - `isync` / `mbsync`
 - `notmuch`
 
+Calendar/contact integration, documented in `~/.config/calendar-contacts-vdirsyncer.md`:
+
+- `vdirsyncer`
+- `khal`
+- `khard`
+
 ## vifm helper tools
 
 Config: `~/.config/vifm/vifmrc`
@@ -196,6 +202,7 @@ sudo dnf install \
   grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
+  khal khard vdirsyncer \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
   wl-clipboard xclip xdg-utils xterm zathura zip zoxide
 ```
@@ -232,6 +239,7 @@ sudo apt install \
   fd-find ffmpeg flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
   libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
+  khal khard vdirsyncer \
   slurp sox starship swappy sway swayidle swaylock thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
   xclip xdg-utils xterm zathura zip zoxide
@@ -274,6 +282,7 @@ sudo dnf install \
   aerc bat binutils chezmoi curl direnv eza fd-find fzf git gnupg2 isync \
   jq kitty less man-db neovim notmuch pandoc pass p7zip p7zip-plugins \
   poppler-utils ripgrep starship tmux vifm wl-clipboard xdg-utils zathura \
+  khal khard vdirsyncer \
   zip zoxide
 
 # Ubuntu
@@ -281,5 +290,6 @@ sudo apt update
 sudo apt install \
   aerc bat binutils curl direnv eza fd-find fzf git gnupg isync jq kitty \
   less man-db neovim notmuch p7zip-full pandoc pass poppler-utils ripgrep \
-  starship tmux vifm wl-clipboard xdg-utils zathura zip zoxide
+  starship tmux vifm wl-clipboard xdg-utils zathura khal khard vdirsyncer \
+  zip zoxide
 ```
