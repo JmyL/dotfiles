@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+mbsync icloud
+
+out="$(notmuch new 2>&1)"
+printf '%s\n' "$out"
+
+new_count="$(printf '%s\n' "$out" | sed -n 's/^Added \([0-9][0-9]*\) new message.*/\1/p')"
+
+if [ "${new_count:-0}" -gt 0 ]; then
+    notify-send -i mail-message-new-symbolic \
+        "New mail" \
+        "$new_count new message(s)"
+fi
