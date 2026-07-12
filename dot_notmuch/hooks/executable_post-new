@@ -20,3 +20,14 @@ notmuch tag -spam -- 'tag:spam and not folder:Junk'
 
 notmuch tag +waiting -- 'tag:sent and not tag:done and not tag:waiting'
 notmuch tag -waiting -- 'tag:waiting and (tag:done or not tag:sent)'
+
+state_file="${XDG_RUNTIME_DIR:-/tmp}/notmuch-hooks/pre-new-unread-inbox-count"
+old_count="$(cat "$state_file" 2>/dev/null || printf '0')"
+new_count="$(notmuch count -- 'tag:unread and tag:inbox' 2>/dev/null || printf '0')"
+new_delta=$((new_count - old_count))
+
+if [ "$new_delta" -gt 0 ]; then
+    notify-send -i mail-message-new-symbolic \
+        "New mail" \
+        "$new_delta new unread inbox message(s)"
+fi
