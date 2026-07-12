@@ -3,35 +3,27 @@ set -eu
 
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/mail-sync-notify"
 log_file="$state_dir/sync.log"
-before_file="$state_dir/unread-inbox.before"
-after_file="$state_dir/unread-inbox.after"
-new_file="$state_dir/unread-inbox.new"
 mkdir -p "$state_dir"
 
 log() {
     printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" >> "$log_file"
 }
 
-query='folder:INBOX'
-notmuch search --output=messages --format=text -- "$query" 2>/dev/null | sort > "$before_file" || :
-old_count="$(wc -l < "$before_file" | tr -d ' ')"
+query='tag:unread and tag:inbox'
+old_count="$(notmuch count -- "$query" 2>/dev/null || printf '0')"
 log "start old_count=$old_count"
 
 mbsync icloud 2>&1 | while IFS= read -r line; do log "mbsync: $line"; done
 
 notmuch new 2>&1 | while IFS= read -r line; do log "notmuch: $line"; done
 
-notmuch search --output=messages --format=text -- "$query" 2>/dev/null | sort > "$after_file" || :
-new_count="$(wc -l < "$after_file" | tr -d ' ')"
-comm -13 "$before_file" "$after_file" > "$new_file" || :
-new_delta="$(wc -l < "$new_file" | tr -d ' ')"
-log "finish new_count=$new_count new_messages=$new_delta"
+new_count="$(notmuch count -- "$query" 2>/dev/null || printf '0')"
+new_delta=$((new_count - old_count))
+log "finish new_count=$new_count delta=$new_delta"
 
 if [ "$new_delta" -gt 0 ]; then
-    summary="$(notmuch search --limit=3 --format=text -- "$query" 2>/dev/null | sed 's/^thread:[^ ]* *//' | paste -sd '\n' -)"
     notify-send -i mail-message-new-symbolic \
         "New mail" \
-        "$new_delta new unread inbox message(s)${summary:+
-$summary}"
+        "$new_delta new unread inbox message(s)"
     log "notify sent"
 fi
