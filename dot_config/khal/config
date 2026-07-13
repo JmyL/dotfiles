@@ -1,0 +1,70 @@
+[calendars]
+
+[[my_cal]]
+path = ~/.local/share/vdirsyncer/calendars/happyss.nam@gmail.com/
+type = calendar
+readonly = False
+color = light green
+
+[[work]]
+path = ~/.local/share/vdirsyncer/calendars/aaujlg21s4egkmtfv2a6bir758@group.calendar.google.com/
+type = calendar
+readonly = False
+color = light blue
+
+[[work_2]]
+path = ~/.local/share/vdirsyncer/calendars/fodgtl1i7k8jurk7f1rpfml2mk@group.calendar.google.com/
+type = calendar
+readonly = False
+color = dark blue
+
+[[family]]
+path = ~/.local/share/vdirsyncer/calendars/family17373914600510292267@group.calendar.google.com/
+type = calendar
+readonly = False
+color = yellow
+
+[[jhss_family]]
+path = ~/.local/share/vdirsyncer/calendars/qu85gum1pgetevoopj8jacu9cc@group.calendar.google.com/
+type = calendar
+readonly = False
+color = brown
+
+[[korea_holidays]]
+path = ~/.local/share/vdirsyncer/calendars/ddnissrfelq6gnrbdtp6ao93d1nmoqb4c5sk0pridtqn0bjm5phm2r35dpi62shectnmuprcckn66rrd@virtual/
+type = calendar
+readonly = True
+color = dark green
+
+[[korea_holidays_en]]
+path = ~/.local/share/vdirsyncer/calendars/cln2ssrfelq6gnrbdtp6ao93d1nmoqb4c5sk0pridtqn0bjm5phm2r35dpi62shectnmuprcckn66rrd@virtual/
+type = calendar
+readonly = True
+color = dark green
+
+[[birthdays]]
+path = ~/.local/share/vdirsyncer/calendars/tmsgkas761j8me5f8auuf7a8qo@group.calendar.google.com/
+type = calendar
+readonly = False
+color = light magenta
+
+[[media_team]]
+path = ~/.local/share/vdirsyncer/calendars/cr4m8dumhfsm1ulcjregou6vgo@group.calendar.google.com/
+type = calendar
+readonly = False
+color = light cyan
+
+[[church_2017]]
+path = ~/.local/share/vdirsyncer/calendars/dobfim768pi23laqmmi6pmgdck@group.calendar.google.com/
+type = calendar
+readonly = False
+color = dark cyan
+
+[locale]
+timeformat = %H:%M
+dateformat = %Y-%m-%d
+longdateformat = %Y-%m-%d
+firstweekday = 0
+
+[default]
+default_calendar = my_cal
