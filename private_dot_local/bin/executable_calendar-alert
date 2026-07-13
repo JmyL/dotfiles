@@ -17,7 +17,13 @@ from pathlib import Path
 
 ALERT_WINDOW_MINUTES = 30
 URGENT_WINDOW_MINUTES = 10
-NOTIFY_STATE_PATH = Path.home() / ".cache" / "calendar-alert" / "last-notified"
+STATE_DIR = Path.home() / ".cache" / "calendar-alert"
+NOTIFY_STATE_PATH = STATE_DIR / "last-notified"
+WAYBAR_STATE_PATH = STATE_DIR / "waybar-state.css"
+WAYBAR_URGENT_CSS = """window#waybar {
+    background-color: rgba(255, 59, 72, 0.35) !important;
+}
+"""
 
 
 def khal_command() -> list[str]:
@@ -121,20 +127,37 @@ def maybe_notify(minutes: int, event: dict[str, str]) -> None:
     ], check=False)
 
 
+def set_waybar_urgent_state(urgent: bool) -> None:
+    css = WAYBAR_URGENT_CSS if urgent else ""
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        current = WAYBAR_STATE_PATH.read_text() if WAYBAR_STATE_PATH.exists() else ""
+        if current == css:
+            return
+        WAYBAR_STATE_PATH.write_text(css)
+    except OSError:
+        return
+
+    subprocess.run(["/usr/bin/pkill", "-SIGUSR2", "waybar"], check=False)
+
+
 def waybar_output() -> None:
     alert = first_alert()
     if alert is None:
+        set_waybar_urgent_state(False)
         return
 
     minutes, event = alert
     title = event.get("title", "Untitled")
     calendar = event.get("calendar", "")
     start_time = event.get("start-time", "")
+    urgent = minutes <= URGENT_WINDOW_MINUTES
+    set_waybar_urgent_state(urgent)
     maybe_notify(minutes, event)
     print(json.dumps({
         "text": f"󰃭 {minutes}m {title}",
         "tooltip": f"{title}\n{start_time} · {calendar}",
-        "class": "urgent" if minutes <= URGENT_WINDOW_MINUTES else "soon",
+        "class": "urgent" if urgent else "soon",
     }, ensure_ascii=False))
 
 

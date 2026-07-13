@@ -1,3 +1,5 @@
+@import url("file:///var/home/sungsik/.cache/calendar-alert/waybar-state.css");
+
 * {
     font-family: 'Noto Sans Mono', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', monospace;
     font-size: 13px;
@@ -108,8 +110,7 @@ button:hover {
 
 #custom-calendar-alert.urgent {
     color: #ffffff;
-    background-color: rgba(255, 59, 72, 0.35);
-    border-radius: 8px;
+    font-weight: bold;
 }
 
 #interactive,
