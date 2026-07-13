@@ -16,6 +16,7 @@
 		"clock"
 	],
 	"modules-right": [
+		"custom/calendar-alert",
 		"group/interactive",
 		"group/sound",
 		"group/connectivity",
@@ -134,6 +135,12 @@
 		"interval": 1,
 		"tooltip": false,
 		"on-click": "~/.local/bin/sway-recording stop"
+	},
+	"custom/calendar-alert": {
+		"exec": "~/.local/bin/waybar-calendar-alert",
+		"return-type": "json",
+		"interval": 30,
+		"tooltip": true
 	},
 	"tray": {
 		// "icon-size": 21,

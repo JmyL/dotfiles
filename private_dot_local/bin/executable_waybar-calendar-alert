@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Show upcoming khal events for Waybar."""
+
+from __future__ import annotations
+
+import html
+import json
+import subprocess
+import sys
+
+WINDOW = "10m"
+ICON = "󰃭"
+
+
+def empty() -> None:
+    print(json.dumps({"text": "", "tooltip": ""}, ensure_ascii=False))
+
+
+def main() -> int:
+    try:
+        proc = subprocess.run(
+            [
+                "khal",
+                "list",
+                "now",
+                WINDOW,
+                "--notstarted",
+                "--json",
+                "title,start,end,calendar",
+            ],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        empty()
+        return 0
+
+    if proc.returncode != 0:
+        empty()
+        return 0
+
+    try:
+        events = json.loads(proc.stdout or "[]")
+    except json.JSONDecodeError:
+        empty()
+        return 0
+
+    if not events:
+        empty()
+        return 0
+
+    event = events[0]
+    title = str(event.get("title") or "Untitled")
+    start = str(event.get("start") or "")
+    end = str(event.get("end") or "")
+    calendar = str(event.get("calendar") or "")
+
+    text = f"{ICON} {html.escape(title)}"
+    tooltip_lines = [title]
+    if start or end:
+        tooltip_lines.append(f"{start} - {end}".strip(" -"))
+    if calendar:
+        tooltip_lines.append(calendar)
+
+    print(
+        json.dumps(
+            {
+                "text": text,
+                "tooltip": html.escape("\n".join(tooltip_lines)),
+                "class": "calendar-alert",
+            },
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
