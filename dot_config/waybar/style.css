@@ -1,6 +1,6 @@
 * {
     font-family: 'Noto Sans Mono', 'Font Awesome 6 Free', 'Font Awesome 6 Brands', monospace;
-    font-size: 13px;
+    font-size: 15px;
 }
 
 window#waybar {
@@ -152,7 +152,6 @@ button:hover {
 #battery {
     background-color: transparent;
     color: #ffffff;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.95);
 }
 
 #window,
