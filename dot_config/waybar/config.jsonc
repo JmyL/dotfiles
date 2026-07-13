@@ -257,7 +257,8 @@
 		"exec": "$HOME/.local/bin/forager-battery",
 		"return-type": "json",
 		"interval": 60,
-		"tooltip": true
+		"tooltip": true,
+		"escape": false
 	},
 	"pulseaudio": {
 		"markup": true,

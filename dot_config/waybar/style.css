@@ -85,6 +85,7 @@ button:hover {
 #wireplumber,
 #custom-media,
 #custom-calendar-alert,
+#custom-forager-battery,
 #tray,
 #mode,
 #idle_inhibitor,
@@ -135,11 +136,20 @@ button:hover {
 #sound #pulseaudio,
 #connectivity #network,
 #connectivity #bluetooth,
+#connectivity #custom-forager-battery,
 #system-status #cpu,
 #system-status #memory,
 #system-status #battery {
     background-color: transparent;
     padding: 0 4px;
+}
+
+#custom-forager-battery {
+    margin-left: 4px;
+}
+
+#custom-forager-battery.low {
+    color: #ff7b86;
 }
 
 #pulseaudio,

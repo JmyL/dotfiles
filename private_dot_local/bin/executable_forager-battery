@@ -10,6 +10,9 @@ import subprocess
 
 DEVICE_NAME = "Forager"
 UPOWER = "/usr/bin/upower"
+ICON_COLOR = "#72b7f2"
+LOW_COLOR = "#ff7b86"
+LOW_BATTERY_PERCENT = 20
 
 
 def empty() -> None:
@@ -52,10 +55,12 @@ def main() -> None:
             empty()
             return
         percent = int(match.group(1))
+        is_low = percent <= LOW_BATTERY_PERCENT
+        icon_color = LOW_COLOR if is_low else ICON_COLOR
         print(json.dumps({
-            "text": f" {battery_icon(percent)} {percent}%",
+            "text": f"<span foreground=\"{icon_color}\"> {battery_icon(percent)}</span> {percent}%",
             "tooltip": f"{DEVICE_NAME} battery: {percent}%",
-            "class": "low" if percent <= 20 else "normal",
+            "class": "low" if is_low else "normal",
         }, ensure_ascii=False))
         return
 
