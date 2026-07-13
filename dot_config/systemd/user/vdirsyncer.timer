@@ -1,0 +1,11 @@
+[Unit]
+Description=Run vdirsyncer periodically
+Documentation=man:vdirsyncer(1)
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
