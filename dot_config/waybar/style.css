@@ -119,9 +119,7 @@ button:hover {
 #system-status {
     margin: 2px 1px 0 1px;
     padding: 0 3px;
-    background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-top-color: rgba(255, 255, 255, 0.55);
+    background-color: rgba(43, 48, 59, 0.25);
     border-radius: 8px;
     margin-right: 3px;
 }
