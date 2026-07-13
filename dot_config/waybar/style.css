@@ -107,7 +107,9 @@ button:hover {
 }
 
 #custom-calendar-alert.urgent {
-    color: #ff7b86;
+    color: #ffffff;
+    background-color: rgba(255, 59, 72, 0.35);
+    border-radius: 8px;
 }
 
 #interactive,
