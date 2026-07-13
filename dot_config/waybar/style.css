@@ -104,6 +104,7 @@ button:hover {
     font-weight: bold;
 }
 
+#clock,
 #custom-calendar-alert {
     color: #ffd166;
     font-weight: bold;
@@ -160,7 +161,6 @@ button:hover {
 #cpu,
 #memory,
 #temperature,
-#clock,
 #battery {
     background-color: transparent;
     color: #ffffff;
