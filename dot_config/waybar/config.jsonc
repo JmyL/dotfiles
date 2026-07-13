@@ -13,7 +13,8 @@
 		"sway/scratchpad"
 	],
 	"modules-center": [
-		"clock"
+		"clock#date",
+		"clock#time"
 	],
 	"modules-right": [
 		"custom/calendar-alert",
@@ -152,11 +153,17 @@
 		//   "TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png"
 		// }
 	},
-	"clock": {
+	"clock#date": {
 		// "timezone": "America/New_York",
-		"format": "<span foreground=\"#72b7f2\"></span> {:%Y-%m-%d ·  %I:%M %p (%H:%M)}",
+		"format": "<span foreground=\"#72b7f2\"></span> {:%Y-%m-%d}",
 		"tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-		"format-alt": "{:%A, %B %d %H:%M}"
+		"format-alt": "{:%A, %B %d}"
+	},
+	"clock#time": {
+		// "timezone": "America/New_York",
+		"format": "<span foreground=\"#72b7f2\"></span> {:%I:%M %p (%H:%M)}",
+		"tooltip-format": "{:%Y-%m-%d %H:%M:%S}",
+		"format-alt": "{:%H:%M}"
 	},
 	"cpu": {
 		"markup": true,
