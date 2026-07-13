@@ -105,7 +105,7 @@ button:hover {
 
 #clock {
     color: #ffffff;
-    background-color: rgb(24, 27, 34);
+    background-color: rgba(24, 27, 34, 0.75);
     border-radius: 8px;
 }
 
