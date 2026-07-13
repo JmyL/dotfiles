@@ -20,9 +20,15 @@ URGENT_WINDOW_MINUTES = 10
 NOTIFY_STATE_PATH = Path.home() / ".cache" / "calendar-alert" / "last-notified"
 
 
+def khal_command() -> list[str]:
+    if Path("/usr/bin/khal").exists():
+        return ["/usr/bin/khal"]
+    return ["/usr/bin/toolbox", "run", "--container", "f44", "khal"]
+
+
 def khal_events() -> list[dict[str, str]]:
     cmd = [
-        "/usr/bin/khal",
+        *khal_command(),
         "list",
         "now",
         f"{ALERT_WINDOW_MINUTES}m",
