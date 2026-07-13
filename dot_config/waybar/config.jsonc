@@ -137,10 +137,11 @@
 		"on-click": "~/.local/bin/sway-recording stop"
 	},
 	"custom/calendar-alert": {
-		"exec": "~/.local/bin/waybar-calendar-alert",
+		"exec": "$HOME/.local/bin/calendar-alert --waybar",
 		"return-type": "json",
 		"interval": 30,
-		"tooltip": true
+		"tooltip": true,
+		"on-click": "kitty --class calendar-popup -e ikhal"
 	},
 	"tray": {
 		// "icon-size": 21,
@@ -272,13 +273,6 @@
 			]
 		},
 		"on-click": "pavucontrol"
-	},
-	"custom/calendar-alert": {
-		"exec": "$HOME/.local/bin/calendar-alert --waybar",
-		"return-type": "json",
-		"interval": 30,
-		"tooltip": true,
-		"on-click": "kitty --class calendar-popup -e ikhal"
 	},
 	"custom/media": {
 		"format": "{icon} {text}",
