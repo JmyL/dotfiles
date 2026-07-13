@@ -4,7 +4,7 @@ Documentation=man:vdirsyncer(1)
 
 [Timer]
 OnBootSec=2m
-OnUnitActiveSec=15m
+OnCalendar=*-*-* *:00/10:00
 Persistent=true
 
 [Install]
