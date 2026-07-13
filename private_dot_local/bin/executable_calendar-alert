@@ -12,10 +12,12 @@ import argparse
 import json
 import subprocess
 from datetime import datetime, timedelta
+from pathlib import Path
 
 
 ALERT_WINDOW_MINUTES = 30
 URGENT_WINDOW_MINUTES = 10
+NOTIFY_STATE_PATH = Path.home() / ".cache" / "calendar-alert" / "last-notified"
 
 
 def khal_events() -> list[dict[str, str]]:
@@ -31,6 +33,8 @@ def khal_events() -> list[dict[str, str]]:
         "start-time",
         "--json",
         "calendar",
+        "--json",
+        "uid",
     ]
     result = subprocess.run(cmd, check=False, text=True, capture_output=True)
     if result.returncode != 0:
@@ -79,6 +83,38 @@ def first_alert() -> tuple[int, dict[str, str]] | None:
     return sorted(candidates, key=lambda item: item[0])[0]
 
 
+def notification_key(event: dict[str, str], start_time: str) -> str:
+    uid = event.get("uid") or event.get("title") or "untitled"
+    return f"{uid}\t{start_time}"
+
+
+def maybe_notify(minutes: int, event: dict[str, str]) -> None:
+    if minutes > URGENT_WINDOW_MINUTES:
+        return
+
+    title = event.get("title", "Untitled")
+    calendar = event.get("calendar", "")
+    start_time = event.get("start-time", "")
+    key = notification_key(event, start_time)
+
+    try:
+        if NOTIFY_STATE_PATH.exists() and NOTIFY_STATE_PATH.read_text() == key:
+            return
+        NOTIFY_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        NOTIFY_STATE_PATH.write_text(key)
+    except OSError:
+        return
+
+    subprocess.run([
+        "notify-send",
+        "--app-name=calendar-alert",
+        "--urgency=critical",
+        "--icon=appointment-soon",
+        f"{minutes}분 후 일정",
+        f"{title}\n{start_time} · {calendar}",
+    ], check=False)
+
+
 def waybar_output() -> None:
     alert = first_alert()
     if alert is None:
@@ -88,6 +124,7 @@ def waybar_output() -> None:
     title = event.get("title", "Untitled")
     calendar = event.get("calendar", "")
     start_time = event.get("start-time", "")
+    maybe_notify(minutes, event)
     print(json.dumps({
         "text": f"󰃭 {minutes}m {title}",
         "tooltip": f"{title}\n{start_time} · {calendar}",
