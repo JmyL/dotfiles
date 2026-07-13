@@ -82,6 +82,7 @@ button:hover {
 #pulseaudio,
 #wireplumber,
 #custom-media,
+#custom-calendar-alert,
 #tray,
 #mode,
 #idle_inhibitor,
@@ -98,6 +99,15 @@ button:hover {
 #custom-recording {
     color: #ff7b86;
     font-weight: bold;
+}
+
+#custom-calendar-alert {
+    color: #ffd166;
+    font-weight: bold;
+}
+
+#custom-calendar-alert.urgent {
+    color: #ff7b86;
 }
 
 #interactive,

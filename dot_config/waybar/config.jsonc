@@ -273,6 +273,13 @@
 		},
 		"on-click": "pavucontrol"
 	},
+	"custom/calendar-alert": {
+		"exec": "$HOME/.local/bin/calendar-alert --waybar",
+		"return-type": "json",
+		"interval": 30,
+		"tooltip": true,
+		"on-click": "kitty --class calendar-popup -e ikhal"
+	},
 	"custom/media": {
 		"format": "{icon} {text}",
 		"return-type": "json",
