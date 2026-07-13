@@ -4,7 +4,7 @@ status_path = "~/.local/state/vdirsyncer/status/"
 [pair google_calendar]
 a = "google_calendar_local"
 b = "google_calendar_remote"
-collections = ["from a", "from b"]
+collections = ["from b"]
 metadata = ["displayname", "color"]
 conflict_resolution = "b wins"
 
@@ -14,15 +14,15 @@ path = "~/.local/share/vdirsyncer/calendars/"
 fileext = ".ics"
 
 [storage google_calendar_remote]
-type = "caldav"
-url = "https://apidata.googleusercontent.com/caldav/v2/"
-username = "happyss.nam@gmail.com"
-password.fetch = ["command", "pass", "show", "mail/gmail/app-password"]
+type = "google_calendar"
+token_file = "~/.local/state/vdirsyncer/google-calendar-token"
+client_id.fetch = ["command", "pass", "show", "mail/gmail/google-oauth-client-id"]
+client_secret.fetch = ["command", "pass", "show", "mail/gmail/google-oauth-client-secret"]
 
 [pair google_contacts]
 a = "google_contacts_local"
 b = "google_contacts_remote"
-collections = ["from a", "from b"]
+collections = ["from b"]
 metadata = ["displayname"]
 conflict_resolution = "b wins"
 
@@ -32,7 +32,7 @@ path = "~/.local/share/vdirsyncer/contacts/"
 fileext = ".vcf"
 
 [storage google_contacts_remote]
-type = "carddav"
-url = "https://www.googleapis.com/carddav/v1/principals/happyss.nam@gmail.com/lists/default/"
-username = "happyss.nam@gmail.com"
-password.fetch = ["command", "pass", "show", "mail/gmail/app-password"]
+type = "google_contacts"
+token_file = "~/.local/state/vdirsyncer/google-contacts-token"
+client_id.fetch = ["command", "pass", "show", "mail/gmail/google-oauth-client-id"]
+client_secret.fetch = ["command", "pass", "show", "mail/gmail/google-oauth-client-secret"]
