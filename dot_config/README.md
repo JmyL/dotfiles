@@ -53,3 +53,51 @@ machine unless it is stored in a secure backup location:
 ```sh
 shred -u sungsik-private.asc 2>/dev/null || rm -f sungsik-private.asc
 ```
+
+## Google calendar/contact sync
+
+Google Calendar and Contacts are synchronized with `vdirsyncer`.
+
+Related files:
+
+- Setup notes: `~/.config/calendar-contacts-vdirsyncer.md`
+- vdirsyncer config: `~/.config/vdirsyncer/config`
+- khal config: `~/.config/khal/config`
+- khard config: `~/.config/khard/khard.conf`
+- aerc address-book integration: `~/.config/aerc/aerc.conf`
+- optional user timer:
+  - `~/.config/systemd/user/vdirsyncer.service`
+  - `~/.config/systemd/user/vdirsyncer.timer`
+
+Secrets and tokens are intentionally not tracked by chezmoi:
+
+- OAuth client ID: `pass show mail/gmail/google-oauth-client-id`
+- OAuth client secret: `pass show mail/gmail/google-oauth-client-secret`
+- vdirsyncer OAuth tokens: `~/.local/state/vdirsyncer/google-*-token`
+
+Manual sync:
+
+```sh
+vdirsyncer sync
+```
+
+Use `discover` only when Google calendar/contact collections change:
+
+```sh
+vdirsyncer discover
+vdirsyncer sync
+```
+
+Enable the optional timer manually when desired:
+
+```sh
+systemctl --user daemon-reload
+systemctl --user enable --now vdirsyncer.timer
+systemctl --user list-timers vdirsyncer.timer
+```
+
+Check sync logs:
+
+```sh
+journalctl --user -u vdirsyncer.service
+```
