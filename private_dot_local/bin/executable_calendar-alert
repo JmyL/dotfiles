@@ -2,7 +2,7 @@
 """Print upcoming calendar alerts for Waybar or tmux.
 
 The script reads khal's local cache and reports the first event starting within
-10 minutes. It intentionally does not run vdirsyncer; synchronization is handled
+30 minutes. It intentionally does not run vdirsyncer; synchronization is handled
 by the user timer.
 """
 
@@ -14,7 +14,8 @@ import subprocess
 from datetime import datetime, timedelta
 
 
-ALERT_WINDOW_MINUTES = 10
+ALERT_WINDOW_MINUTES = 30
+URGENT_WINDOW_MINUTES = 10
 
 
 def khal_events() -> list[dict[str, str]]:
@@ -90,7 +91,7 @@ def waybar_output() -> None:
     print(json.dumps({
         "text": f"󰃭 {minutes}m {title}",
         "tooltip": f"{title}\n{start_time} · {calendar}",
-        "class": "urgent" if minutes <= 5 else "soon",
+        "class": "urgent" if minutes <= URGENT_WINDOW_MINUTES else "soon",
     }, ensure_ascii=False))
 
 
