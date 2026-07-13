@@ -41,7 +41,8 @@
 		"orientation": "horizontal",
 		"modules": [
 			"network",
-			"bluetooth"
+			"bluetooth",
+			"custom/forager-battery"
 		]
 	},
 	"group/system-status": {
@@ -251,6 +252,12 @@
 		"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
 		"tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%",
 		"on-click-right": "blueman-manager"
+	},
+	"custom/forager-battery": {
+		"exec": "$HOME/.local/bin/forager-battery",
+		"return-type": "json",
+		"interval": 60,
+		"tooltip": true
 	},
 	"pulseaudio": {
 		"markup": true,
