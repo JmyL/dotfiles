@@ -22,7 +22,7 @@ NOTIFY_STATE_PATH = Path.home() / ".cache" / "calendar-alert" / "last-notified"
 
 def khal_events() -> list[dict[str, str]]:
     cmd = [
-        "khal",
+        "/usr/bin/khal",
         "list",
         "now",
         f"{ALERT_WINDOW_MINUTES}m",
@@ -106,7 +106,7 @@ def maybe_notify(minutes: int, event: dict[str, str]) -> None:
         return
 
     subprocess.run([
-        "notify-send",
+        "/usr/bin/notify-send",
         "--app-name=calendar-alert",
         "--urgency=critical",
         "--icon=appointment-soon",
