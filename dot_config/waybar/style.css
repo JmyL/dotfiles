@@ -105,14 +105,14 @@ button:hover {
 
 #clock {
     color: #ffffff;
-    background-color: rgba(24, 27, 34, 0.5);
+    background-color: rgb(24, 27, 34);
     border-radius: 8px;
 }
 
 #custom-calendar-alert {
     color: #ffd166;
     font-weight: bold;
-    background-color: rgba(24, 27, 34, 0.5);
+    background-color: rgb(24, 27, 34);
     border-radius: 8px;
 }
 
