@@ -54,6 +54,36 @@ machine unless it is stored in a secure backup location:
 shred -u sungsik-private.asc 2>/dev/null || rm -f sungsik-private.asc
 ```
 
+## Atuin shell history
+
+Atuin is a candidate shell-history upgrade for interactive shells. It provides a
+searchable, context-aware history database and can optionally sync history across
+machines.
+
+Useful setup checklist:
+
+```sh
+# Install atuin with the preferred machine-specific package manager.
+atuin --version
+
+# Import existing shell history before enabling shell integration.
+atuin import auto
+
+# Enable sync only if desired.
+atuin login
+atuin sync
+```
+
+Typical shell integration belongs in the relevant shell config, for example
+`~/.config/fish/config.fish`, `~/.bashrc`, or `~/.zshrc`. Keep any Atuin sync
+credentials or session keys out of chezmoi-tracked files.
+
+Related paths:
+
+- Atuin config: `~/.config/atuin/config.toml`
+- Atuin data/state: `~/.local/share/atuin/`
+- Atuin cache/state may vary by version and package source.
+
 ## Google calendar/contact sync
 
 Google Calendar and Contacts are synchronized with `vdirsyncer`.
