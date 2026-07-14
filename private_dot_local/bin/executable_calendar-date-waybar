@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""Waybar date module with upcoming calendar events in the tooltip."""
+
+from __future__ import annotations
+
+import argparse
+import html
+import json
+import subprocess
+from datetime import date, datetime, timedelta
+from pathlib import Path
+
+
+def khal_command() -> list[str]:
+    return [str(Path.home() / ".local/bin/khal")]
+
+
+def event_minutes(start_time: str) -> int | None:
+    try:
+        hour, minute = [int(part) for part in start_time.split(":", 1)]
+    except ValueError:
+        return None
+    return hour * 60 + minute
+
+
+def upcoming_events() -> tuple[list[dict[str, str]], str | None]:
+    cmd = [
+        *khal_command(),
+        "list",
+        "today",
+        "5d",
+        "--json",
+        "title",
+        "--json",
+        "start-date",
+        "--json",
+        "start-time",
+        "--json",
+        "end-time",
+        "--json",
+        "calendar",
+    ]
+    try:
+        result = subprocess.run(cmd, check=False, text=True, capture_output=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return [], str(error)
+    if result.returncode != 0:
+        return [], result.stderr.strip() or "khal list failed"
+
+    events: list[dict[str, str]] = []
+    for line in result.stdout.splitlines():
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, list):
+            events.extend(item for item in value if isinstance(item, dict))
+    return events, None
+
+
+def filtered_events() -> tuple[list[dict[str, str]], str | None]:
+    threshold = datetime.now() - timedelta(hours=1)
+    threshold_minutes = threshold.hour * 60 + threshold.minute
+    today = date.today().isoformat()
+    events, error = upcoming_events()
+    if error is not None:
+        return [], error
+    filtered = []
+    for event in events:
+        start_date = event.get("start-date", "")
+        if start_date != today:
+            filtered.append(event)
+            continue
+        start_time = event.get("start-time", "")
+        minutes = event_minutes(start_time)
+        if minutes is None or minutes >= threshold_minutes:
+            filtered.append(event)
+    return filtered, None
+
+
+def format_date(value: str) -> str:
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError:
+        return value or "No date"
+    return parsed.strftime("%Y-%m-%d %a")
+
+
+def format_events(events: list[dict[str, str]], error: str | None, *, markup: bool) -> str:
+    title = datetime.now().strftime("Next 5 days, today (%Y-%m-%d %a) from %-I:%M %p")
+    if error is not None:
+        body = f"{title}\n\nCalendar error:\n{error}"
+        return html.escape(body) if markup else body
+    if not events:
+        body = f"{title}\n\nNo events."
+        return html.escape(body) if markup else body
+
+    lines = [title]
+    current_date = None
+    for event in events:
+        start_date = event.get("start-date", "")
+        if start_date != current_date:
+            lines.extend(["", format_date(start_date)])
+            current_date = start_date
+        start_time = event.get("start-time", "")
+        end_time = event.get("end-time", "")
+        time_range = f"{start_time}-{end_time}" if start_time and end_time else start_time or "all day"
+        title_text = event.get("title", "Untitled")
+        lines.append(f"  {time_range}  {title_text}")
+    body = "\n".join(lines)
+    return html.escape(body) if markup else body
+
+
+def waybar_output() -> None:
+    events, error = filtered_events()
+    print(json.dumps({
+        "text": datetime.now().strftime("<span foreground=\"#72b7f2\"></span> %Y-%m-%d %a"),
+        "tooltip": format_events(events, error, markup=True),
+        "class": "error" if error is not None else "normal",
+    }, ensure_ascii=False))
+
+
+def plain_output() -> None:
+    print(format_events(*filtered_events(), markup=False))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--plain", action="store_true", help="print upcoming events as plain text")
+    args = parser.parse_args()
+
+    if args.plain:
+        plain_output()
+    else:
+        waybar_output()
+
+
+if __name__ == "__main__":
+    main()
