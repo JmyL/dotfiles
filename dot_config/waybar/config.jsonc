@@ -163,7 +163,7 @@
 		// "timezone": "America/New_York",
 		"format": "<span foreground=\"#72b7f2\"></span> {:%I:%M %p}",
 		"tooltip": false,
-		"format-alt": "{:%H:%M}"
+		"format-alt": "<span foreground=\"#72b7f2\"></span> {:%H:%M}   "
 	},
 	"cpu": {
 		"markup": true,
