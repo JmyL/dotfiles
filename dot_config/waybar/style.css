@@ -84,7 +84,6 @@ button:hover {
 #wireplumber,
 #custom-media,
 #custom-calendar-alert,
-#custom-date-calendar,
 #custom-forager-battery,
 #tray,
 #mode,
@@ -117,10 +116,8 @@ button:hover {
     border-radius: 8px;
 }
 
-#custom-date-calendar {
+#clock.date {
     margin-right: 8px;
-    background-color: rgba(24, 27, 34, 0.75);
-    border-radius: 8px;
 }
 
 #custom-calendar-alert.urgent {
