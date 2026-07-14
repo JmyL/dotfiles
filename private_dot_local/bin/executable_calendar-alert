@@ -21,15 +21,13 @@ STATE_DIR = Path.home() / ".cache" / "calendar-alert"
 NOTIFY_STATE_PATH = STATE_DIR / "last-notified"
 WAYBAR_STATE_PATH = STATE_DIR / "waybar-state.css"
 WAYBAR_URGENT_CSS = """window#waybar {
-    background-color: rgba(255, 59, 72, 0.35);
+    background-color: rgba(255, 59, 72, 0.5);
 }
 """
 
 
 def khal_command() -> list[str]:
-    if Path("/usr/bin/khal").exists():
-        return ["/usr/bin/khal"]
-    return ["/usr/bin/toolbox", "run", "--container", "f44", "khal"]
+    return [str(Path.home() / ".local/bin/khal")]
 
 
 def khal_events() -> list[dict[str, str]]:
