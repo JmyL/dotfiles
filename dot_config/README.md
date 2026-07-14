@@ -56,7 +56,7 @@ shred -u sungsik-private.asc 2>/dev/null || rm -f sungsik-private.asc
 
 ## Atuin shell history
 
-Atuin is a candidate shell-history upgrade for interactive shells. It provides a
+Atuin is the managed shell-history upgrade for interactive shells. It provides a
 searchable, context-aware history database and can optionally sync history across
 machines.
 
@@ -80,8 +80,9 @@ credentials or session keys out of chezmoi-tracked files.
 
 Related paths:
 
-- Atuin config: `~/.config/atuin/config.toml`
-- Atuin data/state: `~/.local/share/atuin/`
+- Managed Atuin config: `~/.config/atuin/config.toml`
+- Shell integrations: `~/.bashrc`, `~/.zshrc`, `~/.config/fish/conf.d/atuin.env.fish`
+- Untracked Atuin data/state: `~/.local/share/atuin/`
 - Atuin cache/state may vary by version and package source.
 
 ## Google calendar/contact sync
