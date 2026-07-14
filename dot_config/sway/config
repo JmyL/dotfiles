@@ -96,6 +96,9 @@ seat * hide_cursor 3000
     # Start your launcher
     bindsym $mod+slash exec $menu
 
+    # Show upcoming calendar agenda
+    bindsym $mod+a exec sh -c '~/.local/bin/calendar-date-waybar --plain | fuzzel --dmenu --width 80 --prompt "Agenda> " >/dev/null'
+
     # Drag floating windows by holding down $mod and left mouse button.
     # Resize them with right mouse button + $mod.
     # Despite the name, also works for non-floating windows.
@@ -276,7 +279,7 @@ bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
     # Show clipboard history
     bindsym $mod+Shift+v exec cliphist list | fuzzel --dmenu --width 85 --prompt 'Clipboard> ' | cliphist decode | wl-copy
     # Toggle idle/sleep inhibitor
-    bindsym $mod+a exec ~/.local/bin/toggle-idle-inhibit
+    bindsym $mod+Shift+a exec ~/.local/bin/toggle-idle-inhibit
     # Cycle available power profiles
     bindsym $mod+p exec ~/.local/bin/cycle-power-profile
     # Lock screen
