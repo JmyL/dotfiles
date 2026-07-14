@@ -155,9 +155,10 @@
 	},
 	"clock#date": {
 		// "timezone": "America/New_York",
-		"format": "<span foreground=\"#72b7f2\"></span> {:%Y-%m-%d}",
+		"format": "<span foreground=\"#72b7f2\"></span> {:%Y-%m-%d %a}",
 		"tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-		"format-alt": "{:%A, %B %d}"
+		"format-alt": "{:%A, %B %d}",
+		"on-click": "kitty --class calendar-popup -e ~/.local/bin/calendar-today-list"
 	},
 	"clock#time": {
 		// "timezone": "America/New_York",
