@@ -18,7 +18,7 @@ set $term kitty
 # Your preferred application launcher
 set $menu fuzzel
 # Shared desktop and lock-screen wallpaper
-set $wallpaper /var/home/sungsik/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg
+set $wallpaper ~/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg
 set $lock swaylock -f -i $wallpaper -s fill
 
 ### Window appearance
