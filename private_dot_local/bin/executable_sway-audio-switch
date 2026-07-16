@@ -14,52 +14,78 @@ def notify(title, body=""):
         subprocess.run(["notify-send", title, body], check=False)
 
 
-def pick(prompt, options):
-    labels = "\n".join(label for label, _ in options)
+def pick(prompt, labels):
     result = subprocess.run(
         ["fuzzel", "--dmenu", "--prompt", f"{prompt}> "],
-        input=labels,
+        input="\n".join(labels),
         text=True,
         capture_output=True,
     )
     if result.returncode != 0 or not result.stdout.strip():
         return None
-    choice = result.stdout.strip()
-    return next((value for label, value in options if label == choice), None)
+    return result.stdout.strip()
 
 
-def main():
+def audio_nodes():
     graph = json.loads(run("pw-dump").stdout)
-
     sinks = []
     sources = []
     for obj in graph:
         props = ((obj.get("info") or {}).get("props")) or {}
         media_class = props.get("media.class")
         description = props.get("node.description")
+        node_name = props.get("node.name") or ""
         if not description:
             continue
         if media_class == "Audio/Sink":
-            sinks.append((description, obj["id"]))
+            sinks.append((description, node_name, obj["id"]))
         elif media_class == "Audio/Source":
-            sources.append((description, obj["id"]))
+            sources.append((description, node_name, obj["id"]))
+    return sinks, sources
 
-    kind = pick("Switch", [("Output (speaker)", "sink"), ("Input (mic)", "source")])
-    if kind is None:
+
+def find_builtin(nodes, prefer, avoid):
+    for description, node_name, node_id in nodes:
+        lowered = description.lower()
+        if node_name.startswith("alsa_") and prefer in lowered and avoid not in lowered:
+            return node_id
+    return None
+
+
+def find_bluetooth(nodes, prefix):
+    for description, node_name, node_id in nodes:
+        if node_name.startswith(prefix):
+            return node_id, description
+    return None, None
+
+
+def main():
+    sinks, sources = audio_nodes()
+
+    laptop_sink = find_builtin(sinks, "speaker", "headphones")
+    laptop_source = find_builtin(sources, "mic", "headset")
+    bt_sink, bt_description = find_bluetooth(sinks, "bluez_output.")
+    bt_source, _ = find_bluetooth(sources, "bluez_input.")
+
+    profiles = {"Laptop (speaker + mic)": (laptop_sink, laptop_source)}
+    if bt_sink or bt_source:
+        profiles[f"{bt_description or 'Bluetooth'} (earbuds)"] = (bt_sink, bt_source)
+
+    choice = pick("Audio", list(profiles))
+    if choice is None:
         return 0
 
-    options = sinks if kind == "sink" else sources
-    if not options:
-        notify("Audio switch failed", f"No {kind} devices found")
+    sink_id, source_id = profiles[choice]
+    if sink_id is not None:
+        subprocess.run(["wpctl", "set-default", str(sink_id)], check=True)
+    if source_id is not None:
+        subprocess.run(["wpctl", "set-default", str(source_id)], check=True)
+
+    if sink_id is None and source_id is None:
+        notify("Audio switch failed", f"No devices found for {choice}")
         return 1
 
-    node_id = pick("Device", options)
-    if node_id is None:
-        return 0
-
-    subprocess.run(["wpctl", "set-default", str(node_id)], check=True)
-    description = next(label for label, value in options if value == node_id)
-    notify("Audio switched", description)
+    notify("Audio switched", choice)
     return 0
 
 
