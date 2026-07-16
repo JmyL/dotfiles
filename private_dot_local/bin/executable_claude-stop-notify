@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-cat > /dev/null # drain hook JSON from stdin
+payload="$(cat)"
 
 [[ -n "${TMUX:-}" ]] || exit 0
 
@@ -21,7 +21,20 @@ fi
 
 (( looking_at_it )) && exit 0
 
-setsid -f claude-notify-and-goto "$target" "Claude Code finished" "Session: $sname  window $widx" \
+info_json="$(printf '%s' "$payload" | claude-session-info 2>/dev/null)"
+folder="$(jq -r '.folder // empty' <<<"$info_json" 2>/dev/null)"
+cname="$(jq -r '.name // empty' <<<"$info_json" 2>/dev/null)"
+summary="$(jq -r '.summary // empty' <<<"$info_json" 2>/dev/null)"
+
+folder="${folder:-$sname}"
+title="${cname:-$folder}"
+if [[ -n "$cname" ]]; then
+  body="${folder}: ${summary:-(no summary)}"
+else
+  body="${summary:-(no summary)}"
+fi
+
+setsid -f claude-notify-and-goto "$target" "$title" "$body" \
   < /dev/null > /dev/null 2>&1 &
 
 exit 0
