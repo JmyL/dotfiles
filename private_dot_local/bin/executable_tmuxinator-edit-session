@@ -19,6 +19,6 @@ if tmux has-session -t "$session" 2>/dev/null; then
 fi
 
 tmux new-session -d -s "$session" -n "$project" -c "$config_dir" "tmuxinator edit '$project'"
-tmux split-window -h -t "$session:1" -c "$config_dir" "pi"
+tmux split-window -h -t "$session:1" -c "$config_dir" "ai"
 tmux select-pane -t "$session:1.1"
 tmux switch-client -t "$session"
