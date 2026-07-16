@@ -23,7 +23,8 @@ profile docked-dp1-dp2 {
 
 profile docked-hdmi {
     output eDP-1 disable
-    output HDMI-A-1 enable position 0,0 mode 2560x1440@59.951Hz
+    output HDMI-A-1 enable position 0,0 mode preferred
+    exec kanshi-autoscale HDMI-A-1
 }
 
 
