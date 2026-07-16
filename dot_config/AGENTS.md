@@ -1,15 +1,15 @@
 # Agent instructions for this home directory
 
-This directory is the user's home directory on Fedora Silverblue, usually accessed from inside a toolbox container.
+This directory is the user's home directory, with the same chezmoi dotfiles applied across more than one machine. The host environment differs by machine — check which kind you're on before assuming host paths or package-management behavior.
 
 ## Environment
 
-- Host OS: Fedora Silverblue / rpm-ostree immutable desktop.
-- Shell environment may be a toolbox container, not the host root filesystem.
-- Home path is `/var/home/sungsik`.
-- Avoid assuming mutable host OS paths or globally installed host packages.
-- Prefer user-scoped changes under `$HOME`, `~/.local`, or managed dotfiles.
-- Be careful with commands that affect the host system. If host-level changes are required, explain them first.
+Two host kinds are in use:
+
+- **Fedora Silverblue (rpm-ostree, immutable)**: usually accessed from inside a toolbox container, not the host root filesystem — check `cat /run/.containerenv` (present inside a toolbox) to tell. Home path is `/var/home/sungsik`. Avoid assuming mutable host OS paths or globally installed host packages; prefer user-scoped changes under `$HOME`, `~/.local`, or managed dotfiles. Be careful with commands that affect the host system — if host-level (rpm-ostree/toolbox) changes are required, explain them first. See "Fedora Silverblue notes" below.
+- **Mutable Debian/Ubuntu (e.g. work laptop)**: a regular mutable install, no toolbox layer — the shell is the host directly. Home path is `/home/sungsik`. `apt`/`dpkg` can be used directly for host package changes, but still ask before broad or system-wide package-management changes.
+
+To tell which one you're on: `cat /etc/os-release` (`ID=fedora` vs `ID=ubuntu`/`ID_LIKE=debian`), and `echo $HOME` (`/var/home/...` vs `/home/...`). Don't assume from a prior session — check fresh each time, since the same dotfiles repo is applied to both.
 
 ## Dotfiles and chezmoi
 
@@ -45,3 +45,9 @@ When adding or modifying dotfiles that introduce a dependency on an external com
 - Prefer declarative/user-level configuration where possible.
 - Package/tool installation may involve toolbox, Flatpak, Home Manager/Nix, or rpm-ostree depending on scope.
 - Ask before making broad package-management changes.
+
+## Mutable Debian/Ubuntu notes
+
+- No toolbox/rpm-ostree layer — `apt`/`dpkg` install packages directly on the host.
+- Package availability and naming can differ from Fedora (e.g. `~/.config/tool-inventory.md`'s Fedora vs Ubuntu install sections) — check both when a dependency isn't found.
+- Ask before making broad or system-wide package-management changes, same caution as Silverblue's host-level changes.
