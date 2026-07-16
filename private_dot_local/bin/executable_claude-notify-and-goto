@@ -19,7 +19,11 @@ from gi.repository import Gio, GLib
 BUS_NAME = "org.freedesktop.Notifications"
 OBJ_PATH = "/org/freedesktop/Notifications"
 IFACE = "org.freedesktop.Notifications"
-ACTION_KEY = "jump"
+# "default" is invoked by clicking the notification body itself (per the
+# freedesktop spec); "jump" is a visible fallback button, since swaync
+# doesn't reliably wire "default" up to actual clicks/simulated invocation
+# in every version. Either one invoked means "go".
+ACTION_KEYS = ("default", "jump")
 MAX_WAIT_SECONDS = 6 * 3600
 
 
@@ -38,7 +42,7 @@ def main():
         args = params.unpack()
         if not args or args[0] != notif_id["value"]:
             return
-        if member == "ActionInvoked" and len(args) > 1 and args[1] == ACTION_KEY:
+        if member == "ActionInvoked" and len(args) > 1 and args[1] in ACTION_KEYS:
             result["action"] = True
             loop.quit()
         elif member == "NotificationClosed":
@@ -63,7 +67,7 @@ def main():
                 "",
                 summary,
                 body,
-                [ACTION_KEY, "Go to pane"],
+                ["default", "", "jump", "Go to pane"],
                 {},
                 0,
             ),
