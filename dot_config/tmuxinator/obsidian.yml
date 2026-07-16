@@ -1,9 +1,9 @@
-name: nvim
-root: ~/.config/nvim
+name: obsidian
+root: ~/Documents/Obsidian
 
 windows:
-  - config:
+  - editor:
       layout: ef6e,281x68,0,0{140x68,0,0,21,140x68,141,0,22}
       panes:
         - nvim
-        - ai -c
+        - tuxedo

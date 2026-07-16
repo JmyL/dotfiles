@@ -6,4 +6,4 @@ windows:
       layout: even-horizontal
       panes:
         - editor: v config/forager.keymap
-        - pi -c
+        - ai -c

@@ -6,7 +6,7 @@ windows:
       layout: "eb03,200x60,0,0{99x60,0,0,0,100x60,100,0[100x51,100,0,1,100x8,100,52,2]}"
       panes:
         - editor: v
-        - pi -c
+        - ai -c
         - |
           bash -lc '
             hugo serve &

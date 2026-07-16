@@ -1,9 +1,9 @@
 name: dotfiles
-root: /var/home/sungsik/.config
+root: ~/.config
 
 windows:
   - editor:
       layout: ef6e,281x68,0,0{140x68,0,0,21,140x68,141,0,22}
       panes:
         - nvim
-        - pi -c
+        - ai -c
