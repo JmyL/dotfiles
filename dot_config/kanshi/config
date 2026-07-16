@@ -10,15 +10,22 @@
 # - Presentation: uncomment a profile and set both outputs to the same
 #   position if you want mirroring for a known projector.
 
-profile docked-hdmi {
-    output eDP-1 disable
-    output HDMI-A-1 enable position 0,0
-}
-
 profile docked-dp1 {
     output eDP-1 disable
     output DP-1 enable position 0,0
 }
+
+profile docked-dp1-dp2 {
+    output eDP-1 disable
+    output DP-2 disable
+    output DP-1 enable position 0,0 scale 1.6
+}
+
+profile docked-hdmi {
+    output eDP-1 disable
+    output HDMI-A-1 enable position 0,0 mode 2560x1440@59.951Hz
+}
+
 
 profile docked-dp2 {
     output eDP-1 disable
