@@ -62,10 +62,3 @@ alias tmp='tmuxinator $(tmuxinator list -n | tail -n +2 | fzf)'
 
 eval "$(starship init bash)"
 eval "$(zoxide init bash)"
-
-[[ -f "$HOME/.atuin/bin/env" ]] && . "$HOME/.atuin/bin/env"
-
-[[ -f ~/.bash-preexec.sh ]] && source ~/.bash-preexec.sh
-if command -v atuin >/dev/null 2>&1; then
-  eval "$(atuin init bash)"
-fi
