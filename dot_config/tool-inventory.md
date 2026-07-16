@@ -86,6 +86,7 @@ Core desktop tools:
 - `kitty`
 - `fuzzel`
 - `swayidle`
+- `swayosd`
 - `swaylock`
 - `thunar`
 - `flatpak`
@@ -116,6 +117,7 @@ Display/input extras:
 
 - `kanshi`
 - `fcitx5`
+- `fcitx5-hangul` — Hangul input engine; without it fcitx5 silently drops the Hangul entry from `~/.config/fcitx5/profile` on startup
 
 Fonts/integrations:
 
@@ -200,7 +202,7 @@ This is the broad workstation-oriented install set. Some packages may vary by Fe
 ```sh
 sudo dnf install \
   aerc atuin bat binutils catdoc chezmoi cliphist curl direnv dnf-plugins-core \
-  docx2txt eza fcitx5 fd-find ffmpeg-free flatpak fuzzel fzf git gnupg2 grim \
+  docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak fuzzel fzf git gnupg2 grim \
   grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
@@ -237,14 +239,15 @@ Test/package names may vary by Ubuntu release. This is aimed at recent Ubuntu ve
 ```sh
 sudo apt update
 sudo apt install \
-  aerc atuin bat binutils catdoc cliphist curl direnv docx2txt eza fcitx5 \
+  aerc atuin bat binutils catdoc cliphist curl direnv docx2txt eza fcitx5 fcitx5-hangul \
   fd-find ffmpeg flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
   libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
   khal khard vdirsyncer \
-  slurp sox starship swappy sway swayidle swaylock thunar tmux \
+  slurp sox starship swappy sway swayidle swaylock swayosd thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
-  xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-bin
+  xclip xdg-utils xterm zathura zip zoxide grimshot build-essential libreadline-dev unzip \
+  python3-venv imagemagick lazygit luarocks wireplumber pipewire-bin
 ```
 
 Ubuntu follow-ups:
@@ -255,24 +258,24 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
 
 # tmux plugin manager
 git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-
-# Brave browser, if using the Flatpak app expected by sway config
-flatpak install flathub com.brave.Browser
 ```
 
 Ubuntu packages that may be missing, renamed, too old, or better installed another way:
 
+- npm install -g @mermaid-js/mermaid-cli
+- brave-browser
 - `grimshot` may come from `sway-contrib` or need a manual install depending on release.
 - `swayosd-client`
 - `swaync-client`
-- `sesh`
-- `tmuxinator` (`sudo apt install tmuxinator` if available, otherwise Ruby gem)
+- `sesh`: go install github.com/joshmedeski/sesh/v2@latest
+- `tmuxinator`
 - `pi`
 - `herdr`
 - `uv`
 - `dumptorrent`
 - `tudu`
 - `JetBrainsMonoNL Nerd Font Mono`
+- fonts-font-awesome
 
 ## Minimal non-desktop/server install
 
@@ -285,7 +288,7 @@ sudo dnf install \
   jq kitty less man-db neovim notmuch pandoc pass p7zip p7zip-plugins \
   poppler-utils ripgrep starship tmux vifm wl-clipboard xdg-utils zathura \
   khal khard vdirsyncer \
-  zip zoxide
+  zip zoxide go
 
 # Ubuntu
 sudo apt update
@@ -293,5 +296,5 @@ sudo apt install \
   aerc bat binutils curl direnv eza fd-find fzf git gnupg isync jq kitty \
   less man-db neovim notmuch p7zip-full pandoc pass poppler-utils ripgrep \
   starship tmux vifm wl-clipboard xdg-utils zathura khal khard vdirsyncer \
-  zip zoxide
+  zip zoxide go
 ```
