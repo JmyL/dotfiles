@@ -23,7 +23,11 @@ if tmux list-windows -t "$sid" -F '#{window_index}' 2>/dev/null | grep -qx "$wid
   fi
 fi
 
-clients="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null)"
+# Any attached client anywhere, not just ones currently viewing this
+# session - if the user switched that terminal to a different tmux session
+# in the meantime, it drops out of `list-clients -t $sid` even though it's
+# still there and just needs to be switched back.
+clients="$(tmux list-clients -F '#{client_activity} #{client_tty}' 2>/dev/null)"
 
 if [[ -z "$clients" ]]; then
   # Nothing attached: open a terminal via their normal attach/create idiom,
