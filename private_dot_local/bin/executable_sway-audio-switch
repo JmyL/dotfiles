@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+import json
+import shutil
+import subprocess
+import sys
+
+
+def run(*args):
+    return subprocess.run(args, check=True, text=True, capture_output=True)
+
+
+def notify(title, body=""):
+    if shutil.which("notify-send"):
+        subprocess.run(["notify-send", title, body], check=False)
+
+
+def pick(prompt, options):
+    labels = "\n".join(label for label, _ in options)
+    result = subprocess.run(
+        ["fuzzel", "--dmenu", "--prompt", f"{prompt}> "],
+        input=labels,
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    choice = result.stdout.strip()
+    return next((value for label, value in options if label == choice), None)
+
+
+def main():
+    graph = json.loads(run("pw-dump").stdout)
+
+    sinks = []
+    sources = []
+    for obj in graph:
+        props = ((obj.get("info") or {}).get("props")) or {}
+        media_class = props.get("media.class")
+        description = props.get("node.description")
+        if not description:
+            continue
+        if media_class == "Audio/Sink":
+            sinks.append((description, obj["id"]))
+        elif media_class == "Audio/Source":
+            sources.append((description, obj["id"]))
+
+    kind = pick("Switch", [("Output (speaker)", "sink"), ("Input (mic)", "source")])
+    if kind is None:
+        return 0
+
+    options = sinks if kind == "sink" else sources
+    if not options:
+        notify("Audio switch failed", f"No {kind} devices found")
+        return 1
+
+    node_id = pick("Device", options)
+    if node_id is None:
+        return 0
+
+    subprocess.run(["wpctl", "set-default", str(node_id)], check=True)
+    description = next(label for label, value in options if value == node_id)
+    notify("Audio switched", description)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -274,6 +274,8 @@ bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
     bindsym --locked XF86AudioMicMute exec swayosd-client --input-volume mute-toggle
     bindsym --locked XF86MonBrightnessDown exec swayosd-client --brightness lower
     bindsym --locked XF86MonBrightnessUp exec swayosd-client --brightness raise
+    # Switch default audio output/input device (speaker, bluetooth earbuds, etc.)
+    bindsym $mod+Shift+o exec ~/.local/bin/sway-audio-switch
     # Special key to take a screenshot with grim
     bindsym Print exec grim
     # Toggle external-only and extended display modes

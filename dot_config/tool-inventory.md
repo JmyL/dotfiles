@@ -90,6 +90,7 @@ Core desktop tools:
 - `thunar`
 - `flatpak`
 - Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup
+- `wireplumber` (`wpctl`) and `pipewire-bin`/`pipewire-utils` (`pw-dump`) — used by `sway-audio-switch` to list/switch default audio devices
 
 Screenshot/recording/clipboard:
 
@@ -205,7 +206,7 @@ sudo dnf install \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
   khal khard vdirsyncer \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
-  wl-clipboard xclip xdg-utils xterm zathura zip zoxide
+  wl-clipboard xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils
 ```
 
 Fedora follow-ups:
@@ -243,7 +244,7 @@ sudo apt install \
   khal khard vdirsyncer \
   slurp sox starship swappy sway swayidle swaylock thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
-  xclip xdg-utils xterm zathura zip zoxide
+  xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-bin
 ```
 
 Ubuntu follow-ups:
