@@ -10,7 +10,7 @@ window#waybar {
     transition-duration: .5s;
 }
 
-@import url("file:///var/home/sungsik/.cache/calendar-alert/waybar-state.css");
+@import url("file://{{ env "XDG_RUNTIME_DIR" }}/calendar-alert/waybar-state.css");
 
 window#waybar.hidden {
     opacity: 0.2;
