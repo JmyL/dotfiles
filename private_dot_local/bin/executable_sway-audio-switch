@@ -35,28 +35,36 @@ def audio_nodes():
         media_class = props.get("media.class")
         description = props.get("node.description")
         node_name = props.get("node.name") or ""
+        device_id = props.get("device.id")
         if not description:
             continue
         if media_class == "Audio/Sink":
-            sinks.append((description, node_name, obj["id"]))
+            sinks.append((description, node_name, device_id, obj["id"]))
         elif media_class == "Audio/Source":
-            sources.append((description, node_name, obj["id"]))
+            sources.append((description, node_name, device_id, obj["id"]))
     return sinks, sources
 
 
 def find_builtin(nodes, prefer, avoid):
-    for description, node_name, node_id in nodes:
+    for description, node_name, _device_id, node_id in nodes:
         lowered = description.lower()
         if node_name.startswith("alsa_") and prefer in lowered and avoid not in lowered:
             return node_id
     return None
 
 
-def find_bluetooth(nodes, prefix):
-    for description, node_name, node_id in nodes:
-        if node_name.startswith(prefix):
-            return node_id, description
-    return None, None
+def bluetooth_devices(sinks, sources):
+    # Bluetooth sink/source nodes share the same parent device.id, so group by
+    # that rather than just grabbing the first match -- otherwise a second
+    # connected bluetooth device would have no menu entry at all.
+    devices = {}
+    for description, node_name, device_id, node_id in sinks:
+        if node_name.startswith("bluez_output.") and device_id is not None:
+            devices.setdefault(device_id, {"description": description})["sink"] = node_id
+    for description, node_name, device_id, node_id in sources:
+        if node_name.startswith("bluez_input.") and device_id is not None:
+            devices.setdefault(device_id, {"description": description})["source"] = node_id
+    return devices
 
 
 def main():
@@ -64,12 +72,13 @@ def main():
 
     laptop_sink = find_builtin(sinks, "speaker", "headphones")
     laptop_source = find_builtin(sources, "mic", "headset")
-    bt_sink, bt_description = find_bluetooth(sinks, "bluez_output.")
-    bt_source, _ = find_bluetooth(sources, "bluez_input.")
 
     profiles = {"Laptop (speaker + mic)": (laptop_sink, laptop_source)}
-    if bt_sink or bt_source:
-        profiles[f"{bt_description or 'Bluetooth'} (earbuds)"] = (bt_sink, bt_source)
+    for device_id, device in bluetooth_devices(sinks, sources).items():
+        label = f"{device['description']} (earbuds)"
+        if label in profiles:
+            label = f"{label} [{device_id}]"
+        profiles[label] = (device.get("sink"), device.get("source"))
 
     choice = pick("Audio", list(profiles))
     if choice is None:
