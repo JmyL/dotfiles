@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+target="${1:?usage: tmux-goto-pane SESSION_ID:WINDOW.PANE}"
+sid="${target%%:*}"
+rest="${target#*:}"
+widx="${rest%%.*}"
+pidx="${rest#*.}"
+
+if ! tmux has-session -t "$sid" 2>/dev/null; then
+  notify-send -a "Claude Code" "Couldn't jump to pane" "That session no longer exists." 2>/dev/null || true
+  exit 1
+fi
+
+sname="$(tmux display-message -p -t "$sid" '#{session_name}')"
+
+window_ok=0
+pane_ok=0
+if tmux list-windows -t "$sid" -F '#{window_index}' 2>/dev/null | grep -qx "$widx"; then
+  window_ok=1
+  if tmux list-panes -t "$sid:$widx" -F '#{pane_index}' 2>/dev/null | grep -qx "$pidx"; then
+    pane_ok=1
+  fi
+fi
+
+clients="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null)"
+
+if [[ -z "$clients" ]]; then
+  # Nothing attached: open a terminal via their normal attach/create idiom,
+  # then nudge the newly attached client to the right window/pane once it
+  # shows up (tmux-goto-pane already runs detached from the Claude Code
+  # hook, so blocking here briefly is harmless).
+  setsid kitty -e sesh connect "$sname" < /dev/null > /dev/null 2>&1 &
+
+  new_tty=""
+  for _ in $(seq 1 50); do
+    new_tty="$(tmux list-clients -t "$sid" -F '#{client_tty}' 2>/dev/null | head -n1)"
+    [[ -n "$new_tty" ]] && break
+    sleep 0.1
+  done
+
+  if [[ -n "$new_tty" ]]; then
+    (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
+    (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
+  fi
+  exit 0
+fi
+
+client_tty="$(printf '%s\n' "$clients" | sort -rn | head -n1 | awk '{print $2}')"
+
+tmux switch-client -c "$client_tty" -t "$sid" 2>/dev/null || true
+(( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
+(( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
+
+if con_id="$(sway-tty-window "$client_tty" 2>/dev/null)"; then
+  swaymsg "[con_id=$con_id] focus" > /dev/null 2>&1 || true
+fi
+
+exit 0

@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Resolve which Sway window (con_id) hosts a process attached to a given tty.
+
+Usage:
+  sway-tty-window <tty>              print the owning con_id, exit 1 if none
+  sway-tty-window --is-focused <tty> exit 0 only if that window is focused
+"""
+import json
+import subprocess
+import sys
+
+
+def leaf_windows(node, acc):
+    if isinstance(node, dict):
+        if node.get("pid") is not None:
+            acc.append(node)
+        for key in ("nodes", "floating_nodes"):
+            for child in node.get(key, []):
+                leaf_windows(child, acc)
+    return acc
+
+
+def proc_table():
+    out = subprocess.run(
+        ["ps", "-eo", "pid=,ppid=,tty="], text=True, capture_output=True
+    ).stdout
+    children = {}
+    ttys = {}
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) != 3:
+            continue
+        pid, ppid, tty = int(parts[0]), int(parts[1]), parts[2]
+        ttys[pid] = tty
+        children.setdefault(ppid, []).append(pid)
+    return ttys, children
+
+
+def owning_con_id(target_tty, leaves, ttys, children):
+    target_tty = target_tty.removeprefix("/dev/")
+    for leaf in leaves:
+        stack = [leaf["pid"]]
+        seen = set()
+        while stack:
+            pid = stack.pop()
+            if pid in seen:
+                continue
+            seen.add(pid)
+            if ttys.get(pid) == target_tty:
+                return leaf["id"]
+            stack.extend(children.get(pid, []))
+    return None
+
+
+def main():
+    args = sys.argv[1:]
+    is_focused_mode = args and args[0] == "--is-focused"
+    if is_focused_mode:
+        args = args[1:]
+    if not args:
+        sys.exit(2)
+    target_tty = args[0]
+
+    tree = json.loads(
+        subprocess.run(
+            ["swaymsg", "-t", "get_tree"], text=True, capture_output=True
+        ).stdout
+    )
+    leaves = leaf_windows(tree, [])
+    ttys, children = proc_table()
+    con_id = owning_con_id(target_tty, leaves, ttys, children)
+
+    if is_focused_mode:
+        focused_id = next((leaf["id"] for leaf in leaves if leaf.get("focused")), None)
+        sys.exit(0 if (con_id is not None and con_id == focused_id) else 1)
+
+    if con_id is None:
+        sys.exit(1)
+    print(con_id)
+
+
+if __name__ == "__main__":
+    main()

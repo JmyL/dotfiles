@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+cat > /dev/null # drain hook JSON from stdin
+
+[[ -n "${TMUX:-}" ]] || exit 0
+
+IFS=$'\t' read -r sid sname widx pidx pane_active window_active < <(
+  tmux display-message -p $'#{session_id}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{pane_active}\t#{window_active}'
+)
+target="${sid}:${widx}.${pidx}"
+
+looking_at_it=0
+if [[ "$pane_active" == 1 && "$window_active" == 1 ]] && command -v swaymsg >/dev/null 2>&1; then
+  best_tty="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null \
+              | sort -rn | head -n1 | awk '{print $2}')"
+  if [[ -n "$best_tty" ]] && sway-tty-window --is-focused "$best_tty"; then
+    looking_at_it=1
+  fi
+fi
+
+(( looking_at_it )) && exit 0
+
+setsid -f claude-notify-and-goto "$target" "Claude Code finished" "Session: $sname  window $widx" \
+  < /dev/null > /dev/null 2>&1 &
+
+exit 0
