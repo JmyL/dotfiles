@@ -58,6 +58,12 @@ exec swayidle -w \
          timeout 1800 '~/.local/bin/idle-inhibited || systemctl suspend' \
          before-sleep '$lock'
 
+### Bar
+#
+bar {
+    swaybar_command waybar
+}
+
 ### Input configuration
 #
 # Example configuration:
