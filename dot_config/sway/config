@@ -291,14 +291,6 @@ bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
     # Lock screen
     bindsym $mod+Shift+x exec $lock
 
-#
-# Status Bar:
-#
-# Read `man 5 sway-bar` for more information about this section.
-bar {
-    swaybar_command waybar
-}
-
 include /etc/sway/config.d/*
 
 include ~/.config/sway/config.d/*.conf
