@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from pathlib import Path
 
 import gi
 
@@ -13,6 +14,7 @@ from gi.repository import Gio, Gtk  # noqa: E402
 
 ICON_LOOKUP_SIZE = 32
 FALLBACK_ICON_NAMES = ["application-x-executable", "application-default-icon"]
+BLANK_ICON_PATH = Path.home() / ".config" / "waybar" / "blank.png"
 
 
 def focused_identity() -> tuple[str | None, str | None]:
@@ -76,7 +78,11 @@ def main() -> None:
     app_id, wm_class = focused_identity()
 
     if not app_id and not wm_class:
-        return  # focused workspace has no window; leave the icon blank
+        # Focused workspace has no window. Waybar's image module keeps
+        # showing the last icon if exec prints nothing, so we must point
+        # it at an actually-blank image rather than staying silent.
+        print(BLANK_ICON_PATH)
+        return
 
     info = find_app_info([app_id, wm_class])
     path = icon_path(info.get_icon(), theme) if info else None
