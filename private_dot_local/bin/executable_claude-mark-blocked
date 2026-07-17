@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Notification hook (matcher: permission_prompt|elicitation_dialog): marks
+# this pane as blocked (waiting on the user) and notifies if not being
+# watched, mirroring claude-stop-notify's done handling.
+set -uo pipefail
+
+payload="$(cat)"
+
+[[ -n "${TMUX:-}" ]] || exit 0
+
+source "$HOME/.local/bin/claude-attention-common"
+claude_attention_locate
+
+if (( looking_at_it )); then
+  tmux set-option -p -u -t "$target" @ai_state
+  exit 0
+fi
+
+tmux set-option -p -t "$target" @ai_state blocked
+
+message="$(jq -r '.message // "Claude needs your input"' <<<"$payload" 2>/dev/null)"
+folder="$(basename "$(jq -r '.cwd // empty' <<<"$payload" 2>/dev/null)")"
+title="${folder:-$sname}"
+
+setsid -f claude-notify-and-goto "$target" "$title" "$message" \
+  < /dev/null > /dev/null 2>&1 &
+
+exit 0

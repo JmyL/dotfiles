@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Fired by the tmux pane-exited hook. Clears all ai-cli markers once the
+# program running in the pane exits, so a plain shell left behind doesn't
+# keep showing stale state/coloring.
+set -uo pipefail
+
+pane="${1:-}"
+[[ -n "$pane" ]] || exit 0
+
+tmux set-option -p -u -t "$pane" @ai_cli 2>/dev/null || true
+tmux set-option -p -u -t "$pane" @ai_state 2>/dev/null || true
+tmux set-option -p -u -t "$pane" @ai_notif_id 2>/dev/null || true
+
+exit 0

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Fired by the tmux pane-focus-out hook. Notifies when focus moves away from
-# a pane running claude to another pane, but only within the SAME session
-# (plain pane/window navigation) - switching to a different tmux session
-# entirely is a deliberate context switch the user is already aware of, so
-# that case is skipped.
+# a pane running any ai cli (marked via @ai_cli, set by the `ai` wrapper) to
+# another pane, but only within the SAME session (plain pane/window
+# navigation) - switching to a different tmux session entirely is a
+# deliberate context switch the user is already aware of, so that case is
+# skipped.
 set -uo pipefail
 
-cmd="${1:-}" sid="${2:-}" sname="${3:-}" widx="${4:-}" pidx="${5:-}"
+ai_cli="${1:-}" cmd="${2:-}" sid="${3:-}" sname="${4:-}" widx="${5:-}" pidx="${6:-}"
 
-[[ "$cmd" == "claude" ]] || exit 0
+[[ -n "$ai_cli" ]] || exit 0
 [[ -n "$sid" && -n "$sname" ]] || exit 0
 
 current_session="$(tmux list-clients -F '#{client_activity} #{session_name}' 2>/dev/null \
@@ -17,7 +18,7 @@ current_session="$(tmux list-clients -F '#{client_activity} #{session_name}' 2>/
 
 target="${sid}:${widx}.${pidx}"
 
-setsid -f claude-notify-and-goto "$target" "Claude" "Left the Claude pane (${sname}:${widx}.${pidx})" \
+setsid -f claude-notify-and-goto "$target" "Claude" "Left the ${cmd} pane (${sname}:${widx}.${pidx})" \
   < /dev/null > /dev/null 2>&1 &
 
 exit 0

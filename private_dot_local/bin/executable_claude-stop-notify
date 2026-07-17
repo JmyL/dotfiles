@@ -5,21 +5,15 @@ payload="$(cat)"
 
 [[ -n "${TMUX:-}" ]] || exit 0
 
-IFS=$'\t' read -r sid sname widx pidx pane_active window_active < <(
-  tmux display-message -p $'#{session_id}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{pane_active}\t#{window_active}'
-)
-target="${sid}:${widx}.${pidx}"
+source "$HOME/.local/bin/claude-attention-common"
+claude_attention_locate
 
-looking_at_it=0
-if [[ "$pane_active" == 1 && "$window_active" == 1 ]] && command -v swaymsg >/dev/null 2>&1; then
-  best_tty="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null \
-              | sort -rn | head -n1 | awk '{print $2}')"
-  if [[ -n "$best_tty" ]] && sway-tty-window --is-focused "$best_tty"; then
-    looking_at_it=1
-  fi
+if (( looking_at_it )); then
+  tmux set-option -p -u -t "$target" @ai_state
+  exit 0
 fi
 
-(( looking_at_it )) && exit 0
+tmux set-option -p -t "$target" @ai_state done
 
 info_json="$(printf '%s' "$payload" | claude-session-info 2>/dev/null)"
 folder="$(jq -r '.folder // empty' <<<"$info_json" 2>/dev/null)"
