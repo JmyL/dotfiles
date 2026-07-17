@@ -75,6 +75,9 @@ def main() -> None:
     theme = Gtk.IconTheme.get_default()
     app_id, wm_class = focused_identity()
 
+    if not app_id and not wm_class:
+        return  # focused workspace has no window; leave the icon blank
+
     info = find_app_info([app_id, wm_class])
     path = icon_path(info.get_icon(), theme) if info else None
 
