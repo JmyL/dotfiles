@@ -60,6 +60,10 @@ exec swayidle -w \
 
 ### Bar
 #
+# Signals waybar's window-icon module to redraw the instant focus changes,
+# instead of it polling every second.
+exec_always ~/.local/bin/waybar-window-focus-watcher
+
 bar {
     swaybar_command waybar
 }

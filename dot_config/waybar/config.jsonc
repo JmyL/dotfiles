@@ -90,7 +90,8 @@
 	"image#window-icon": {
 		"exec": "$HOME/.local/bin/waybar-window-icon",
 		"size": 18,
-		"interval": 1
+		"interval": "once",
+		"signal": 9
 	},
 	"sway/window": {
 		"format": "{title}",
