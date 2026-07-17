@@ -20,9 +20,10 @@ BUS_NAME = "org.freedesktop.Notifications"
 OBJ_PATH = "/org/freedesktop/Notifications"
 IFACE = "org.freedesktop.Notifications"
 # "default" is invoked by clicking the notification body itself (per the
-# freedesktop spec). Confirmed working via a real click against this
-# swaync build, so no separate visible button is needed.
-ACTION_KEYS = ("default",)
+# freedesktop spec). "goto" is a normal labeled action button: swaync-client
+# -a only invokes labeled actions, never the bodiless "default" one, so it's
+# needed to make the sway keybind (mod+Return) trigger this.
+ACTION_KEYS = ("default", "goto")
 MAX_WAIT_SECONDS = 6 * 3600
 
 
@@ -66,7 +67,7 @@ def main():
                 "",
                 summary,
                 body,
-                ["default", ""],
+                ["goto", "Go to pane", "default", ""],
                 {},
                 0,
             ),
