@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+if command -v claude >/dev/null 2>&1; then exec claude "$@"; else exec pi "$@"; fi
