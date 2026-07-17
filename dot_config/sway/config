@@ -292,6 +292,8 @@ bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
     bindsym $mod+n exec swaync-client -t -sw
     # Clear all notifications
     bindsym $mod+Shift+n exec swaync-client -C
+    # Activate (click) the latest notification's default action
+    bindsym $mod+Return exec swaync-client -a 0 -sw
     # Show clipboard history
     bindsym $mod+Shift+v exec cliphist list | fuzzel --dmenu --width 85 --prompt 'Clipboard> ' | cliphist decode | wl-copy
     # Toggle idle/sleep inhibitor
