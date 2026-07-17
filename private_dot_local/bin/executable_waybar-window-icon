@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""Print the icon file path for the currently focused sway window."""
+
+from __future__ import annotations
+
+import json
+import subprocess
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gio, Gtk  # noqa: E402
+
+ICON_LOOKUP_SIZE = 32
+FALLBACK_ICON_NAMES = ["application-x-executable", "application-default-icon"]
+
+
+def focused_identity() -> tuple[str | None, str | None]:
+    try:
+        tree = json.loads(subprocess.run(
+            ["swaymsg", "-t", "get_tree"], check=True, text=True, capture_output=True
+        ).stdout)
+    except (subprocess.CalledProcessError, OSError, json.JSONDecodeError):
+        return None, None
+
+    stack = [tree]
+    while stack:
+        node = stack.pop()
+        if node.get("focused"):
+            props = node.get("window_properties") or {}
+            return node.get("app_id"), props.get("class") or props.get("instance")
+        stack.extend(node.get("nodes", []))
+        stack.extend(node.get("floating_nodes", []))
+    return None, None
+
+
+def find_app_info(identities: list[str]) -> Gio.AppInfo | None:
+    wanted = {identity.lower() for identity in identities if identity}
+    if not wanted:
+        return None
+
+    infos = Gio.AppInfo.get_all()
+
+    for info in infos:
+        app_id = info.get_id() or ""
+        if app_id.endswith(".desktop"):
+            app_id = app_id[: -len(".desktop")]
+        if app_id.lower() in wanted:
+            return info
+
+    for info in infos:
+        wm_class = info.get_startup_wm_class() if hasattr(info, "get_startup_wm_class") else None
+        if wm_class and wm_class.lower() in wanted:
+            return info
+
+    # Reverse-DNS desktop IDs (e.g. org.gnome.Ptyxis) vs. short app_ids (ptyxis)
+    for info in infos:
+        app_id = info.get_id() or ""
+        if app_id.endswith(".desktop"):
+            app_id = app_id[: -len(".desktop")]
+        if "." in app_id and app_id.rsplit(".", 1)[-1].lower() in wanted:
+            return info
+
+    return None
+
+
+def icon_path(icon: Gio.Icon | None, theme: Gtk.IconTheme) -> str | None:
+    if icon is None:
+        return None
+    icon_info = theme.lookup_by_gicon(icon, ICON_LOOKUP_SIZE, 0)
+    return icon_info.get_filename() if icon_info else None
+
+
+def main() -> None:
+    theme = Gtk.IconTheme.get_default()
+    app_id, wm_class = focused_identity()
+
+    info = find_app_info([app_id, wm_class])
+    path = icon_path(info.get_icon(), theme) if info else None
+
+    if path is None:
+        for name in FALLBACK_ICON_NAMES:
+            icon_info = theme.lookup_icon(name, ICON_LOOKUP_SIZE, 0)
+            if icon_info:
+                path = icon_info.get_filename()
+                break
+
+    if path:
+        print(path)
+
+
+if __name__ == "__main__":
+    main()

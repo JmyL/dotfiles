@@ -8,6 +8,7 @@
 	// Choose the order of the modules
 	"modules-left": [
 		"sway/workspaces",
+		"image#window-icon",
 		"sway/window",
 		"sway/mode",
 		"sway/scratchpad"
@@ -85,6 +86,11 @@
 	},
 	"sway/mode": {
 		"format": "<span style=\"italic\">{}</span>"
+	},
+	"image#window-icon": {
+		"exec": "$HOME/.local/bin/waybar-window-icon",
+		"size": 18,
+		"interval": 1
 	},
 	"sway/window": {
 		"format": "{title}",
