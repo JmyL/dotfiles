@@ -243,7 +243,7 @@ mode "resize" {
 bindsym $mod+r mode "resize"
 
 # Screenshot mode: captures go to the clipboard by default.
-set $screenshot_mode Screenshot: [a]rea [w]indow [f]ull [e]dit [s]ave
+set $screenshot_mode Screenshot: [a]rea [w]indow [f]ull [e]dit [s]ave [q]uit
 mode "$screenshot_mode" {
     bindsym a exec grimshot copy area
     bindsym w exec grimshot copy window
@@ -252,16 +252,18 @@ mode "$screenshot_mode" {
     bindsym s mode "default", exec ~/.local/bin/save-screenshot
     bindsym Return mode "default"
     bindsym Escape mode "default"
+    bindsym q mode "default"
 }
 bindsym $mod+c mode "$screenshot_mode"
 
 # Screen recording modes: recordings go to ~/Videos/Recordings.
-set $recording_start_mode Recording: [a]rea [f]ull
+set $recording_start_mode Recording: [a]rea [f]ull [q]uit
 mode "$recording_start_mode" {
     bindsym a mode "default", exec ~/.local/bin/sway-recording area
     bindsym f mode "default", exec ~/.local/bin/sway-recording full
     bindsym Return mode "default"
     bindsym Escape mode "default"
+    bindsym q mode "default"
 }
 bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
 #
