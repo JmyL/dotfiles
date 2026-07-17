@@ -24,11 +24,13 @@ IFACE = "org.freedesktop.Notifications"
 # -a only invokes labeled actions, never the bodiless "default" one, so it's
 # needed to make the sway keybind (mod+Return) trigger this.
 ACTION_KEYS = ("default", "goto")
-# Critical urgency stops swaync from auto-hiding the popup after its default
-# ~10s timeout. Without this, swaync-client -a can't reach the notification
-# once it hides even though it's still counted (still in the control
-# center) - it only acts on currently-visible popups.
-URGENCY_CRITICAL = 2
+# Matches browser-notification convention (~10s, normal urgency) instead of
+# staying up forever. Trade-off: swaync-client -a (the mod+Return keybind)
+# can only reach a still-visible popup, so after it auto-hides the keybind
+# can no longer jump to the pane - clicking the popup directly while it's
+# visible, or finding it in the control center, still works.
+URGENCY_NORMAL = 1
+EXPIRE_TIMEOUT_MS = 10_000
 MAX_WAIT_SECONDS = 6 * 3600
 
 
@@ -73,8 +75,8 @@ def main():
                 summary,
                 body,
                 ["goto", "Go to pane", "default", ""],
-                {"urgency": GLib.Variant("y", URGENCY_CRITICAL)},
-                0,
+                {"urgency": GLib.Variant("y", URGENCY_NORMAL)},
+                EXPIRE_TIMEOUT_MS,
             ),
         ),
         GLib.VariantType("(u)"),
