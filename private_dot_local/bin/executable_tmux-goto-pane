@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+if [[ -n "${SYSTEM_DEV_TOOLBOX:-}" && ! -r /run/.containerenv && -z "${TMUX_GOTO_PANE_TOOLBOX_ENTRY:-}" ]]; then
+  export TMUX_GOTO_PANE_TOOLBOX_ENTRY=1
+  exec dev-launcher tmux-goto-pane "$@"
+fi
+
 input_target="${1:?usage: tmux-goto-pane SESSION_ID:WINDOW.PANE|PANE_ID}"
 
 if ! target="$(dev-launcher tmux display-message -p -t "$input_target" '#{session_id}:#{window_index}.#{pane_index}' 2>/dev/null)"; then
