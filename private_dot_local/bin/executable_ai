@@ -23,4 +23,8 @@ if (( has_continue )) && command -v codex >/dev/null 2>&1; then
   exec codex resume --last "${args[@]}"
 fi
 
+if command -v codex >/dev/null 2>&1; then
+  exec codex "$@"
+fi
+
 exec pi "$@"
