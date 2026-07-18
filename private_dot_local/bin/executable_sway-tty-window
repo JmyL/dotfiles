@@ -6,6 +6,7 @@ Usage:
   sway-tty-window --is-focused <tty> exit 0 only if that window is focused
 """
 import json
+import os
 import subprocess
 import sys
 
@@ -21,8 +22,9 @@ def leaf_windows(node, acc):
 
 
 def proc_table():
+    ps_bin = "/run/host/usr/bin/ps" if os.path.exists("/run/host/usr/bin/ps") else "ps"
     out = subprocess.run(
-        ["ps", "-eo", "pid=,ppid=,tty="], text=True, capture_output=True
+        [ps_bin, "-eo", "pid=,ppid=,tty="], text=True, capture_output=True
     ).stdout
     children = {}
     ttys = {}

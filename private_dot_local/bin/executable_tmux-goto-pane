@@ -32,10 +32,6 @@ fi
 focus_target() {
   local tty="$1" con_id="" switched_sid=""
 
-  (( window_ok )) && dev-launcher tmux select-window -t "$sid:$widx" 2>/dev/null || true
-  (( pane_ok )) && dev-launcher tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
-
-  con_id="$(sway-tty-window "$tty" 2>/dev/null)" || return 1
   dev-launcher tmux switch-client -c "$tty" -t "$sid" 2>/dev/null || return 1
 
   switched_sid="$(
@@ -48,11 +44,20 @@ focus_target() {
 
   (( window_ok )) && dev-launcher tmux select-window -t "$sid:$widx" 2>/dev/null || true
   (( pane_ok )) && dev-launcher tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
-  swaymsg-any "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+
+  if con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
+    swaymsg-any "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+  fi
   return 0
 }
 
-clients="$(dev-launcher tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
+current_tty="$(dev-launcher tmux display-message -p '#{client_tty}' 2>/dev/null || true)"
+clients="$(
+  {
+    [[ -n "$current_tty" ]] && printf '9999999999 %s\n' "$current_tty"
+    dev-launcher tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null || true
+  } | sort -rn | awk '!seen[$2]++'
+)"
 
 if [[ -n "$clients" ]]; then
   while IFS= read -r line; do
