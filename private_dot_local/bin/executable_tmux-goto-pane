@@ -3,6 +3,17 @@ set -uo pipefail
 
 input_target="${1:?usage: tmux-goto-pane SESSION_ID:WINDOW.PANE|PANE_ID}"
 
+focus_con_id() {
+  local con_id="$1"
+
+  if [[ -r /run/.containerenv ]] && command -v flatpak-spawn >/dev/null 2>&1; then
+    flatpak-spawn --host swaymsg "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+    return
+  fi
+
+  swaymsg "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+}
+
 skip_ttys=()
 
 for _ in $(seq 1 20); do
@@ -31,7 +42,7 @@ for _ in $(seq 1 20); do
   [[ -n "$tty" ]] || exit 0
 
   if con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
-    swaymsg "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+    focus_con_id "$con_id"
     exit 0
   fi
 
