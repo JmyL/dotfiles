@@ -39,6 +39,9 @@ def main():
             result["action"] = True
             loop.quit()
         elif member == "NotificationClosed":
+            reason = args[1] if len(args) > 1 else None
+            if reason == 1:
+                return
             loop.quit()
 
     bus.signal_subscribe(
