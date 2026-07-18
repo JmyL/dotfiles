@@ -27,7 +27,7 @@ WAYBAR_URGENT_CSS = """window#waybar {
 
 
 def khal_command() -> list[str]:
-    return [str(Path.home() / ".local/bin/khal")]
+    return [str(Path.home() / ".local/bin/dev-launcher"), "/usr/bin/khal"]
 
 
 def khal_events() -> list[dict[str, str]]:

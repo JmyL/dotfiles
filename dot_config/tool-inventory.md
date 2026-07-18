@@ -44,7 +44,7 @@ Config: `~/.bashrc`, `~/.bashrc.d/browser`
 - `zoxide` is initialized with `zoxide init bash`.
 - `direnv` hook exists but is currently commented out.
 - `fcitx5` environment variables are exported for input method support.
-- `toolbox` is referenced by alias `dv='toolbox enter f44'` on Fedora.
+- `toolbox` is referenced by `dv` and `dev-launcher` through `SYSTEM_DEV_TOOLBOX` on Fedora.
 - `dnf` is referenced by alias `dnf-backup` on Fedora.
 - `sesh`, `tmuxinator`, and `fzf` are referenced by tmux/session aliases.
 

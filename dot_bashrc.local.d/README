@@ -9,7 +9,7 @@
 #
 # with:
 #
-#   export SYSTEM_DEV_TOOLBOX=f44
+#   export SYSTEM_DEV_TOOLBOX=<toolbox-name>
 #
 # Do not set this inside toolbox containers or on Ubuntu unless you explicitly
 # want dev-launcher to route commands through toolbox.

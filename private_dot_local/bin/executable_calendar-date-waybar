@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def khal_command() -> list[str]:
-    return [str(Path.home() / ".local/bin/khal")]
+    return [str(Path.home() / ".local/bin/dev-launcher"), "/usr/bin/khal"]
 
 
 def event_minutes(start_time: str) -> int | None:
