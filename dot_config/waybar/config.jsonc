@@ -151,7 +151,7 @@
 		"return-type": "json",
 		"interval": 30,
 		"tooltip": true,
-		"on-click": "kitty --class calendar-popup -e $HOME/.local/bin/dev-launcher /usr/bin/ikhal"
+		"on-click": "kitty --class calendar-popup -e sh -lc 'exec \"$HOME/.local/bin/dev-launcher\" /usr/bin/ikhal'"
 	},
 	"tray": {
 		// "icon-size": 21,
