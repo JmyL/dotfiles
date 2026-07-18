@@ -140,14 +140,17 @@ PY
     fi
 
     if command -v wl-copy >/dev/null 2>&1; then
-        printf '%s' "$text" | wl-copy || true
+        printf '%s' "$text" | wl-copy
+    else
+        notify -u critical "Dictation unavailable" "Install wl-copy to paste dictation text."
+        exit 127
     fi
 
     if command -v wtype >/dev/null 2>&1; then
-        wtype "$text"
+        wtype -M ctrl -k v
         notify "Dictation inserted"
     else
-        notify -u critical "Dictation copied only" "Install wtype in the toolbox to type into the focused window."
+        notify -u critical "Dictation copied only" "Install wtype to paste into the focused window."
         exit 127
     fi
 }
