@@ -41,9 +41,98 @@ title="${folder:-$sname}"
 message="${message:-${agent^} needs your input}"
 
 # PermissionRequest also fires for auto-review/policy checks that do not require
-# user input. Keep the tmux blocked marker, but do not send desktop notifications
-# unless explicitly opted in.
-[[ "${AI_NOTIFY_PERMISSION_REQUEST:-0}" == "1" ]] || exit 0
+# user input. Keep the tmux blocked marker, but notify only when the request is
+# routed to the user, or when the reviewer cannot be determined.
+should_notify_permission_request() {
+  case "${AI_NOTIFY_PERMISSION_REQUEST:-auto}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    0|false|FALSE|no|NO|off|OFF) return 1 ;;
+  esac
+
+  printf '%s' "$payload" | python3 -c '
+import json
+import os
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    payload = {}
+
+reviewer_keys = {"approvals_reviewer", "approval_reviewer", "reviewer"}
+user_required_keys = {
+    "needs_user_input",
+    "requires_user_input",
+    "user_input_required",
+    "needs_user_approval",
+    "requires_user_approval",
+    "user_approval_required",
+}
+
+def walk(obj):
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            yield str(key), value
+            yield from walk(value)
+    elif isinstance(obj, list):
+        for value in obj:
+            yield from walk(value)
+
+def normalize_reviewer(value):
+    return value.lower().replace("-", "_")
+
+def find_reviewer(obj):
+    for key, value in walk(obj):
+        if key.lower() in reviewer_keys and isinstance(value, str):
+            return normalize_reviewer(value)
+    return ""
+
+def has_user_required_flag(obj):
+    for key, value in walk(obj):
+        if key.lower() in user_required_keys and value is True:
+            return True
+    return False
+
+def read_transcript_sample(path, limit=262144):
+    try:
+        with open(path, "rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(0)
+            head = handle.read(limit)
+            if size <= limit * 2:
+                tail = b""
+            else:
+                handle.seek(max(0, size - limit))
+                tail = handle.read(limit)
+            return (head + b"\n" + tail).decode("utf-8", "replace").splitlines()
+    except Exception:
+        return []
+
+reviewer = find_reviewer(payload)
+if not reviewer:
+    transcript_path = payload.get("transcript_path")
+    if isinstance(transcript_path, str) and transcript_path:
+        for line in reversed(read_transcript_sample(transcript_path)):
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            reviewer = find_reviewer(item)
+            if reviewer:
+                break
+
+if reviewer == "auto_review":
+    sys.exit(1)
+if reviewer == "user" or has_user_required_flag(payload):
+    sys.exit(0)
+
+# Unknown reviewer: prefer notifying, because a missed human approval blocks work.
+sys.exit(0)
+' 2>/dev/null
+}
+
+should_notify_permission_request || exit 0
 
 notify_key="$(printf '%s' "$payload" | TARGET="$target" AGENT="$agent" python3 -c '
 import hashlib, json, os, re, sys
