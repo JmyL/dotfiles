@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+target="${1:?usage: ai-goto-target TARGET}"
+target_sway_con=""
+
+focus_con_id() {
+  local con_id="$1"
+
+  if [[ -r /run/.containerenv ]] && command -v flatpak-spawn >/dev/null 2>&1; then
+    flatpak-spawn --host swaymsg "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+    return
+  fi
+
+  swaymsg "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+}
+
+IFS=, read -r -a segments <<< "$target"
+for segment in "${segments[@]}"; do
+  case "$segment" in
+    sway-window:*)
+      target_sway_con="${segment#sway-window:}"
+      focus_con_id "$target_sway_con"
+      ;;
+    sway-con:*)
+      target_sway_con="${segment#sway-con:}"
+      focus_con_id "$target_sway_con"
+      ;;
+    tmux:*)
+      pane="${segment#tmux:}"
+      if [[ -n "$target_sway_con" ]]; then
+        TMUX_GOTO_PANE_TARGET_SWAY_CON="$target_sway_con" dev-launcher tmux-goto-pane-worker "$pane" >/dev/null 2>&1 || true
+      else
+        dev-launcher tmux-goto-pane-worker "$pane" >/dev/null 2>&1 || tmux-goto-pane "$pane" >/dev/null 2>&1 || true
+      fi
+      ;;
+    *)
+      tmux-goto-pane "$segment" >/dev/null 2>&1 || true
+      ;;
+  esac
+done

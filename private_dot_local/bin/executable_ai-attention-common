@@ -1,23 +1,59 @@
 #!/usr/bin/env bash
-# Shared tmux attention helpers for AI-agent hooks. Sourced, not run directly.
+# Shared attention helpers for AI-agent hooks. Sourced, not run directly.
 
-# Sets: sid, sname, target, looking_at_it
+# Sets: sid, sname, target, tmux_target, looking_at_it, has_tmux_target
 ai_attention_locate() {
-  local pane_active window_active
-  IFS=$'	' read -r sid sname pane_active window_active < <(
-    dev-launcher tmux display-message -p -t "$TMUX_PANE" $'#{session_id}	#{session_name}	#{pane_active}	#{window_active}'
-  )
-  target="$TMUX_PANE"
+  local pane_active=0 window_active=0 con_id=""
 
+  sid=""
+  sname="${PWD##*/}"
+  target=""
+  tmux_target=""
   looking_at_it=0
-  if [[ "$pane_active" == 1 && "$window_active" == 1 ]] && command -v sway-tty-window >/dev/null 2>&1; then
-    local tty
-    while IFS= read -r tty; do
-      [[ -n "$tty" ]] || continue
-      if sway-tty-window --is-focused "$tty" 2>/dev/null; then
-        looking_at_it=1
-        break
-      fi
-    done < <(dev-launcher tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null               | sort -rn | awk '{print $2}')
+  has_tmux_target=0
+
+  if [[ -n "${TMUX:-}" && -n "${TMUX_PANE:-}" ]]; then
+    has_tmux_target=1
+    tmux_target="$TMUX_PANE"
+    IFS=$'\t' read -r sid sname pane_active window_active < <(
+      dev-launcher tmux display-message -p -t "$tmux_target" $'#{session_id}\t#{session_name}\t#{pane_active}\t#{window_active}' 2>/dev/null
+    )
+    con_id="$(tmux_sway_con_id "$sid" 2>/dev/null || true)"
+    [[ -n "$con_id" ]] || con_id="$(sway-process-window "$$" 2>/dev/null || true)"
+
+    if [[ -n "$con_id" ]]; then
+      target="sway-window:$con_id,tmux:$tmux_target"
+    else
+      target="tmux:$tmux_target"
+    fi
+
+    if [[ "$pane_active" == 1 && "$window_active" == 1 ]] && [[ -n "$con_id" ]] && sway-window-focused "$con_id"; then
+      looking_at_it=1
+    fi
+    return
   fi
+
+  con_id="$(sway-process-window "$$" 2>/dev/null || true)"
+  if [[ -n "$con_id" ]]; then
+    target="sway-window:$con_id"
+    if sway-window-focused "$con_id"; then
+      looking_at_it=1
+    fi
+  fi
+}
+
+tmux_sway_con_id() {
+  local session_id="$1" line client_pid con_id
+
+  [[ -n "$session_id" ]] || return 1
+  while IFS=$'\t' read -r _activity _tty client_pid; do
+    [[ -n "$client_pid" ]] || continue
+    con_id="$(sway-process-window "$client_pid" 2>/dev/null || true)"
+    if [[ -n "$con_id" ]]; then
+      printf '%s\n' "$con_id"
+      return 0
+    fi
+  done < <(dev-launcher tmux list-clients -t "$session_id" -F '#{client_activity}	#{client_tty}	#{client_pid}' 2>/dev/null | sort -rn)
+
+  return 1
 }

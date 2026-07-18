@@ -46,11 +46,23 @@ focus_target() {
   if should_skip_client_pid "$client_pid"; then
     return 1
   fi
+  if ! matches_target_sway_con "$client_pid"; then
+    return 1
+  fi
 
   (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
   (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
   printf '%s\t%s\n' "$tty" "$client_pid"
   return 0
+}
+
+matches_target_sway_con() {
+  local client_pid="$1" expected_con="${TMUX_GOTO_PANE_TARGET_SWAY_CON:-}" actual_con=""
+
+  [[ -n "$expected_con" ]] || return 0
+  [[ -n "$client_pid" ]] || return 1
+  actual_con="$(sway-process-window "$client_pid" 2>/dev/null || true)"
+  [[ "$actual_con" == "$expected_con" ]]
 }
 
 should_skip_tty() {
