@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Detect Codex TUI screens that wait for a local choice but do not emit hooks.
+set -uo pipefail
+
+state_dir="${XDG_RUNTIME_DIR:-/tmp}/ai-hook-notify"
+tmux_cmd=("${HOME:-/var/home/sungsik}/.local/bin/dev-launcher" tmux)
+mkdir -p "$state_dir" 2>/dev/null || true
+
+notify_once() {
+  local pane="$1" title="$2" body="$3" now last_file last
+
+  last_file="$state_dir/screen-blocked-${pane#%}"
+  now="$(date +%s)"
+  if [[ -f "$last_file" ]]; then
+    last="$(cat "$last_file" 2>/dev/null || printf 0)"
+    if [[ "$last" =~ ^[0-9]+$ ]] && (( now - last < 60 )); then
+      return 0
+    fi
+  fi
+  printf '%s\n' "$now" > "$last_file" 2>/dev/null || true
+  setsid -f ai-notify-and-goto codex "tmux:$pane" "$title" "$body" < /dev/null > /dev/null 2>&1 &
+}
+
+screen_waits_for_choice() {
+  local screen="$1"
+
+  [[ "$screen" == *"Implement this plan?"* && "$screen" == *"Press enter to confirm or esc to go back"* ]] && return 0
+  [[ "$screen" == *"Questions "* && "$screen" == *"Press enter to confirm or esc to go back"* ]] && return 0
+  [[ "$screen" == *"Choose an action"* && "$screen" == *"Press enter to confirm or esc to go back"* ]] && return 0
+  return 1
+}
+
+while IFS=$'\t' read -r pane session command cwd title ai_cli ai_state screen_blocked pane_active window_active; do
+  [[ -n "$pane" && "$command" == "codex" && -n "$ai_cli" ]] || continue
+
+  screen="$("${tmux_cmd[@]}" capture-pane -ep -t "$pane" 2>/dev/null || true)"
+  if screen_waits_for_choice "$screen"; then
+    "${tmux_cmd[@]}" set-option -p -t "$pane" @ai_cli 1 2>/dev/null || true
+    "${tmux_cmd[@]}" set-option -p -t "$pane" @ai_state blocked 2>/dev/null || true
+    "${tmux_cmd[@]}" set-option -p -t "$pane" @ai_screen_blocked 1 2>/dev/null || true
+    if [[ "$pane_active" != 1 || "$window_active" != 1 ]]; then
+      notify_once "$pane" "${session:-Codex}" "Codex needs your input"
+    fi
+  elif [[ -n "$screen_blocked" ]]; then
+    "${tmux_cmd[@]}" set-option -p -u -t "$pane" @ai_screen_blocked 2>/dev/null || true
+    if [[ "$ai_state" == "blocked" ]]; then
+      "${tmux_cmd[@]}" set-option -p -t "$pane" @ai_state busy 2>/dev/null || true
+    fi
+  fi
+done < <(
+  "${tmux_cmd[@]}" list-panes -a -F '#{pane_id}	#{session_name}	#{pane_current_command}	#{pane_current_path}	#{pane_title}	#{@ai_cli}	#{@ai_state}	#{@ai_screen_blocked}	#{pane_active}	#{window_active}' 2>/dev/null
+)
+
+exit 0
