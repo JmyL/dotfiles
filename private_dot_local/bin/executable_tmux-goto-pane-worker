@@ -30,6 +30,10 @@ fi
 focus_target() {
   local tty="$1" switched_sid=""
 
+  if should_skip_tty "$tty"; then
+    return 1
+  fi
+
   tmux switch-client -c "$tty" -t "$sid" 2>/dev/null || return 1
 
   switched_sid="$(
@@ -44,6 +48,19 @@ focus_target() {
   (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
   printf '%s\n' "$tty"
   return 0
+}
+
+should_skip_tty() {
+  local tty="$1" tty_norm skip skip_norm
+
+  tty_norm="${tty#/dev/}"
+  IFS=: read -r -a skip_ttys <<< "${TMUX_GOTO_PANE_SKIP_TTYS:-}"
+  for skip in "${skip_ttys[@]}"; do
+    [[ -n "$skip" ]] || continue
+    skip_norm="${skip#/dev/}"
+    [[ "$tty_norm" == "$skip_norm" ]] && return 0
+  done
+  return 1
 }
 
 current_tty="$(tmux display-message -p '#{client_tty}' 2>/dev/null || true)"

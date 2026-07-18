@@ -6,12 +6,23 @@ if [[ $# -lt 1 ]]; then
   exit 2
 fi
 
+if [[ -z "${SYSTEM_DEV_TOOLBOX:-}" && -d "$HOME/.bashrc.local.d" ]]; then
+  for rc in "$HOME"/.bashrc.local.d/*; do
+    [[ -f "$rc" ]] && source "$rc"
+  done
+  unset rc
+fi
+
 if [[ -n "${SYSTEM_DEV_TOOLBOX:-}" && ! -r /run/.containerenv ]]; then
   if ! command -v toolbox >/dev/null 2>&1; then
     echo "dev-launcher: SYSTEM_DEV_TOOLBOX is set but toolbox is not available" >&2
     exit 127
   fi
-  exec toolbox run -c "$SYSTEM_DEV_TOOLBOX" "$@"
+  toolbox_env=(env "SYSTEM_DEV_TOOLBOX=$SYSTEM_DEV_TOOLBOX")
+  if [[ -v TMUX_GOTO_PANE_SKIP_TTYS ]]; then
+    toolbox_env+=("TMUX_GOTO_PANE_SKIP_TTYS=$TMUX_GOTO_PANE_SKIP_TTYS")
+  fi
+  exec toolbox run -c "$SYSTEM_DEV_TOOLBOX" "${toolbox_env[@]}" "$@"
 fi
 
 exec "$@"

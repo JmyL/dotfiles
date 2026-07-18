@@ -3,21 +3,39 @@ set -uo pipefail
 
 input_target="${1:?usage: tmux-goto-pane SESSION_ID:WINDOW.PANE|PANE_ID}"
 
-worker_output="$(dev-launcher tmux-goto-pane-worker "$input_target" 2>/dev/null)"
-status=$?
-if (( status == 1 )); then
-  notify-send -a "AI Agent" "Couldn't jump to pane" "That pane no longer exists." 2>/dev/null || true
-  exit 1
-elif (( status == 2 )); then
-  notify-send -a "AI Agent" "Couldn't jump to pane" "That session no longer exists." 2>/dev/null || true
-  exit 1
-elif (( status != 0 )); then
-  exit "$status"
-fi
+skip_ttys=()
 
-tty="$(printf '%s\n' "$worker_output" | tail -n1)"
-if [[ -n "$tty" ]] && con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
-  swaymsg "[con_id=$con_id] focus" >/dev/null 2>&1 || true
-fi
+for _ in $(seq 1 20); do
+  skip_env=""
+  for skipped_tty in "${skip_ttys[@]}"; do
+    if [[ -z "$skip_env" ]]; then
+      skip_env="$skipped_tty"
+    else
+      skip_env="$skip_env:$skipped_tty"
+    fi
+  done
+
+  worker_output="$(TMUX_GOTO_PANE_SKIP_TTYS="$skip_env" dev-launcher tmux-goto-pane-worker "$input_target" 2>/dev/null)"
+  status=$?
+  if (( status == 1 )); then
+    notify-send -a "AI Agent" "Couldn't jump to pane" "That pane no longer exists." 2>/dev/null || true
+    exit 1
+  elif (( status == 2 )); then
+    notify-send -a "AI Agent" "Couldn't jump to pane" "That session no longer exists." 2>/dev/null || true
+    exit 1
+  elif (( status != 0 )); then
+    exit "$status"
+  fi
+
+  tty="$(printf '%s\n' "$worker_output" | tail -n1)"
+  [[ -n "$tty" ]] || exit 0
+
+  if con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
+    swaymsg "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+    exit 0
+  fi
+
+  skip_ttys+=("$tty")
+done
 
 exit 0
