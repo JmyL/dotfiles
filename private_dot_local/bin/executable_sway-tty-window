@@ -7,8 +7,23 @@ Usage:
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
+
+
+def running_in_container():
+    return os.path.exists("/run/.containerenv")
+
+
+def reexec_on_host():
+    if not running_in_container() or os.environ.get("SWAY_TTY_WINDOW_HOST_ENTRY"):
+        return
+    if not shutil.which("flatpak-spawn"):
+        return
+    env = os.environ.copy()
+    env["SWAY_TTY_WINDOW_HOST_ENTRY"] = "1"
+    os.execvpe("flatpak-spawn", ["flatpak-spawn", "--host", "sway-tty-window", *sys.argv[1:]], env)
 
 
 def leaf_windows(node, acc):
@@ -55,6 +70,7 @@ def owning_con_id(target_tty, leaves, ttys, children):
 
 
 def main():
+    reexec_on_host()
     args = sys.argv[1:]
     is_focused_mode = args and args[0] == "--is-focused"
     if is_focused_mode:
@@ -65,7 +81,7 @@ def main():
 
     tree = json.loads(
         subprocess.run(
-            ["swaymsg-any", "-t", "get_tree"], text=True, capture_output=True
+            ["swaymsg", "-t", "get_tree"], text=True, capture_output=True
         ).stdout
     )
     leaves = leaf_windows(tree, [])

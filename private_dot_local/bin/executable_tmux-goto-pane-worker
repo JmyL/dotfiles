@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+input_target="${1:?usage: tmux-goto-pane-worker SESSION_ID:WINDOW.PANE|PANE_ID}"
+
+if ! target="$(tmux display-message -p -t "$input_target" '#{session_id}:#{window_index}.#{pane_index}' 2>/dev/null)"; then
+  exit 1
+fi
+
+sid="${target%%:*}"
+rest="${target#*:}"
+widx="${rest%%.*}"
+pidx="${rest#*.}"
+
+if ! tmux has-session -t "$sid" 2>/dev/null; then
+  exit 2
+fi
+
+sname="$(tmux display-message -p -t "$sid" '#{session_name}')"
+
+window_ok=0
+pane_ok=0
+if tmux list-windows -t "$sid" -F '#{window_index}' 2>/dev/null | grep -qx "$widx"; then
+  window_ok=1
+  if tmux list-panes -t "$sid:$widx" -F '#{pane_index}' 2>/dev/null | grep -qx "$pidx"; then
+    pane_ok=1
+  fi
+fi
+
+focus_target() {
+  local tty="$1" switched_sid=""
+
+  tmux switch-client -c "$tty" -t "$sid" 2>/dev/null || return 1
+
+  switched_sid="$(
+    tmux list-clients -F '#{client_tty} #{session_id}' 2>/dev/null |
+      awk -v tty="$tty" '$1 == tty { print $2; exit }'
+  )"
+  if [[ "$switched_sid" != "$sid" ]]; then
+    return 1
+  fi
+
+  (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
+  (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
+  printf '%s\n' "$tty"
+  return 0
+}
+
+current_tty="$(tmux display-message -p '#{client_tty}' 2>/dev/null || true)"
+clients="$(
+  {
+    [[ -n "$current_tty" ]] && printf '9999999999 %s\n' "$current_tty"
+    tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null || true
+  } | sort -rn | awk '!seen[$2]++'
+)"
+
+if [[ -n "$clients" ]]; then
+  while IFS= read -r line; do
+    tty="${line#* }"
+    [[ -n "$tty" ]] || continue
+    if focus_target "$tty"; then
+      exit 0
+    fi
+  done <<< "$clients"
+fi
+
+all_clients="$(tmux list-clients -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
+if [[ -n "$all_clients" ]]; then
+  while IFS= read -r line; do
+    tty="${line#* }"
+    [[ -n "$tty" ]] || continue
+    if focus_target "$tty"; then
+      exit 0
+    fi
+  done <<< "$all_clients"
+fi
+
+if command -v kitty >/dev/null 2>&1; then
+  setsid kitty -e dev-launcher sesh connect "$sname" < /dev/null > /dev/null 2>&1 &
+fi
+
+for _ in $(seq 1 50); do
+  clients="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
+  if [[ -n "$clients" ]]; then
+    while IFS= read -r line; do
+      tty="${line#* }"
+      [[ -n "$tty" ]] || continue
+      if focus_target "$tty"; then
+        exit 0
+      fi
+    done <<< "$clients"
+  fi
+  sleep 0.1
+done
+
+exit 0

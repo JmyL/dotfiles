@@ -1,104 +1,23 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-if [[ -n "${SYSTEM_DEV_TOOLBOX:-}" && ! -r /run/.containerenv && -z "${TMUX_GOTO_PANE_TOOLBOX_ENTRY:-}" ]]; then
-  export TMUX_GOTO_PANE_TOOLBOX_ENTRY=1
-  exec dev-launcher tmux-goto-pane "$@"
-fi
-
 input_target="${1:?usage: tmux-goto-pane SESSION_ID:WINDOW.PANE|PANE_ID}"
 
-if ! target="$(dev-launcher tmux display-message -p -t "$input_target" '#{session_id}:#{window_index}.#{pane_index}' 2>/dev/null)"; then
+worker_output="$(dev-launcher tmux-goto-pane-worker "$input_target" 2>/dev/null)"
+status=$?
+if (( status == 1 )); then
   notify-send -a "AI Agent" "Couldn't jump to pane" "That pane no longer exists." 2>/dev/null || true
   exit 1
-fi
-
-sid="${target%%:*}"
-rest="${target#*:}"
-widx="${rest%%.*}"
-pidx="${rest#*.}"
-
-if ! dev-launcher tmux has-session -t "$sid" 2>/dev/null; then
+elif (( status == 2 )); then
   notify-send -a "AI Agent" "Couldn't jump to pane" "That session no longer exists." 2>/dev/null || true
   exit 1
+elif (( status != 0 )); then
+  exit "$status"
 fi
 
-sname="$(dev-launcher tmux display-message -p -t "$sid" '#{session_name}')"
-
-window_ok=0
-pane_ok=0
-if dev-launcher tmux list-windows -t "$sid" -F '#{window_index}' 2>/dev/null | grep -qx "$widx"; then
-  window_ok=1
-  if dev-launcher tmux list-panes -t "$sid:$widx" -F '#{pane_index}' 2>/dev/null | grep -qx "$pidx"; then
-    pane_ok=1
-  fi
+tty="$(printf '%s\n' "$worker_output" | tail -n1)"
+if [[ -n "$tty" ]] && con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
+  swaymsg "[con_id=$con_id] focus" >/dev/null 2>&1 || true
 fi
-
-focus_target() {
-  local tty="$1" con_id="" switched_sid=""
-
-  dev-launcher tmux switch-client -c "$tty" -t "$sid" 2>/dev/null || return 1
-
-  switched_sid="$(
-    dev-launcher tmux list-clients -F '#{client_tty} #{session_id}' 2>/dev/null |
-      awk -v tty="$tty" '$1 == tty { print $2; exit }'
-  )"
-  if [[ "$switched_sid" != "$sid" ]]; then
-    return 1
-  fi
-
-  (( window_ok )) && dev-launcher tmux select-window -t "$sid:$widx" 2>/dev/null || true
-  (( pane_ok )) && dev-launcher tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
-
-  if con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
-    swaymsg-any "[con_id=$con_id] focus" >/dev/null 2>&1 || true
-  fi
-  return 0
-}
-
-current_tty="$(dev-launcher tmux display-message -p '#{client_tty}' 2>/dev/null || true)"
-clients="$(
-  {
-    [[ -n "$current_tty" ]] && printf '9999999999 %s\n' "$current_tty"
-    dev-launcher tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null || true
-  } | sort -rn | awk '!seen[$2]++'
-)"
-
-if [[ -n "$clients" ]]; then
-  while IFS= read -r line; do
-    tty="${line#* }"
-    [[ -n "$tty" ]] || continue
-    if focus_target "$tty"; then
-      exit 0
-    fi
-  done <<< "$clients"
-fi
-
-all_clients="$(dev-launcher tmux list-clients -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
-if [[ -n "$all_clients" ]]; then
-  while IFS= read -r line; do
-    tty="${line#* }"
-    [[ -n "$tty" ]] || continue
-    if focus_target "$tty"; then
-      exit 0
-    fi
-  done <<< "$all_clients"
-fi
-
-setsid kitty -e dev-launcher sesh connect "$sname" < /dev/null > /dev/null 2>&1 &
-
-for _ in $(seq 1 50); do
-  clients="$(dev-launcher tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
-  if [[ -n "$clients" ]]; then
-    while IFS= read -r line; do
-      tty="${line#* }"
-      [[ -n "$tty" ]] || continue
-      if focus_target "$tty"; then
-        exit 0
-      fi
-    done <<< "$clients"
-  fi
-  sleep 0.1
-done
 
 exit 0
