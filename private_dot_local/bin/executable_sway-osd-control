@@ -15,6 +15,16 @@ play_sound() {
     fi
 }
 
+show_message() {
+    local message="${1:?missing message}"
+    local icon="${2:-dialog-information-symbolic}"
+
+    swayosd-client \
+        --custom-message "$message" \
+        --custom-icon "$icon" \
+        --duration "${SWAY_OSD_MESSAGE_DURATION:-1800}"
+}
+
 case "${1:-}" in
     output-volume)
         swayosd-client --output-volume "${2:?missing output-volume action}"
@@ -32,8 +42,13 @@ case "${1:-}" in
         play_sound "${SWAY_OSD_SOUND_MIC:-audio-volume-change}"
         ;;
     brightness)
-        swayosd-client --brightness "${2:?missing brightness action}"
-        play_sound "${SWAY_OSD_SOUND_BRIGHTNESS:-bell}"
+        if swayosd-client --brightness "${2:?missing brightness action}"; then
+            play_sound "${SWAY_OSD_SOUND_BRIGHTNESS:-bell}"
+        else
+            show_message \
+                "${SWAY_OSD_NO_BRIGHTNESS_MESSAGE:-No brightness-adjustable display}" \
+                "${SWAY_OSD_NO_BRIGHTNESS_ICON:-display-brightness-symbolic}"
+        fi
         ;;
     *)
         echo "Usage: $0 {output-volume|input-volume|brightness} ACTION" >&2
