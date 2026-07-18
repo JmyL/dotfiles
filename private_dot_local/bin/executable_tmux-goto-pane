@@ -65,7 +65,7 @@ if [[ -n "$all_clients" ]]; then
   done <<< "$all_clients"
 fi
 
-setsid kitty -e sesh connect "$sname" < /dev/null > /dev/null 2>&1 &
+setsid kitty -e sesh-any connect "$sname" < /dev/null > /dev/null 2>&1 &
 
 new_tty=""
 for _ in $(seq 1 50); do

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v sesh >/dev/null 2>&1 && command -v tmux >/dev/null 2>&1; then
+  exec sesh "$@"
+fi
+
+toolbox_bin="$(command -v toolbox || true)"
+if [[ -z "$toolbox_bin" ]]; then
+  echo "sesh-any: sesh/tmux not found locally, and toolbox is not available" >&2
+  exit 127
+fi
+
+container="${SESH_ANY_TOOLBOX:-${TOOLBOX_NAME:-}}"
+if [[ -z "$container" && -r /run/.containerenv ]]; then
+  container="$(sed -n 's/^name="\([^"]*\)"/\1/p' /run/.containerenv | head -n1)"
+fi
+if [[ -z "$container" ]]; then
+  container="$(
+    toolbox list --containers 2>/dev/null |
+      awk '
+        NR > 1 {
+          if (!first) first = $2
+          if ($(NF - 1) == "running") {
+            print $2
+            found = 1
+            exit
+          }
+        }
+        END {
+          if (!found && first) print first
+        }
+      '
+  )"
+fi
+container="${container:-f44}"
+
+exec "$toolbox_bin" run -c "$container" sesh "$@"
