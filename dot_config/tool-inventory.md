@@ -102,6 +102,13 @@ Screenshot/recording/clipboard:
 - `wl-clipboard` (`wl-copy`, `wl-paste`)
 - `cliphist`
 - `wf-recorder`
+- `wtype` — types dictation text into the focused Wayland window
+- `pipewire-utils` (`pw-record`) — microphone capture for dictation
+
+Voice dictation:
+
+- `uv`
+- `faster-whisper` in the `~/.local/share/sway-dictate/.venv` virtualenv
 
 Notifications/system controls:
 
@@ -208,7 +215,7 @@ sudo dnf install \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
   khal khard vdirsyncer \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
-  wl-clipboard xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils
+  wl-clipboard wtype xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils
 ```
 
 Fedora follow-ups:
@@ -246,7 +253,7 @@ sudo apt install \
   khal khard vdirsyncer \
   slurp sox starship swappy sway swayidle swaylock swayosd thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
-  xclip xdg-utils xterm zathura zip zoxide grimshot build-essential libreadline-dev unzip \
+  wtype xclip xdg-utils xterm zathura zip zoxide grimshot build-essential libreadline-dev unzip \
   python3-venv imagemagick lazygit luarocks wireplumber pipewire-bin
 ```
 

@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+container="${SWAY_DICTATE_TOOLBOX:-f44}"
+worker="${SWAY_DICTATE_WORKER:-$HOME/.local/bin/sway-dictate-worker}"
+
+if ! command -v toolbox >/dev/null 2>&1; then
+    command -v notify-send >/dev/null 2>&1 && notify-send -u critical "Dictation unavailable" "toolbox is not installed on the host" || true
+    exit 127
+fi
+
+exec toolbox run -c "$container" "$worker" "$@"

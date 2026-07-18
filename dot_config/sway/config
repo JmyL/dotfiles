@@ -272,6 +272,14 @@ mode "$recording_start_mode" {
     bindsym q mode "default"
 }
 bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
+
+# Dictation mode: records through toolbox, transcribes, and types into focus.
+set $dictation_mode Dictation: speak, [q] finish
+mode "$dictation_mode" {
+    bindsym q mode "default", exec ~/.local/bin/sway-dictate stop
+    bindsym Escape mode "default", exec ~/.local/bin/sway-dictate cancel
+}
+bindsym $mod+d mode "$dictation_mode", exec ~/.local/bin/sway-dictate start
 #
 # Utilities:
 #

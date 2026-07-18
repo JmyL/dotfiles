@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/sway-dictate"
+pid_file="$state_dir/record.pid"
+audio_file="$state_dir/dictation.wav"
+text_file="$state_dir/dictation.txt"
+log_file="$state_dir/dictation.log"
+venv_dir="${SWAY_DICTATE_VENV:-$HOME/.local/share/sway-dictate/.venv}"
+model_name="${SWAY_DICTATE_MODEL:-small}"
+language="${SWAY_DICTATE_LANGUAGE:-}"
+compute_type="${SWAY_DICTATE_COMPUTE_TYPE:-int8}"
+device="${SWAY_DICTATE_DEVICE:-cpu}"
+threads="${SWAY_DICTATE_THREADS:-4}"
+
+mkdir -p "$state_dir" "$(dirname "$venv_dir")"
+
+notify() {
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send "$@"
+    fi
+}
+
+recording_active() {
+    [ -s "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null
+}
+
+record_command() {
+    if command -v pw-record >/dev/null 2>&1; then
+        printf '%s\n' pw-record
+    elif command -v arecord >/dev/null 2>&1; then
+        printf '%s\n' arecord
+    else
+        return 1
+    fi
+}
+
+ensure_python() {
+    if [ -x "$venv_dir/bin/python" ]; then
+        return 0
+    fi
+
+    if ! command -v uv >/dev/null 2>&1; then
+        notify -u critical "Dictation setup failed" "uv is required in the toolbox"
+        return 1
+    fi
+
+    uv venv --python 3.12 "$venv_dir" >>"$log_file" 2>&1
+    "$venv_dir/bin/python" -m ensurepip --upgrade >>"$log_file" 2>&1 || true
+    "$venv_dir/bin/python" -m pip install --upgrade pip >>"$log_file" 2>&1
+    "$venv_dir/bin/python" -m pip install faster-whisper >>"$log_file" 2>&1
+}
+
+start_recording() {
+    if recording_active; then
+        notify "Dictation already recording" "Press q to finish."
+        exit 1
+    fi
+
+    rm -f "$audio_file" "$text_file" "$log_file"
+
+    recorder=$(record_command) || {
+        notify -u critical "Dictation unavailable" "Install pipewire-utils or alsa-utils in the toolbox."
+        exit 127
+    }
+
+    case "$recorder" in
+        pw-record)
+            pw-record --rate 16000 --channels 1 --format s16 "$audio_file" >>"$log_file" 2>&1 &
+            ;;
+        arecord)
+            arecord -q -f S16_LE -r 16000 -c 1 -t wav "$audio_file" >>"$log_file" 2>&1 &
+            ;;
+    esac
+
+    echo $! >"$pid_file"
+    sleep 0.2
+
+    if ! recording_active; then
+        rm -f "$pid_file"
+        notify -u critical "Dictation failed" "Could not start microphone recording. See $log_file"
+        exit 1
+    fi
+
+    notify "Dictation started" "Speak now, then press q."
+}
+
+stop_recording() {
+    if ! recording_active; then
+        rm -f "$pid_file"
+        notify "No active dictation"
+        exit 1
+    fi
+
+    pid=$(cat "$pid_file")
+    kill -INT "$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    rm -f "$pid_file"
+
+    if [ ! -s "$audio_file" ]; then
+        notify -u critical "Dictation failed" "No audio was recorded."
+        exit 1
+    fi
+
+    notify "Dictation transcribing" "$model_name on $device/$compute_type"
+    ensure_python
+
+    OMP_NUM_THREADS="$threads" "$venv_dir/bin/python" - "$audio_file" "$text_file" "$model_name" "$device" "$compute_type" "$language" >>"$log_file" 2>&1 <<'PY'
+import re
+import sys
+from faster_whisper import WhisperModel
+
+audio_file, text_file, model_name, device, compute_type, language = sys.argv[1:]
+kwargs = {
+    "beam_size": 5,
+    "vad_filter": True,
+    "vad_parameters": {"min_silence_duration_ms": 500},
+}
+if language:
+    kwargs["language"] = language
+
+model = WhisperModel(model_name, device=device, compute_type=compute_type)
+segments, _ = model.transcribe(audio_file, **kwargs)
+text = " ".join(segment.text.strip() for segment in segments).strip()
+text = re.sub(r"\s+", " ", text)
+
+with open(text_file, "w", encoding="utf-8") as f:
+    f.write(text)
+PY
+
+    text=$(cat "$text_file")
+    if [ -z "$text" ]; then
+        notify "Dictation empty" "No speech was detected."
+        exit 0
+    fi
+
+    if command -v wl-copy >/dev/null 2>&1; then
+        printf '%s' "$text" | wl-copy || true
+    fi
+
+    if command -v wtype >/dev/null 2>&1; then
+        wtype "$text"
+        notify "Dictation inserted"
+    else
+        notify -u critical "Dictation copied only" "Install wtype in the toolbox to type into the focused window."
+        exit 127
+    fi
+}
+
+cancel_recording() {
+    if recording_active; then
+        pid=$(cat "$pid_file")
+        kill -INT "$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+    fi
+    rm -f "$pid_file" "$audio_file" "$text_file"
+    notify "Dictation canceled"
+}
+
+case "${1:-}" in
+    start) start_recording ;;
+    stop) stop_recording ;;
+    cancel) cancel_recording ;;
+    status)
+        if recording_active; then
+            printf 'recording\n'
+        fi
+        ;;
+    *) echo "Usage: $0 {start|stop|cancel|status}" >&2; exit 2 ;;
+esac
