@@ -20,8 +20,32 @@ osd_enabled="${SWAY_DICTATE_OSD:-1}"
 osd_duration="${SWAY_DICTATE_OSD_DURATION:-1200}"
 osd_progress_duration="${SWAY_DICTATE_OSD_PROGRESS_DURATION:-60000}"
 osd_icon="${SWAY_DICTATE_OSD_ICON:-audio-input-microphone-symbolic}"
+sound_enabled="${SWAY_DICTATE_SOUND:-1}"
+sound_started="${SWAY_DICTATE_SOUND_STARTED:-message-new-instant}"
+sound_transcribing="${SWAY_DICTATE_SOUND_TRANSCRIBING:-audio-volume-change}"
+sound_done="${SWAY_DICTATE_SOUND_DONE:-complete}"
+sound_empty="${SWAY_DICTATE_SOUND_EMPTY:-dialog-warning}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
+
+play_sound() {
+    local sound="${1:-}"
+    local -a sound_command
+
+    if [[ "$sound_enabled" != 1 || -z "$sound" ]]; then
+        return 0
+    fi
+
+    if command -v canberra-gtk-play >/dev/null 2>&1; then
+        sound_command=(canberra-gtk-play)
+    elif command -v flatpak-spawn >/dev/null 2>&1; then
+        sound_command=(flatpak-spawn --host /usr/bin/canberra-gtk-play)
+    else
+        return 0
+    fi
+
+    "${sound_command[@]}" -i "$sound" -d "sway-dictate" >/dev/null 2>&1 &
+}
 
 show_osd() {
     local title="${1:-Dictation}"
@@ -156,6 +180,7 @@ start_recording() {
         exit 1
     fi
 
+    play_sound "$sound_started"
     notify "Dictation started" "[q] finish"
 }
 
@@ -176,6 +201,7 @@ stop_recording() {
         exit 1
     fi
 
+    play_sound "$sound_transcribing"
     notify "Transcribing..."
     ensure_python
 
@@ -207,7 +233,8 @@ PY
 
     text=$(cat "$text_file")
     if [ -z "$text" ]; then
-        notify "Dictation empty" "No speech was detected."
+        play_sound "$sound_empty"
+        notify "Empty"
         exit 0
     fi
 
@@ -231,7 +258,8 @@ PY
                 exit 2
                 ;;
         esac
-        notify "Done"
+        play_sound "$sound_done"
+        notify "Done!"
     else
         notify -u critical "Dictation copied only" "Install wtype to paste into the focused window."
         exit 127
