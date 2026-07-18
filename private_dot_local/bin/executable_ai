@@ -1,8 +1,26 @@
-#!/bin/sh
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
-if [ -n "${TMUX_PANE:-}" ]; then
+if [[ -n "${TMUX_PANE:-}" ]]; then
   tmux set-option -p -t "$TMUX_PANE" @ai_cli 1
 fi
 
-if command -v claude >/dev/null 2>&1; then exec claude "$@"; else exec pi "$@"; fi
+if command -v claude >/dev/null 2>&1; then
+  exec claude "$@"
+fi
+
+has_continue=0
+args=()
+for arg in "$@"; do
+  if [[ "$arg" == "-c" ]]; then
+    has_continue=1
+    continue
+  fi
+  args+=("$arg")
+done
+
+if (( has_continue )) && command -v codex >/dev/null 2>&1; then
+  exec codex resume --last "${args[@]}"
+fi
+
+exec pi "$@"
