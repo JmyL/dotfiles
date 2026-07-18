@@ -34,6 +34,30 @@ EXPIRE_TIMEOUT_MS = 10_000
 MAX_WAIT_SECONDS = 6 * 3600
 
 
+def focused_tmux_ttys():
+    clients = subprocess.run(
+        ["tmux", "list-clients", "-F", "#{client_tty}"],
+        text=True,
+        capture_output=True,
+    )
+    if clients.returncode != 0:
+        return set()
+
+    focused = set()
+    for tty in clients.stdout.splitlines():
+        tty = tty.strip()
+        if not tty:
+            continue
+        result = subprocess.run(
+            ["sway-tty-window", "--is-focused", tty],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if result.returncode == 0:
+            focused.add(tty)
+    return focused
+
+
 def main():
     if len(sys.argv) != 4:
         sys.exit(f"usage: {sys.argv[0]} SESSION_ID:WINDOW.PANE SUMMARY BODY")
@@ -91,6 +115,7 @@ def main():
         None,
     )
     notif_id["value"] = reply.unpack()[0]
+    initially_focused_ttys = focused_tmux_ttys()
 
     # Remember the notification id on the target pane so a pane-focus-in
     # (the user looking at the pane directly, without clicking) can dismiss
@@ -101,6 +126,15 @@ def main():
     )
 
     GLib.timeout_add_seconds(MAX_WAIT_SECONDS, loop.quit)
+
+    def on_focus_poll():
+        if focused_tmux_ttys() - initially_focused_ttys:
+            result["action"] = True
+            loop.quit()
+            return False
+        return True
+
+    GLib.timeout_add(250, on_focus_poll)
     loop.run()
 
     subprocess.run(
