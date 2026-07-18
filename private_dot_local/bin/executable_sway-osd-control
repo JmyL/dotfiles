@@ -25,6 +25,46 @@ show_message() {
         --duration "${SWAY_OSD_MESSAGE_DURATION:-1800}"
 }
 
+backlight_outputs() {
+    local backlight_dir="${SWAY_OSD_BACKLIGHT_DIR:-/sys/class/backlight}"
+    local backlight_device
+    local device_path
+    local output
+
+    [[ -d "$backlight_dir" ]] || return 0
+
+    for backlight_device in "$backlight_dir"/*; do
+        [[ -e "$backlight_device" ]] || continue
+
+        device_path="$(readlink -f "$backlight_device" 2>/dev/null || true)"
+        [[ -n "$device_path" ]] || continue
+
+        output="$(basename "$(dirname "$device_path")")"
+        [[ "$output" =~ ^card[0-9]+-.+ ]] || continue
+
+        printf '%s\n' "${output#card[0-9]*-}"
+    done
+}
+
+active_outputs() {
+    swaymsg -t get_outputs | jq -r '.[] | select(.active == true) | .name'
+}
+
+has_active_backlight_output() {
+    local active_output
+    local backlight_output
+
+    while IFS= read -r backlight_output; do
+        [[ -n "$backlight_output" ]] || continue
+
+        while IFS= read -r active_output; do
+            [[ "$active_output" == "$backlight_output" ]] && return 0
+        done < <(active_outputs)
+    done < <(backlight_outputs)
+
+    return 1
+}
+
 case "${1:-}" in
     output-volume)
         swayosd-client --output-volume "${2:?missing output-volume action}"
@@ -42,7 +82,16 @@ case "${1:-}" in
         play_sound "${SWAY_OSD_SOUND_MIC:-audio-volume-change}"
         ;;
     brightness)
-        if swayosd-client --brightness "${2:?missing brightness action}"; then
+        brightness_action="${2:?missing brightness action}"
+
+        if ! has_active_backlight_output; then
+            show_message \
+                "${SWAY_OSD_NO_BRIGHTNESS_MESSAGE:-No brightness-adjustable display}" \
+                "${SWAY_OSD_NO_BRIGHTNESS_ICON:-display-brightness-symbolic}"
+            exit 0
+        fi
+
+        if swayosd-client --brightness "$brightness_action"; then
             play_sound "${SWAY_OSD_SOUND_BRIGHTNESS:-bell}"
         else
             show_message \
