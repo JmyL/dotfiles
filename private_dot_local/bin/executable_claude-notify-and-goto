@@ -49,7 +49,10 @@ def main():
         args = params.unpack()
         if not args or args[0] != notif_id["value"]:
             return
-        if member == "ActionInvoked" and len(args) > 1 and args[1] in ACTION_KEYS:
+        if member == "ActivationToken":
+            result["action"] = True
+            loop.quit()
+        elif member == "ActionInvoked" and len(args) > 1 and args[1] in ACTION_KEYS:
             result["action"] = True
             loop.quit()
         elif member == "NotificationClosed":
