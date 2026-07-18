@@ -33,14 +33,19 @@ class Row:
     summary: str
     updated_at: float
     stale: bool = False
+    pane_id: str = ""
+    session_id: str = ""
+    window_index: str = ""
+    pane_index: str = ""
 
 
 class RowCache:
-    def __init__(self) -> None:
+    def __init__(self, popup: bool = False) -> None:
         self.rows: list[Row] = []
         self.refreshing = False
         self.last_refresh = 0.0
         self.lock = threading.Lock()
+        self.popup = popup
 
     def snapshot(self) -> list[Row]:
         with self.lock:
@@ -57,7 +62,7 @@ class RowCache:
 
     def _refresh(self) -> None:
         try:
-            rows = collect_rows()
+            rows = collect_rows(tmux_only=self.popup)
         except Exception:
             rows = []
         with self.lock:
@@ -86,6 +91,7 @@ def tmux_rows(now: float) -> list[Row]:
     fmt = "\t".join(
         [
             "#{pane_id}",
+            "#{session_id}",
             "#{session_name}",
             "#{window_index}",
             "#{pane_index}",
@@ -111,9 +117,9 @@ def tmux_rows(now: float) -> list[Row]:
     rows: list[Row] = []
     for line in proc.stdout.splitlines():
         fields = line.split("\t")
-        if len(fields) != 8:
+        if len(fields) != 9:
             continue
-        pane_id, session, win, pane, cwd, title, ai_cli, ai_state = fields
+        pane_id, session_id, session, win, pane, cwd, title, ai_cli, ai_state = fields
         if not ai_cli:
             continue
         state = valid_state(ai_state or "idle")
@@ -129,6 +135,10 @@ def tmux_rows(now: float) -> list[Row]:
                 cwd=cwd,
                 summary=detail,
                 updated_at=now,
+                pane_id=pane_id,
+                session_id=session_id,
+                window_index=win,
+                pane_index=pane,
             )
         )
     rows.sort(key=lambda row: (row.label.lower(), row.target))
@@ -181,9 +191,11 @@ def runtime_rows(now: float) -> list[Row]:
     return rows
 
 
-def collect_rows(now: float | None = None) -> list[Row]:
+def collect_rows(now: float | None = None, tmux_only: bool = False) -> list[Row]:
     current = time.time() if now is None else now
     rows = tmux_rows(current)
+    if tmux_only:
+        return rows
     seen = {row.target for row in rows}
     for row in runtime_rows(current):
         if row.target in seen:
@@ -255,6 +267,27 @@ def goto_target(target: str) -> None:
     subprocess.run(["ai-goto-target", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def focus_tmux_row(row: Row) -> None:
+    if not row.pane_id or not row.session_id or not row.window_index:
+        return
+
+    subprocess.run(
+        ["dev-launcher", "tmux", "switch-client", "-t", row.session_id],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["dev-launcher", "tmux", "select-window", "-t", f"{row.session_id}:{row.window_index}"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["dev-launcher", "tmux", "select-pane", "-t", row.pane_id],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def draw(stdscr, rows: list[Row], tick: int) -> None:
     height, width = stdscr.getmaxyx()
     stdscr.erase()
@@ -296,7 +329,7 @@ def curses_main(stdscr, popup: bool) -> int:
     curses.init_pair(5, curses.COLOR_WHITE, -1)
     stdscr.timeout(INPUT_POLL_MS)
     tick = 0
-    cache = RowCache()
+    cache = RowCache(popup=popup)
     cache.start_refresh()
     next_frame = 0.0
     next_data_refresh = 0.0
@@ -322,9 +355,10 @@ def curses_main(stdscr, popup: bool) -> int:
             rows = cache.snapshot()
             selected = 10 if key == ord("0") else key - ord("0")
             if 1 <= selected <= len(rows):
-                goto_target(rows[selected - 1].target)
                 if popup:
+                    focus_tmux_row(rows[selected - 1])
                     return 0
+                goto_target(rows[selected - 1].target)
             cache.start_refresh()
             next_data_refresh = time.monotonic() + DATA_REFRESH_SECONDS
 
