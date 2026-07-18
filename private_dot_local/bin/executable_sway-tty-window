@@ -63,7 +63,7 @@ def main():
 
     tree = json.loads(
         subprocess.run(
-            ["swaymsg", "-t", "get_tree"], text=True, capture_output=True
+            ["swaymsg-any", "-t", "get_tree"], text=True, capture_output=True
         ).stdout
     )
     leaves = leaf_windows(tree, [])

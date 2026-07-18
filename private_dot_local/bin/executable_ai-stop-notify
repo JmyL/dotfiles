@@ -5,6 +5,26 @@ set -uo pipefail
 agent="${1:-ai}"
 payload="$(cat)"
 
+# Stop fires when Codex accepts a turn as complete. If a Stop hook has already
+# forced a continuation, or there is no assistant message to summarize, avoid a
+# misleading desktop notification.
+if printf '%s' "$payload" | python3 -c '
+import json, sys
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+if payload.get("stop_hook_active") is True:
+    sys.exit(0)
+msg = payload.get("last_assistant_message")
+if not isinstance(msg, str) or not msg.strip():
+    sys.exit(0)
+sys.exit(1)
+' >/dev/null 2>&1
+then
+  exit 0
+fi
+
 [[ -n "${TMUX:-}" && -n "${TMUX_PANE:-}" ]] || exit 0
 
 source "$HOME/.local/bin/ai-attention-common"

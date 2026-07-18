@@ -13,12 +13,14 @@ claude_attention_locate() {
   target="$TMUX_PANE"
 
   looking_at_it=0
-  if [[ "$pane_active" == 1 && "$window_active" == 1 ]] && command -v swaymsg >/dev/null 2>&1; then
-    local best_tty
-    best_tty="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null \
-                | sort -rn | head -n1 | awk '{print $2}')"
-    if [[ -n "$best_tty" ]] && sway-tty-window --is-focused "$best_tty"; then
-      looking_at_it=1
-    fi
+  if [[ "$pane_active" == 1 && "$window_active" == 1 ]] && command -v sway-tty-window >/dev/null 2>&1; then
+    local tty
+    while IFS= read -r tty; do
+      [[ -n "$tty" ]] || continue
+      if sway-tty-window --is-focused "$tty" 2>/dev/null; then
+        looking_at_it=1
+        break
+      fi
+    done < <(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null               | sort -rn | awk '{print $2}')
   fi
 }

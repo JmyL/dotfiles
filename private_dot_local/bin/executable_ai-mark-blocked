@@ -40,6 +40,36 @@ message="$(jq -r '.message // empty' <<<"$info_json" 2>/dev/null)"
 title="${folder:-$sname}"
 message="${message:-${agent^} needs your input}"
 
+# PermissionRequest also fires for auto-review/policy checks that do not require
+# user input. Keep the tmux blocked marker, but do not send desktop notifications
+# unless explicitly opted in.
+[[ "${AI_NOTIFY_PERMISSION_REQUEST:-0}" == "1" ]] || exit 0
+
+notify_key="$(printf '%s' "$payload" | TARGET="$target" AGENT="$agent" python3 -c '
+import hashlib, json, os, re, sys
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    payload = {}
+raw = "|".join([
+    os.environ.get("AGENT", "ai"),
+    os.environ.get("TARGET", ""),
+    str(payload.get("turn_id") or payload.get("tool_use_id") or payload.get("session_id") or "unknown"),
+])
+print(re.sub(r"[^A-Za-z0-9_.-]", "_", hashlib.sha256(raw.encode()).hexdigest()[:24]))
+' 2>/dev/null)"
+state_dir="${XDG_RUNTIME_DIR:-/tmp}/ai-hook-notify"
+state_file="$state_dir/blocked-${notify_key:-unknown}"
+now="$(date +%s)"
+mkdir -p "$state_dir" 2>/dev/null || true
+if [[ -f "$state_file" ]]; then
+  last="$(cat "$state_file" 2>/dev/null || printf 0)"
+  if [[ "$last" =~ ^[0-9]+$ ]] && (( now - last < 60 )); then
+    exit 0
+  fi
+fi
+printf '%s\n' "$now" > "$state_file" 2>/dev/null || true
+
 setsid -f ai-notify-and-goto "$agent" "$target" "$title" "$message"   < /dev/null > /dev/null 2>&1 &
 
 exit 0

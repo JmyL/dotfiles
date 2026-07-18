@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+uid="$(id -u)"
+
+if command -v swaymsg >/dev/null 2>&1; then
+  swaymsg_bin="$(command -v swaymsg)"
+elif [[ -x /run/host/usr/bin/swaymsg ]]; then
+  swaymsg_bin=/run/host/usr/bin/swaymsg
+else
+  echo "swaymsg not found" >&2
+  exit 127
+fi
+
+if [[ -z "${SWAYSOCK:-}" ]]; then
+  for sock in "/run/user/$uid"/sway-ipc."$uid".*.sock; do
+    if [[ -S "$sock" ]]; then
+      export SWAYSOCK="$sock"
+      break
+    fi
+  done
+fi
+
+exec "$swaymsg_bin" "$@"

@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-target="${1:?usage: tmux-goto-pane SESSION_ID:WINDOW.PANE}"
+input_target="${1:?usage: tmux-goto-pane SESSION_ID:WINDOW.PANE|PANE_ID}"
+
+if ! target="$(tmux display-message -p -t "$input_target" '#{session_id}:#{window_index}.#{pane_index}' 2>/dev/null)"; then
+  notify-send -a "AI Agent" "Couldn't jump to pane" "That pane no longer exists." 2>/dev/null || true
+  exit 1
+fi
+
 sid="${target%%:*}"
 rest="${target#*:}"
 widx="${rest%%.*}"
 pidx="${rest#*.}"
 
 if ! tmux has-session -t "$sid" 2>/dev/null; then
-  notify-send -a "Claude Code" "Couldn't jump to pane" "That session no longer exists." 2>/dev/null || true
+  notify-send -a "AI Agent" "Couldn't jump to pane" "That session no longer exists." 2>/dev/null || true
   exit 1
 fi
 
@@ -23,41 +29,54 @@ if tmux list-windows -t "$sid" -F '#{window_index}' 2>/dev/null | grep -qx "$wid
   fi
 fi
 
-# Any attached client anywhere, not just ones currently viewing this
-# session - if the user switched that terminal to a different tmux session
-# in the meantime, it drops out of `list-clients -t $sid` even though it's
-# still there and just needs to be switched back.
-clients="$(tmux list-clients -F '#{client_activity} #{client_tty}' 2>/dev/null)"
+focus_target() {
+  local tty="$1" con_id=""
+  tmux switch-client -c "$tty" -t "$sid" 2>/dev/null || true
+  (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
+  (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
 
-if [[ -z "$clients" ]]; then
-  # Nothing attached: open a terminal via their normal attach/create idiom,
-  # then nudge the newly attached client to the right window/pane once it
-  # shows up (tmux-goto-pane already runs detached from the Claude Code
-  # hook, so blocking here briefly is harmless).
-  setsid kitty -e sesh connect "$sname" < /dev/null > /dev/null 2>&1 &
-
-  new_tty=""
-  for _ in $(seq 1 50); do
-    new_tty="$(tmux list-clients -t "$sid" -F '#{client_tty}' 2>/dev/null | head -n1)"
-    [[ -n "$new_tty" ]] && break
-    sleep 0.1
-  done
-
-  if [[ -n "$new_tty" ]]; then
-    (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
-    (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
+  if con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
+    swaymsg-any "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+    return 0
   fi
-  exit 0
+  return 1
+}
+
+clients="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
+
+if [[ -n "$clients" ]]; then
+  while IFS= read -r line; do
+    tty="${line#* }"
+    [[ -n "$tty" ]] || continue
+    if focus_target "$tty"; then
+      exit 0
+    fi
+  done <<< "$clients"
 fi
 
-client_tty="$(printf '%s\n' "$clients" | sort -rn | head -n1 | awk '{print $2}')"
+all_clients="$(tmux list-clients -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
+if [[ -n "$all_clients" ]]; then
+  while IFS= read -r line; do
+    tty="${line#* }"
+    [[ -n "$tty" ]] || continue
+    if focus_target "$tty"; then
+      exit 0
+    fi
+  done <<< "$all_clients"
+fi
 
-tmux switch-client -c "$client_tty" -t "$sid" 2>/dev/null || true
-(( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
-(( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
+setsid kitty -e sesh connect "$sname" < /dev/null > /dev/null 2>&1 &
 
-if con_id="$(sway-tty-window "$client_tty" 2>/dev/null)"; then
-  swaymsg "[con_id=$con_id] focus" > /dev/null 2>&1 || true
+new_tty=""
+for _ in $(seq 1 50); do
+  new_tty="$(tmux list-clients -t "$sid" -F '#{client_tty}' 2>/dev/null | head -n1)"
+  [[ -n "$new_tty" ]] && break
+  sleep 0.1
+done
+
+if [[ -n "$new_tty" ]]; then
+  (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
+  (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
 fi
 
 exit 0
