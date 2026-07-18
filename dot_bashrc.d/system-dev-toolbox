@@ -1,33 +1,11 @@
 # Dev tools run in this toolbox on Fedora Silverblue host shells.
-if [ -z "${SYSTEM_DEV_TOOLBOX+x}" ] && [ ! -r /run/.containerenv ] && command -v toolbox >/dev/null 2>&1; then
-  if [ -r /etc/os-release ]; then
-    _system_dev_id=""
-    _system_dev_variant_id=""
-    . /etc/os-release
-    _system_dev_id="${ID:-}"
-    _system_dev_variant_id="${VARIANT_ID:-}"
-    if [ "$_system_dev_id" = fedora ] && [ "$_system_dev_variant_id" != toolbx ]; then
-      SYSTEM_DEV_TOOLBOX="$({
-        toolbox list --containers 2>/dev/null || true
-      } | awk '
-        NR > 1 {
-          if (!first) first = $2
-          if ($(NF - 1) == "running") {
-            print $2
-            found = 1
-            exit
-          }
-        }
-        END {
-          if (!found && first) print first
-        }
-      ')"
-      if [ -n "$SYSTEM_DEV_TOOLBOX" ]; then
-        export SYSTEM_DEV_TOOLBOX
-      else
-        unset SYSTEM_DEV_TOOLBOX
-      fi
-    fi
-    unset _system_dev_id _system_dev_variant_id
+if [ -z "${SYSTEM_DEV_TOOLBOX+x}" ] && [ ! -r /run/.containerenv ] && [ -r /etc/os-release ]; then
+  _system_dev_id=""
+  . /etc/os-release
+  _system_dev_id="${ID:-}"
+  if [ "$_system_dev_id" = fedora ]; then
+    SYSTEM_DEV_TOOLBOX=f44
+    export SYSTEM_DEV_TOOLBOX
   fi
+  unset _system_dev_id
 fi
