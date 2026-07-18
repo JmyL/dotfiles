@@ -7,11 +7,13 @@ audio_file="$state_dir/dictation.wav"
 text_file="$state_dir/dictation.txt"
 log_file="$state_dir/dictation.log"
 venv_dir="${SWAY_DICTATE_VENV:-$HOME/.local/share/sway-dictate/.venv}"
-model_name="${SWAY_DICTATE_MODEL:-small}"
+model_name="${SWAY_DICTATE_MODEL:-base}"
 language="${SWAY_DICTATE_LANGUAGE:-en}"
 compute_type="${SWAY_DICTATE_COMPUTE_TYPE:-int8}"
 device="${SWAY_DICTATE_DEVICE:-cpu}"
-threads="${SWAY_DICTATE_THREADS:-4}"
+threads="${SWAY_DICTATE_THREADS:-$(nproc 2>/dev/null || printf '4')}"
+beam_size="${SWAY_DICTATE_BEAM_SIZE:-1}"
+vad_filter="${SWAY_DICTATE_VAD_FILTER:-0}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
 
@@ -102,20 +104,23 @@ stop_recording() {
         exit 1
     fi
 
-    notify "Dictation transcribing" "$model_name on $device/$compute_type"
+    notify "Dictation transcribing" "$model_name on $device/$compute_type, beam $beam_size"
     ensure_python
 
-    OMP_NUM_THREADS="$threads" "$venv_dir/bin/python" - "$audio_file" "$text_file" "$model_name" "$device" "$compute_type" "$language" >>"$log_file" 2>&1 <<'PY'
+    OMP_NUM_THREADS="$threads" "$venv_dir/bin/python" - "$audio_file" "$text_file" "$model_name" "$device" "$compute_type" "$language" "$beam_size" "$vad_filter" >>"$log_file" 2>&1 <<'PY'
 import re
 import sys
 from faster_whisper import WhisperModel
 
-audio_file, text_file, model_name, device, compute_type, language = sys.argv[1:]
+audio_file, text_file, model_name, device, compute_type, language, beam_size, vad_filter = sys.argv[1:]
 kwargs = {
-    "beam_size": 5,
-    "vad_filter": True,
-    "vad_parameters": {"min_silence_duration_ms": 500},
+    "beam_size": int(beam_size),
+    "condition_on_previous_text": False,
+    "without_timestamps": True,
+    "vad_filter": vad_filter.lower() in {"1", "true", "yes", "on"},
 }
+if kwargs["vad_filter"]:
+    kwargs["vad_parameters"] = {"min_silence_duration_ms": 500}
 if language:
     kwargs["language"] = language
 
