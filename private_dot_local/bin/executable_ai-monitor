@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-BLOCKED = (".", "!")
+BLOCKED = (".", ".", ".", "!", "!", "!")
 STALE_AFTER = 300
 REFRESH_SECONDS = 0.15
 DATA_REFRESH_SECONDS = 1.0
