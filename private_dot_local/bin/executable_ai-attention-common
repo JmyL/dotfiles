@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Shared tmux attention helpers for AI-agent hooks. Sourced, not run directly.
+
+# Sets: sid, sname, target, looking_at_it
+ai_attention_locate() {
+  local pane_active window_active
+  IFS=$'	' read -r sid sname pane_active window_active < <(
+    tmux display-message -p -t "$TMUX_PANE" $'#{session_id}	#{session_name}	#{pane_active}	#{window_active}'
+  )
+  target="$TMUX_PANE"
+
+  looking_at_it=0
+  if [[ "$pane_active" == 1 && "$window_active" == 1 ]] && command -v swaymsg >/dev/null 2>&1; then
+    local best_tty
+    best_tty="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null                 | sort -rn | head -n1 | awk '{print $2}')"
+    if [[ -n "$best_tty" ]] && sway-tty-window --is-focused "$best_tty"; then
+      looking_at_it=1
+    fi
+  fi
+}

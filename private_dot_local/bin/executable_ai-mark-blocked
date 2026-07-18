@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# PermissionRequest hook: marks this pane as blocked and notifies if unseen.
+set -uo pipefail
+
+agent="${1:-ai}"
+payload="$(cat)"
+
+[[ -n "${TMUX:-}" && -n "${TMUX_PANE:-}" ]] || exit 0
+
+source "$HOME/.local/bin/ai-attention-common"
+ai_attention_locate
+
+if (( looking_at_it )); then
+  tmux set-option -p -u -t "$target" @ai_state
+  exit 0
+fi
+
+tmux set-option -p -t "$target" @ai_cli 1
+tmux set-option -p -t "$target" @ai_state blocked
+
+info_json="$(AI_AGENT="$agent" python3 -c '
+import json, os, sys
+payload = json.load(sys.stdin) if not sys.stdin.isatty() else {}
+agent = os.environ.get("AI_AGENT", "AI")
+cwd = payload.get("cwd") or payload.get("working_directory") or ""
+message = (
+    payload.get("message")
+    or payload.get("reason")
+    or payload.get("approval_reason")
+    or payload.get("prompt")
+    or f"{agent.title()} needs your input"
+)
+if isinstance(message, (dict, list)):
+    message = json.dumps(message, ensure_ascii=False)
+folder = os.path.basename(cwd.rstrip("/")) if cwd else ""
+print(json.dumps({"folder": folder, "message": str(message)}))
+' <<<"$payload" 2>/dev/null)"
+folder="$(jq -r '.folder // empty' <<<"$info_json" 2>/dev/null)"
+message="$(jq -r '.message // empty' <<<"$info_json" 2>/dev/null)"
+title="${folder:-$sname}"
+message="${message:-${agent^} needs your input}"
+
+setsid -f ai-notify-and-goto "$agent" "$target" "$title" "$message"   < /dev/null > /dev/null 2>&1 &
+
+exit 0

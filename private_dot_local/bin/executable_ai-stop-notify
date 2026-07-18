@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Stop hook: marks this pane as done and notifies if unseen.
+set -uo pipefail
+
+agent="${1:-ai}"
+payload="$(cat)"
+
+[[ -n "${TMUX:-}" && -n "${TMUX_PANE:-}" ]] || exit 0
+
+source "$HOME/.local/bin/ai-attention-common"
+ai_attention_locate
+
+if (( looking_at_it )); then
+  tmux set-option -p -u -t "$target" @ai_state
+  exit 0
+fi
+
+tmux set-option -p -t "$target" @ai_cli 1
+tmux set-option -p -t "$target" @ai_state done
+
+info_json="$(AI_AGENT="$agent" python3 -c '
+import json, os, sys
+payload = json.load(sys.stdin) if not sys.stdin.isatty() else {}
+agent = os.environ.get("AI_AGENT", "AI")
+cwd = payload.get("cwd") or payload.get("working_directory") or ""
+summary = (
+    payload.get("last_assistant_message")
+    or payload.get("response")
+    or payload.get("message")
+    or payload.get("summary")
+    or f"{agent.title()} completed"
+)
+if isinstance(summary, (dict, list)):
+    summary = json.dumps(summary, ensure_ascii=False)
+summary = " ".join(str(summary).split())
+if len(summary) > 140:
+    summary = summary[:137] + "..."
+folder = os.path.basename(cwd.rstrip("/")) if cwd else ""
+print(json.dumps({"folder": folder, "summary": summary}))
+' <<<"$payload" 2>/dev/null)"
+folder="$(jq -r '.folder // empty' <<<"$info_json" 2>/dev/null)"
+summary="$(jq -r '.summary // empty' <<<"$info_json" 2>/dev/null)"
+title="${folder:-$sname}"
+body="${summary:-${agent^} completed}"
+
+setsid -f ai-notify-and-goto "$agent" "$target" "$title" "$body"   < /dev/null > /dev/null 2>&1 &
+
+exit 0
