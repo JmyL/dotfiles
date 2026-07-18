@@ -30,16 +30,26 @@ if tmux list-windows -t "$sid" -F '#{window_index}' 2>/dev/null | grep -qx "$wid
 fi
 
 focus_target() {
-  local tty="$1" con_id=""
-  tmux switch-client -c "$tty" -t "$sid" 2>/dev/null || true
+  local tty="$1" con_id="" switched_sid=""
+
   (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
   (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
 
-  if con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
-    swaymsg-any "[con_id=$con_id] focus" >/dev/null 2>&1 || true
-    return 0
+  con_id="$(sway-tty-window "$tty" 2>/dev/null)" || return 1
+  tmux switch-client -c "$tty" -t "$sid" 2>/dev/null || return 1
+
+  switched_sid="$(
+    tmux list-clients -F '#{client_tty} #{session_id}' 2>/dev/null |
+      awk -v tty="$tty" '$1 == tty { print $2; exit }'
+  )"
+  if [[ "$switched_sid" != "$sid" ]]; then
+    return 1
   fi
-  return 1
+
+  (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
+  (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
+  swaymsg-any "[con_id=$con_id] focus" >/dev/null 2>&1 || true
+  return 0
 }
 
 clients="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
@@ -67,16 +77,18 @@ fi
 
 setsid kitty -e sesh-any connect "$sname" < /dev/null > /dev/null 2>&1 &
 
-new_tty=""
 for _ in $(seq 1 50); do
-  new_tty="$(tmux list-clients -t "$sid" -F '#{client_tty}' 2>/dev/null | head -n1)"
-  [[ -n "$new_tty" ]] && break
+  clients="$(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null | sort -rn || true)"
+  if [[ -n "$clients" ]]; then
+    while IFS= read -r line; do
+      tty="${line#* }"
+      [[ -n "$tty" ]] || continue
+      if focus_target "$tty"; then
+        exit 0
+      fi
+    done <<< "$clients"
+  fi
   sleep 0.1
 done
-
-if [[ -n "$new_tty" ]]; then
-  (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
-  (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
-fi
 
 exit 0
