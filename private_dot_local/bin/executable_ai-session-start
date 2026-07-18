@@ -2,7 +2,12 @@
 # SessionStart hook: marks this pane as an AI-agent pane without setting a busy state.
 set -uo pipefail
 
+agent="${1:-ai}"
 cat >/dev/null
+
+source "$HOME/.local/bin/ai-attention-common"
+ai_attention_locate
+[[ -n "$target" ]] && ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
 
 [[ -n "${TMUX_PANE:-}" ]] || exit 0
 

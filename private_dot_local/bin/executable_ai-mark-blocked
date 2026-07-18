@@ -13,6 +13,7 @@ if (( looking_at_it )); then
   if (( has_tmux_target )); then
     dev-launcher tmux set-option -p -u -t "$tmux_target" @ai_state
   fi
+  ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
   exit 0
 fi
 
@@ -42,6 +43,7 @@ folder="$(jq -r '.folder // empty' <<<"$info_json" 2>/dev/null)"
 message="$(jq -r '.message // empty' <<<"$info_json" 2>/dev/null)"
 title="${folder:-$sname}"
 message="${message:-${agent^} needs your input}"
+ai_runtime_state_write blocked "$agent" "$target" "$PWD" "$message"
 
 # PermissionRequest also fires for auto-review/policy checks that do not require
 # user input. Keep the tmux blocked marker, but notify only when the request is

@@ -33,6 +33,7 @@ if (( looking_at_it )); then
   if (( has_tmux_target )); then
     dev-launcher tmux set-option -p -u -t "$tmux_target" @ai_state
   fi
+  ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
   exit 0
 fi
 
@@ -68,6 +69,7 @@ print(f"{folder}\t{summary}")
 ' <<<"$payload" 2>/dev/null)
 title="${folder:-$sname}"
 body="${summary:-${agent^} completed}"
+ai_runtime_state_write done "$agent" "$target" "$PWD" "$body"
 
 setsid -f ai-notify-and-goto "$agent" "$target" "$title" "$body"   < /dev/null > /dev/null 2>&1 &
 

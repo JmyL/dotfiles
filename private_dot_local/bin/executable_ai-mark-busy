@@ -2,7 +2,12 @@
 # UserPromptSubmit hook: marks this pane as busy (working on a turn).
 set -uo pipefail
 
+agent="${1:-ai}"
 cat >/dev/null
+
+source "$HOME/.local/bin/ai-attention-common"
+ai_attention_locate
+[[ -n "$target" ]] && ai_runtime_state_write busy "$agent" "$target" "$PWD" ""
 
 [[ -n "${TMUX_PANE:-}" ]] || exit 0
 

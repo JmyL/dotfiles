@@ -9,6 +9,9 @@ pane="${1:-}" state="${2:-}" notif_id="${3:-}"
 
 [[ "$state" == "done" || "$state" == "blocked" ]] || exit 0
 
+source "$HOME/.local/bin/ai-attention-common"
+ai_runtime_state_write idle ai "tmux:$pane" "$PWD" ""
+
 if [[ -n "$notif_id" ]]; then
   gdbus call --session --dest org.freedesktop.Notifications \
     --object-path /org/freedesktop/Notifications \

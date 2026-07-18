@@ -1,0 +1,270 @@
+#!/usr/bin/env python3
+"""Monitor AI agent state from tmux pane options and runtime hook JSON."""
+from __future__ import annotations
+
+import argparse
+import curses
+import json
+import os
+import subprocess
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+
+SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+BLOCKED = (".!", "!.", " !", ". ")
+STALE_AFTER = 300
+REFRESH_SECONDS = 0.15
+
+
+@dataclass
+class Row:
+    source: str
+    target: str
+    state: str
+    agent: str
+    label: str
+    cwd: str
+    summary: str
+    updated_at: float
+    stale: bool = False
+
+
+def runtime_agents_dir() -> Path:
+    return Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "ai-hook-notify" / "agents"
+
+
+def basename(path: str) -> str:
+    cleaned = path.rstrip("/")
+    return os.path.basename(cleaned) if cleaned else ""
+
+
+def valid_state(value: object) -> str:
+    state = str(value or "idle").lower()
+    if state in {"busy", "blocked", "idle", "done"}:
+        return state
+    return "unknown"
+
+
+def tmux_rows(now: float) -> list[Row]:
+    fmt = "\t".join(
+        [
+            "#{pane_id}",
+            "#{session_name}",
+            "#{window_index}",
+            "#{pane_index}",
+            "#{pane_current_path}",
+            "#{pane_title}",
+            "#{@ai_cli}",
+            "#{@ai_state}",
+        ]
+    )
+    try:
+        proc = subprocess.run(
+            ["dev-launcher", "tmux", "list-panes", "-a", "-F", fmt],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+    except OSError:
+        return []
+    if proc.returncode != 0:
+        return []
+
+    rows: list[Row] = []
+    for line in proc.stdout.splitlines():
+        fields = line.split("\t")
+        if len(fields) != 8:
+            continue
+        pane_id, session, win, pane, cwd, title, ai_cli, ai_state = fields
+        if not ai_cli:
+            continue
+        state = valid_state(ai_state or "idle")
+        label = session or title or pane_id
+        detail = title if title and title != "bash" else ""
+        rows.append(
+            Row(
+                source="tmux",
+                target=f"tmux:{pane_id}",
+                state=state,
+                agent="ai",
+                label=label,
+                cwd=cwd,
+                summary=detail,
+                updated_at=now,
+            )
+        )
+    rows.sort(key=lambda row: (row.label.lower(), row.target))
+    return rows
+
+
+def runtime_rows(now: float) -> list[Row]:
+    rows: list[Row] = []
+    directory = runtime_agents_dir()
+    try:
+        paths = sorted(directory.glob("*.json"))
+    except OSError:
+        return rows
+
+    for path in paths:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        target = data.get("target")
+        if not isinstance(target, str) or not target:
+            continue
+        cwd = data.get("cwd") if isinstance(data.get("cwd"), str) else ""
+        label = data.get("label") if isinstance(data.get("label"), str) else ""
+        updated_at = data.get("updated_at")
+        try:
+            updated = float(updated_at)
+        except (TypeError, ValueError):
+            try:
+                updated = path.stat().st_mtime
+            except OSError:
+                updated = 0
+        stale = updated <= 0 or now - updated > STALE_AFTER
+        rows.append(
+            Row(
+                source="runtime",
+                target=target,
+                state=valid_state(data.get("state")),
+                agent=str(data.get("agent") or "ai"),
+                label=label or basename(cwd) or str(data.get("agent") or "ai"),
+                cwd=cwd,
+                summary=str(data.get("summary") or ""),
+                updated_at=updated,
+                stale=stale,
+            )
+        )
+    rows.sort(key=lambda row: (row.label.lower(), row.target))
+    return rows
+
+
+def collect_rows(now: float | None = None) -> list[Row]:
+    current = time.time() if now is None else now
+    rows = tmux_rows(current)
+    seen = {row.target for row in rows}
+    for row in runtime_rows(current):
+        if row.target in seen:
+            continue
+        if any(segment.startswith("tmux:") and segment in seen for segment in row.target.split(",")):
+            continue
+        rows.append(row)
+        seen.add(row.target)
+    return rows
+
+
+def glyph(row: Row, tick: int) -> str:
+    if row.stale or row.state == "unknown":
+        return "?"
+    if row.state == "busy":
+        return SPINNER[tick % len(SPINNER)]
+    if row.state == "blocked":
+        return BLOCKED[tick % len(BLOCKED)]
+    if row.state == "done":
+        return "●"
+    return "✓"
+
+
+def color_for(row: Row) -> int:
+    if row.stale or row.state == "unknown":
+        return 5
+    return {"busy": 1, "blocked": 2, "idle": 3, "done": 4}.get(row.state, 5)
+
+
+def fit(text: str, width: int) -> str:
+    if width <= 0:
+        return ""
+    clean = " ".join(text.split())
+    if len(clean) <= width:
+        return clean
+    if width <= 1:
+        return "…"
+    return clean[: width - 1] + "…"
+
+
+def goto_target(target: str) -> None:
+    subprocess.run(["ai-goto-target", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def draw(stdscr, rows: list[Row], tick: int) -> None:
+    height, width = stdscr.getmaxyx()
+    stdscr.erase()
+    title = "AI agents"
+    help_text = "number: focus  r: refresh  q: quit"
+    stdscr.addstr(0, 0, fit(title, width), curses.A_BOLD)
+    if width > len(help_text) + 2:
+        stdscr.addstr(0, max(0, width - len(help_text)), help_text, curses.A_DIM)
+    if not rows:
+        stdscr.addstr(2, 0, fit("No AI agents found.", width), curses.A_DIM)
+        stdscr.refresh()
+        return
+
+    for index, row in enumerate(rows[: max(0, height - 2)], start=1):
+        y = index + 1
+        number = str(index % 10)
+        state = "stale" if row.stale else row.state
+        marker = glyph(row, tick)
+        prefix = f"{number} "
+        stdscr.addstr(y, 0, prefix, curses.A_BOLD)
+        stdscr.addstr(y, len(prefix), f"{marker:<2}", curses.color_pair(color_for(row)) | curses.A_BOLD)
+        x = len(prefix) + 3
+        stdscr.addstr(y, x, fit(f"{state:<7} ", max(0, width - x)), curses.color_pair(color_for(row)))
+        x += 8
+        label = f"{row.agent}:{row.label}"
+        detail = row.summary or row.cwd or row.target
+        text = f"{label:<24} {detail}"
+        stdscr.addstr(y, x, fit(text, max(0, width - x)))
+    stdscr.refresh()
+
+
+def curses_main(stdscr, popup: bool) -> int:
+    curses.curs_set(0)
+    curses.use_default_colors()
+    curses.init_pair(1, curses.COLOR_YELLOW, -1)
+    curses.init_pair(2, curses.COLOR_RED, -1)
+    curses.init_pair(3, curses.COLOR_BLUE, -1)
+    curses.init_pair(4, curses.COLOR_GREEN, -1)
+    curses.init_pair(5, curses.COLOR_WHITE, -1)
+    stdscr.nodelay(True)
+    tick = 0
+    rows = collect_rows()
+    while True:
+        draw(stdscr, rows, tick)
+        deadline = time.monotonic() + REFRESH_SECONDS
+        while time.monotonic() < deadline:
+            key = stdscr.getch()
+            if key in (ord("q"), 27):
+                return 0
+            if key == ord("r"):
+                rows = collect_rows()
+                break
+            if ord("0") <= key <= ord("9"):
+                selected = 10 if key == ord("0") else key - ord("0")
+                if 1 <= selected <= len(rows):
+                    goto_target(rows[selected - 1].target)
+                    if popup:
+                        return 0
+                rows = collect_rows()
+                break
+            time.sleep(0.02)
+        else:
+            tick += 1
+            rows = collect_rows()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--popup", action="store_true")
+    args = parser.parse_args()
+    return curses.wrapper(curses_main, args.popup)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

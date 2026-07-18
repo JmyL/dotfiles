@@ -1,6 +1,9 @@
 // @ts-nocheck
 
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
@@ -39,10 +42,26 @@ function commandSucceeds(command: string, args: string[]): boolean {
     return spawnSync(command, args, { stdio: "ignore" }).status === 0;
 }
 
+function commandOutput(command: string, args: string[]): string {
+    const result = spawnSync(command, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    return result.status === 0 ? result.stdout.trim() : "";
+}
+
 function locateAttention(): Attention | undefined {
     const pane = tmuxPane();
     if (!pane) {
-        return undefined;
+        const segments: string[] = [];
+        const conId = commandOutput("sway-process-window", [String(process.pid)]);
+        if (conId) {
+            segments.push(`sway-window:${conId}`);
+        }
+        if (process.env.KITTY_WINDOW_ID && /^[0-9]+$/.test(process.env.KITTY_WINDOW_ID)) {
+            segments.push(`kitty-window:${process.env.KITTY_WINDOW_ID}`);
+        }
+        if (segments.length === 0) {
+            return undefined;
+        }
+        return { target: segments.join(","), sessionName: basename(process.cwd()), lookingAtIt: false };
     }
 
     const display = spawnSync(
@@ -77,7 +96,63 @@ function locateAttention(): Attention | undefined {
         lookingAtIt = !!bestTty && commandSucceeds("sway-tty-window", ["--is-focused", bestTty]);
     }
 
-    return { target: pane, sessionName, lookingAtIt };
+    return { target: `tmux:${pane}`, sessionName, lookingAtIt };
+}
+
+function runtimeStateKey(target: string): string {
+    for (const segment of target.split(",")) {
+        if (segment.startsWith("tmux:")) {
+            return `tmux-${segment.slice(5).replace(/[^A-Za-z0-9_.-]/g, "_")}`;
+        }
+    }
+    for (const segment of target.split(",")) {
+        if (segment.startsWith("kitty-window:")) {
+            return `kitty-window-${segment.slice(13).replace(/[^A-Za-z0-9_.-]/g, "_")}`;
+        }
+    }
+    return `target-${createHash("sha256").update(target).digest("hex").slice(0, 24)}`;
+}
+
+function runtimeAgentsDir(): string {
+    return `${process.env.XDG_RUNTIME_DIR || tmpdir()}/ai-hook-notify/agents`;
+}
+
+function writeRuntimeState(state: string, target: string, cwd: string | undefined, summary = ""): void {
+    if (!target) {
+        return;
+    }
+    try {
+        const dir = runtimeAgentsDir();
+        mkdirSync(dir, { recursive: true, mode: 0o700 });
+        const path = `${dir}/${runtimeStateKey(target)}.json`;
+        const tmpPath = `${dir}/.tmp-${process.pid}-${Date.now()}.json`;
+        writeFileSync(
+            tmpPath,
+            `${JSON.stringify({
+                state,
+                agent: "pi",
+                target,
+                cwd: cwd || process.cwd(),
+                summary,
+                updated_at: Math.floor(Date.now() / 1000),
+            })}\n`,
+            { encoding: "utf8", mode: 0o600 },
+        );
+        renameSync(tmpPath, path);
+    } catch {
+        // Best effort only; pane options and notifications still work without this file.
+    }
+}
+
+function removeRuntimeState(target: string): void {
+    if (!target) {
+        return;
+    }
+    try {
+        rmSync(`${runtimeAgentsDir()}/${runtimeStateKey(target)}.json`, { force: true });
+    } catch {
+        // Best effort cleanup.
+    }
 }
 
 function summarizeText(value: unknown): string {
@@ -121,10 +196,12 @@ function notifyDone(title: string, body: string): void {
 
     if (attention.lookingAtIt) {
         setPaneOption("@ai_state");
+        writeRuntimeState("idle", attention.target, process.cwd(), "");
         return;
     }
 
     setPaneOption("@ai_state", "done");
+    writeRuntimeState("done", attention.target, process.cwd(), body);
     const child = spawn("ai-notify-and-goto", ["pi", attention.target, title || attention.sessionName, body], {
         detached: true,
         stdio: "ignore",
@@ -140,11 +217,13 @@ function notifyBlocked(message: string, cwd: string | undefined): void {
 
     if (attention.lookingAtIt) {
         setPaneOption("@ai_state");
+        writeRuntimeState("idle", attention.target, cwd, "");
         return;
     }
 
     setPaneOption("@ai_state", "blocked");
     const title = cwd ? basename(cwd) : attention.sessionName;
+    writeRuntimeState("blocked", attention.target, cwd, message || "Pi needs your input");
     const child = spawn("ai-notify-and-goto", ["pi", attention.target, title, message || "Pi needs your input"], {
         detached: true,
         stdio: "ignore",
@@ -153,13 +232,10 @@ function notifyBlocked(message: string, cwd: string | undefined): void {
 }
 
 export default function (pi: ExtensionAPI) {
-    if (!inTmux()) {
-        return;
-    }
-
     let rootSession = false;
     let blockedCount = 0;
     let activeCwd: string | undefined;
+    let activeTarget: string | undefined;
 
     pi.on("session_start", (_event, ctx) => {
         if (ctx?.hasUI !== true) {
@@ -167,7 +243,11 @@ export default function (pi: ExtensionAPI) {
         }
         rootSession = true;
         activeCwd = ctx.cwd;
+        activeTarget = locateAttention()?.target;
         setPaneOption("@ai_cli", "1");
+        if (activeTarget) {
+            writeRuntimeState("idle", activeTarget, activeCwd, "");
+        }
     });
 
     pi.on("agent_start", () => {
@@ -176,6 +256,10 @@ export default function (pi: ExtensionAPI) {
         }
         blockedCount = 0;
         setPaneOption("@ai_state", "busy");
+        activeTarget = locateAttention()?.target || activeTarget;
+        if (activeTarget) {
+            writeRuntimeState("busy", activeTarget, activeCwd, "");
+        }
     });
 
     pi.events.on("herdr:blocked", (data) => {
@@ -186,6 +270,9 @@ export default function (pi: ExtensionAPI) {
             blockedCount = Math.max(0, blockedCount - 1);
             if (blockedCount === 0) {
                 setPaneOption("@ai_state", "busy");
+                if (activeTarget) {
+                    writeRuntimeState("busy", activeTarget, activeCwd, "");
+                }
             }
             return;
         }
@@ -209,5 +296,8 @@ export default function (pi: ExtensionAPI) {
         }
         setPaneOption("@ai_state");
         setPaneOption("@ai_notif_id");
+        if (activeTarget) {
+            removeRuntimeState(activeTarget);
+        }
     });
 }

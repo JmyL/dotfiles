@@ -65,3 +65,77 @@ tmux_sway_con_id() {
 
   return 1
 }
+
+ai_runtime_state_key() {
+  local key_source="${1:-}"
+
+  TARGET="$key_source" python3 -c '
+import hashlib
+import os
+import re
+
+target = os.environ.get("TARGET", "")
+for segment in target.split(","):
+    if segment.startswith("tmux:"):
+        print("tmux-" + re.sub(r"[^A-Za-z0-9_.-]", "_", segment[5:]))
+        raise SystemExit
+for segment in target.split(","):
+    if segment.startswith("kitty-window:"):
+        print("kitty-window-" + re.sub(r"[^A-Za-z0-9_.-]", "_", segment[13:]))
+        raise SystemExit
+digest = hashlib.sha256(target.encode("utf-8", "surrogateescape")).hexdigest()[:24]
+print("target-" + digest)
+' 2>/dev/null
+}
+
+ai_runtime_state_write() {
+  local state="${1:-idle}" agent="${2:-ai}" target_arg="${3:-}" cwd="${4:-$PWD}" summary="${5:-}"
+  local state_dir key state_file
+
+  [[ -n "$target_arg" ]] || return 0
+  state_dir="${XDG_RUNTIME_DIR:-/tmp}/ai-hook-notify/agents"
+  key="$(ai_runtime_state_key "$target_arg")"
+  [[ -n "$key" ]] || return 0
+  state_file="$state_dir/$key.json"
+  mkdir -p "$state_dir" 2>/dev/null || return 0
+
+  AI_STATE="$state" AI_AGENT="$agent" AI_TARGET="$target_arg" AI_CWD="$cwd" AI_SUMMARY="$summary" AI_STATE_FILE="$state_file" python3 -c '
+import json
+import os
+import tempfile
+import time
+
+path = os.environ["AI_STATE_FILE"]
+payload = {
+    "state": os.environ.get("AI_STATE", "idle"),
+    "agent": os.environ.get("AI_AGENT", "ai"),
+    "target": os.environ.get("AI_TARGET", ""),
+    "cwd": os.environ.get("AI_CWD", ""),
+    "summary": os.environ.get("AI_SUMMARY", ""),
+    "updated_at": int(time.time()),
+}
+directory = os.path.dirname(path)
+fd, tmp = tempfile.mkstemp(prefix=".tmp-", suffix=".json", dir=directory, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, separators=(",", ":"))
+        handle.write("\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+finally:
+    try:
+        os.unlink(tmp)
+    except FileNotFoundError:
+        pass
+' 2>/dev/null || true
+}
+
+ai_runtime_state_remove_target() {
+  local target_arg="${1:-}" state_dir key
+
+  [[ -n "$target_arg" ]] || return 0
+  state_dir="${XDG_RUNTIME_DIR:-/tmp}/ai-hook-notify/agents"
+  key="$(ai_runtime_state_key "$target_arg")"
+  [[ -n "$key" ]] || return 0
+  rm -f "$state_dir/$key.json" 2>/dev/null || true
+}

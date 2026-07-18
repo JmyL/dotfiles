@@ -7,6 +7,9 @@ set -uo pipefail
 pane="${1:-}"
 [[ -n "$pane" ]] || exit 0
 
+source "$HOME/.local/bin/ai-attention-common"
+ai_runtime_state_remove_target "tmux:$pane"
+
 dev-launcher tmux set-option -p -u -t "$pane" @ai_cli 2>/dev/null || true
 dev-launcher tmux set-option -p -u -t "$pane" @ai_state 2>/dev/null || true
 dev-launcher tmux set-option -p -u -t "$pane" @ai_notif_id 2>/dev/null || true
