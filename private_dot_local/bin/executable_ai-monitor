@@ -9,6 +9,7 @@ import os
 import subprocess
 import threading
 import time
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -212,15 +213,42 @@ def color_for(row: Row) -> int:
     return {"busy": 1, "blocked": 2, "idle": 3, "done": 4}.get(row.state, 5)
 
 
+def char_width(char: str) -> int:
+    if unicodedata.combining(char):
+        return 0
+    if unicodedata.east_asian_width(char) in {"F", "W"}:
+        return 2
+    return 1
+
+
+def display_width(text: str) -> int:
+    return sum(char_width(char) for char in text)
+
+
 def fit(text: str, width: int) -> str:
     if width <= 0:
         return ""
     clean = " ".join(text.split())
-    if len(clean) <= width:
+    if display_width(clean) <= width:
         return clean
-    if width <= 1:
-        return "…"
-    return clean[: width - 1] + "…"
+    if width <= 3:
+        return "." * width
+
+    limit = width - 3
+    used = 0
+    chars = []
+    for char in clean:
+        char_columns = char_width(char)
+        if used + char_columns > limit:
+            break
+        chars.append(char)
+        used += char_columns
+    return "".join(chars).rstrip() + "..."
+
+
+def pad(text: str, width: int) -> str:
+    clipped = fit(text, width)
+    return clipped + (" " * max(0, width - display_width(clipped)))
 
 
 def goto_target(target: str) -> None:
@@ -251,9 +279,9 @@ def draw(stdscr, rows: list[Row], tick: int) -> None:
         x = len(prefix) + 3
         stdscr.addstr(y, x, fit(f"{state:<7} ", max(0, width - x)), curses.color_pair(color_for(row)))
         x += 8
-        label = f"{row.agent}:{row.label}"
+        label = pad(f"{row.agent}:{row.label}", 24)
         detail = row.summary or row.cwd or row.target
-        text = f"{label:<24} {detail}"
+        text = f"{label} {detail}"
         stdscr.addstr(y, x, fit(text, max(0, width - x)))
     stdscr.refresh()
 
