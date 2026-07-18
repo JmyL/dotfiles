@@ -9,11 +9,11 @@ source "$HOME/.local/bin/claude-attention-common"
 claude_attention_locate
 
 if (( looking_at_it )); then
-  tmux set-option -p -u -t "$target" @ai_state
+  dev-launcher tmux set-option -p -u -t "$target" @ai_state
   exit 0
 fi
 
-tmux set-option -p -t "$target" @ai_state done
+dev-launcher tmux set-option -p -t "$target" @ai_state done
 
 info_json="$(printf '%s' "$payload" | claude-session-info 2>/dev/null)"
 folder="$(jq -r '.folder // empty' <<<"$info_json" 2>/dev/null)"

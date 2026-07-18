@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "usage: dev-launcher COMMAND [ARG ...]" >&2
+  exit 2
+fi
+
+if [[ -n "${SYSTEM_DEV_TOOLBOX:-}" && ! -r /run/.containerenv ]]; then
+  if ! command -v toolbox >/dev/null 2>&1; then
+    echo "dev-launcher: SYSTEM_DEV_TOOLBOX is set but toolbox is not available" >&2
+    exit 127
+  fi
+  exec toolbox run -c "$SYSTEM_DEV_TOOLBOX" "$@"
+fi
+
+exec "$@"

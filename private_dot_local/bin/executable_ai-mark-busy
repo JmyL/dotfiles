@@ -6,7 +6,7 @@ cat >/dev/null
 
 [[ -n "${TMUX_PANE:-}" ]] || exit 0
 
-tmux set-option -p -t "$TMUX_PANE" @ai_cli 1
-tmux set-option -p -t "$TMUX_PANE" @ai_state busy
+dev-launcher tmux set-option -p -t "$TMUX_PANE" @ai_cli 1
+dev-launcher tmux set-option -p -t "$TMUX_PANE" @ai_state busy
 
 exit 0

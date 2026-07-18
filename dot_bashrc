@@ -37,7 +37,7 @@ export SDL_IM_MODULE=fcitx
 export INPUT_METHOD=fcitx
 
 alias v=nvim
-alias dv='toolbox enter f44'
+dv() { toolbox enter "${SYSTEM_DEV_TOOLBOX:?SYSTEM_DEV_TOOLBOX is not set}"; }
 alias dnf-backup='dnf repoquery --userinstalled --qf "%{name}\n" > packages.txt'
 alias tmo='sesh connect "$(sesh list | fzf)"'
 alias tm='tmuxinator'

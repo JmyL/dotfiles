@@ -11,12 +11,12 @@ source "$HOME/.local/bin/ai-attention-common"
 ai_attention_locate
 
 if (( looking_at_it )); then
-  tmux set-option -p -u -t "$target" @ai_state
+  dev-launcher tmux set-option -p -u -t "$target" @ai_state
   exit 0
 fi
 
-tmux set-option -p -t "$target" @ai_cli 1
-tmux set-option -p -t "$target" @ai_state blocked
+dev-launcher tmux set-option -p -t "$target" @ai_cli 1
+dev-launcher tmux set-option -p -t "$target" @ai_state blocked
 
 info_json="$(AI_AGENT="$agent" python3 -c '
 import json, os, sys

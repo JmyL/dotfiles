@@ -5,7 +5,7 @@
 ai_attention_locate() {
   local pane_active window_active
   IFS=$'	' read -r sid sname pane_active window_active < <(
-    tmux display-message -p -t "$TMUX_PANE" $'#{session_id}	#{session_name}	#{pane_active}	#{window_active}'
+    dev-launcher tmux display-message -p -t "$TMUX_PANE" $'#{session_id}	#{session_name}	#{pane_active}	#{window_active}'
   )
   target="$TMUX_PANE"
 
@@ -18,6 +18,6 @@ ai_attention_locate() {
         looking_at_it=1
         break
       fi
-    done < <(tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null               | sort -rn | awk '{print $2}')
+    done < <(dev-launcher tmux list-clients -t "$sid" -F '#{client_activity} #{client_tty}' 2>/dev/null               | sort -rn | awk '{print $2}')
   fi
 }

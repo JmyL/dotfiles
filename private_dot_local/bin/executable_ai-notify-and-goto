@@ -22,7 +22,7 @@ MAX_WAIT_SECONDS = 6 * 3600
 
 def focused_tmux_ttys():
     clients = subprocess.run(
-        ["tmux", "list-clients", "-F", "#{client_tty}"],
+        ["dev-launcher", "tmux", "list-clients", "-F", "#{client_tty}"],
         text=True,
         capture_output=True,
     )
@@ -103,7 +103,7 @@ def main():
     initially_focused_ttys = focused_tmux_ttys()
 
     subprocess.run(
-        ["tmux", "set-option", "-p", "-t", target, "@ai_notif_id", str(notif_id["value"])],
+        ["dev-launcher", "tmux", "set-option", "-p", "-t", target, "@ai_notif_id", str(notif_id["value"])],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -121,7 +121,7 @@ def main():
     loop.run()
 
     subprocess.run(
-        ["tmux", "set-option", "-p", "-u", "-t", target, "@ai_notif_id"],
+        ["dev-launcher", "tmux", "set-option", "-p", "-u", "-t", target, "@ai_notif_id"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

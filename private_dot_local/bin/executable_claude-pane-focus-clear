@@ -15,7 +15,7 @@ if [[ -n "$notif_id" ]]; then
     --method org.freedesktop.Notifications.CloseNotification "$notif_id" >/dev/null 2>&1 || true
 fi
 
-tmux set-option -p -u -t "$pane" @ai_state
-tmux set-option -p -u -t "$pane" @ai_notif_id
+dev-launcher tmux set-option -p -u -t "$pane" @ai_state
+dev-launcher tmux set-option -p -u -t "$pane" @ai_notif_id
 
 exit 0
