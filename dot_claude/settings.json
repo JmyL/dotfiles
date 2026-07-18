@@ -37,7 +37,7 @@
       {
         "hooks": [
           {
-            "command": "claude-stop-notify",
+            "command": "ai-stop-notify claude",
             "type": "command"
           }
         ]
@@ -47,7 +47,7 @@
       {
         "hooks": [
           {
-            "command": "claude-mark-busy",
+            "command": "ai-mark-busy",
             "type": "command"
           }
         ]
@@ -58,7 +58,7 @@
         "matcher": "permission_prompt|elicitation_dialog",
         "hooks": [
           {
-            "command": "claude-mark-blocked",
+            "command": "ai-mark-blocked claude",
             "type": "command"
           }
         ]

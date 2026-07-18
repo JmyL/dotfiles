@@ -125,7 +125,7 @@ function notifyDone(title: string, body: string): void {
     }
 
     setPaneOption("@ai_state", "done");
-    const child = spawn("pi-notify-and-goto", [attention.target, title || attention.sessionName, body], {
+    const child = spawn("ai-notify-and-goto", ["pi", attention.target, title || attention.sessionName, body], {
         detached: true,
         stdio: "ignore",
     });
@@ -145,7 +145,7 @@ function notifyBlocked(message: string, cwd: string | undefined): void {
 
     setPaneOption("@ai_state", "blocked");
     const title = cwd ? basename(cwd) : attention.sessionName;
-    const child = spawn("pi-notify-and-goto", [attention.target, title, message || "Pi needs your input"], {
+    const child = spawn("ai-notify-and-goto", ["pi", attention.target, title, message || "Pi needs your input"], {
         detached: true,
         stdio: "ignore",
     });
