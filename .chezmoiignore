@@ -4,3 +4,7 @@
 
 # tmux plugin manager installs/clones plugins here; keep it out of dotfiles.
 .tmux/plugins/
+
+# Host-local bash overrides.
+.bashrc.local.d/*
+!.bashrc.local.d/README

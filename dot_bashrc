@@ -26,6 +26,15 @@ if [ -d ~/.bashrc.d ]; then
 fi
 unset rc
 
+if [ -d ~/.bashrc.local.d ]; then
+  for rc in ~/.bashrc.local.d/*; do
+    if [ -f "$rc" ]; then
+      . "$rc"
+    fi
+  done
+fi
+unset rc
+
 export VISUAL=nvim
 export EDITOR=nvim
 

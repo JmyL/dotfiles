@@ -1,0 +1,15 @@
+# Local bash overrides
+#
+# Files in this directory are sourced by ~/.bashrc after ~/.bashrc.d and are
+# intentionally not managed by chezmoi, except for this commented README.
+#
+# On Fedora Silverblue hosts, create a file such as:
+#
+#   ~/.bashrc.local.d/system-dev-toolbox
+#
+# with:
+#
+#   export SYSTEM_DEV_TOOLBOX=f44
+#
+# Do not set this inside toolbox containers or on Ubuntu unless you explicitly
+# want dev-launcher to route commands through toolbox.
