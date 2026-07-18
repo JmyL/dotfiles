@@ -18,6 +18,8 @@ paste_keys="${SWAY_DICTATE_PASTE_KEYS:-ctrl+shift+v}"
 record_startup_delay="${SWAY_DICTATE_RECORD_STARTUP_DELAY:-0.05}"
 osd_enabled="${SWAY_DICTATE_OSD:-1}"
 osd_duration="${SWAY_DICTATE_OSD_DURATION:-1200}"
+osd_progress_duration="${SWAY_DICTATE_OSD_PROGRESS_DURATION:-60000}"
+osd_done_duration="${SWAY_DICTATE_OSD_DONE_DURATION:-$((osd_duration * 3))}"
 osd_icon="${SWAY_DICTATE_OSD_ICON:-audio-input-microphone-symbolic}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
@@ -25,6 +27,7 @@ mkdir -p "$state_dir" "$(dirname "$venv_dir")"
 show_osd() {
     local title="${1:-Dictation}"
     local body="${2:-}"
+    local duration="${3:-$osd_duration}"
     local message="$title"
     local -a osd_command
 
@@ -47,11 +50,13 @@ show_osd() {
     "${osd_command[@]}" \
         --custom-message "$message" \
         --custom-icon "$osd_icon" \
-        --duration "$osd_duration" >/dev/null 2>&1
+        --duration "$duration" >/dev/null 2>&1
 }
 
 notify() {
     local urgency="normal"
+    local osd_message
+    local osd_duration_for_message="$osd_duration"
     local -a notify_args=()
     local -a message_args=()
 
@@ -75,7 +80,17 @@ notify() {
         esac
     done
 
-    if [[ "$urgency" != "critical" ]] && show_osd "${message_args[@]}"; then
+    osd_message="${message_args[0]:-}"
+    case "$osd_message" in
+        "Dictation started"|"Transcribing")
+            osd_duration_for_message="$osd_progress_duration"
+            ;;
+        "Dictation inserted")
+            osd_duration_for_message="$osd_done_duration"
+            ;;
+    esac
+
+    if [[ "$urgency" != "critical" ]] && show_osd "${message_args[0]:-}" "${message_args[1]:-}" "$osd_duration_for_message"; then
         return 0
     fi
 
@@ -145,7 +160,7 @@ start_recording() {
         exit 1
     fi
 
-    notify "Dictation started" "Speak now, then press q."
+    notify "Dictation started"
 }
 
 stop_recording() {
@@ -165,7 +180,7 @@ stop_recording() {
         exit 1
     fi
 
-    notify "Dictation transcribing" "$model_name on $device/$compute_type, beam $beam_size"
+    notify "Transcribing"
     ensure_python
 
     OMP_NUM_THREADS="$threads" "$venv_dir/bin/python" - "$audio_file" "$text_file" "$model_name" "$device" "$compute_type" "$language" "$beam_size" "$vad_filter" >>"$log_file" 2>&1 <<'PY'
