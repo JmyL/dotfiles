@@ -41,9 +41,14 @@ if (( has_tmux_target )); then
   dev-launcher tmux set-option -p -t "$tmux_target" @ai_state done
 fi
 
-info_json="$(AI_AGENT="$agent" python3 -c '
+folder=""
+summary=""
+IFS=$'\t' read -r folder summary < <(AI_AGENT="$agent" python3 -c '
 import json, os, sys
-payload = json.load(sys.stdin) if not sys.stdin.isatty() else {}
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    payload = {}
 agent = os.environ.get("AI_AGENT", "AI")
 cwd = payload.get("cwd") or payload.get("working_directory") or ""
 summary = (
@@ -59,10 +64,8 @@ summary = " ".join(str(summary).split())
 if len(summary) > 140:
     summary = summary[:137] + "..."
 folder = os.path.basename(cwd.rstrip("/")) if cwd else ""
-print(json.dumps({"folder": folder, "summary": summary}))
-' <<<"$payload" 2>/dev/null)"
-folder="$(jq -r '.folder // empty' <<<"$info_json" 2>/dev/null)"
-summary="$(jq -r '.summary // empty' <<<"$info_json" 2>/dev/null)"
+print(f"{folder}\t{summary}")
+' <<<"$payload" 2>/dev/null)
 title="${folder:-$sname}"
 body="${summary:-${agent^} completed}"
 

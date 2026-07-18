@@ -5,6 +5,29 @@ Usage: ai-notify-and-goto <agent> <target> <summary> <body>
 """
 import subprocess
 import sys
+import os
+import shutil
+
+
+def running_in_container():
+    return os.path.exists("/run/.containerenv")
+
+
+def reexec_on_host():
+    if not running_in_container() or os.environ.get("AI_NOTIFY_AND_GOTO_HOST_ENTRY"):
+        return
+    if not shutil.which("flatpak-spawn"):
+        return
+    env = os.environ.copy()
+    env["AI_NOTIFY_AND_GOTO_HOST_ENTRY"] = "1"
+    os.execvpe(
+        "flatpak-spawn",
+        ["flatpak-spawn", "--host", "ai-notify-and-goto", *sys.argv[1:]],
+        env,
+    )
+
+
+reexec_on_host()
 
 import gi
 
