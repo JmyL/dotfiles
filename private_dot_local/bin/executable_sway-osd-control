@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sound_enabled="${SWAY_OSD_SOUND:-1}"
+
+play_sound() {
+    local sound="${1:-}"
+
+    if [[ "$sound_enabled" != 1 || -z "$sound" ]]; then
+        return 0
+    fi
+
+    if command -v canberra-gtk-play >/dev/null 2>&1; then
+        canberra-gtk-play -i "$sound" -d "sway-osd" >/dev/null 2>&1 &
+    fi
+}
+
+case "${1:-}" in
+    output-volume)
+        swayosd-client --output-volume "${2:?missing output-volume action}"
+        case "${2:-}" in
+            mute-toggle|mute|unmute)
+                play_sound "${SWAY_OSD_SOUND_VOLUME_MUTE:-audio-volume-change}"
+                ;;
+            *)
+                play_sound "${SWAY_OSD_SOUND_VOLUME:-audio-volume-change}"
+                ;;
+        esac
+        ;;
+    input-volume)
+        swayosd-client --input-volume "${2:?missing input-volume action}"
+        play_sound "${SWAY_OSD_SOUND_MIC:-audio-volume-change}"
+        ;;
+    brightness)
+        swayosd-client --brightness "${2:?missing brightness action}"
+        play_sound "${SWAY_OSD_SOUND_BRIGHTNESS:-bell}"
+        ;;
+    *)
+        echo "Usage: $0 {output-volume|input-volume|brightness} ACTION" >&2
+        exit 2
+        ;;
+esac
