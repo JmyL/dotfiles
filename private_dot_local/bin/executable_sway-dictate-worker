@@ -19,7 +19,6 @@ record_startup_delay="${SWAY_DICTATE_RECORD_STARTUP_DELAY:-0.05}"
 osd_enabled="${SWAY_DICTATE_OSD:-1}"
 osd_duration="${SWAY_DICTATE_OSD_DURATION:-1200}"
 osd_progress_duration="${SWAY_DICTATE_OSD_PROGRESS_DURATION:-60000}"
-osd_done_duration="${SWAY_DICTATE_OSD_DONE_DURATION:-$((osd_duration * 3))}"
 osd_icon="${SWAY_DICTATE_OSD_ICON:-audio-input-microphone-symbolic}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
@@ -84,9 +83,6 @@ notify() {
     case "$osd_message" in
         "Dictation started"|"Transcribing...")
             osd_duration_for_message="$osd_progress_duration"
-            ;;
-        "Done")
-            osd_duration_for_message="$osd_done_duration"
             ;;
     esac
 
