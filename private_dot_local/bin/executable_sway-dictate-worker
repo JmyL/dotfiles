@@ -16,12 +16,71 @@ beam_size="${SWAY_DICTATE_BEAM_SIZE:-1}"
 vad_filter="${SWAY_DICTATE_VAD_FILTER:-0}"
 paste_keys="${SWAY_DICTATE_PASTE_KEYS:-ctrl+shift+v}"
 record_startup_delay="${SWAY_DICTATE_RECORD_STARTUP_DELAY:-0.05}"
+osd_enabled="${SWAY_DICTATE_OSD:-1}"
+osd_duration="${SWAY_DICTATE_OSD_DURATION:-1200}"
+osd_icon="${SWAY_DICTATE_OSD_ICON:-audio-input-microphone-symbolic}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
 
+show_osd() {
+    local title="${1:-Dictation}"
+    local body="${2:-}"
+    local message="$title"
+    local -a osd_command
+
+    if [[ -n "$body" ]]; then
+        message="$title: $body"
+    fi
+
+    if [[ "$osd_enabled" != 1 ]]; then
+        return 1
+    fi
+
+    if command -v swayosd-client >/dev/null 2>&1; then
+        osd_command=(swayosd-client)
+    elif command -v flatpak-spawn >/dev/null 2>&1; then
+        osd_command=(flatpak-spawn --host /usr/bin/swayosd-client)
+    else
+        return 1
+    fi
+
+    "${osd_command[@]}" \
+        --custom-message "$message" \
+        --custom-icon "$osd_icon" \
+        --duration "$osd_duration" >/dev/null 2>&1
+}
+
 notify() {
+    local urgency="normal"
+    local -a notify_args=()
+    local -a message_args=()
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -u|--urgency)
+                urgency="${2:-normal}"
+                notify_args+=("$1" "${2:-}")
+                shift 2
+                ;;
+            --urgency=*)
+                urgency="${1#*=}"
+                notify_args+=("$1")
+                shift
+                ;;
+            *)
+                notify_args+=("$1")
+                message_args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    if [[ "$urgency" != "critical" ]] && show_osd "${message_args[@]}"; then
+        return 0
+    fi
+
     if command -v notify-send >/dev/null 2>&1; then
-        notify-send "$@"
+        notify-send "${notify_args[@]}"
     fi
 }
 
