@@ -7,6 +7,7 @@ import curses
 import json
 import os
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,8 @@ SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 BLOCKED = (".!", "!.", " !", ". ")
 STALE_AFTER = 300
 REFRESH_SECONDS = 0.15
+DATA_REFRESH_SECONDS = 1.0
+INPUT_POLL_MS = 30
 
 
 @dataclass
@@ -29,6 +32,37 @@ class Row:
     summary: str
     updated_at: float
     stale: bool = False
+
+
+class RowCache:
+    def __init__(self) -> None:
+        self.rows: list[Row] = []
+        self.refreshing = False
+        self.last_refresh = 0.0
+        self.lock = threading.Lock()
+
+    def snapshot(self) -> list[Row]:
+        with self.lock:
+            return list(self.rows)
+
+    def start_refresh(self) -> None:
+        with self.lock:
+            if self.refreshing:
+                return
+            self.refreshing = True
+
+        thread = threading.Thread(target=self._refresh, daemon=True)
+        thread.start()
+
+    def _refresh(self) -> None:
+        try:
+            rows = collect_rows()
+        except Exception:
+            rows = []
+        with self.lock:
+            self.rows = rows
+            self.last_refresh = time.monotonic()
+            self.refreshing = False
 
 
 def runtime_agents_dir() -> Path:
@@ -232,31 +266,39 @@ def curses_main(stdscr, popup: bool) -> int:
     curses.init_pair(3, curses.COLOR_BLUE, -1)
     curses.init_pair(4, curses.COLOR_GREEN, -1)
     curses.init_pair(5, curses.COLOR_WHITE, -1)
-    stdscr.nodelay(True)
+    stdscr.timeout(INPUT_POLL_MS)
     tick = 0
-    rows = collect_rows()
+    cache = RowCache()
+    cache.start_refresh()
+    next_frame = 0.0
+    next_data_refresh = 0.0
     while True:
-        draw(stdscr, rows, tick)
-        deadline = time.monotonic() + REFRESH_SECONDS
-        while time.monotonic() < deadline:
-            key = stdscr.getch()
-            if key in (ord("q"), 27):
-                return 0
-            if key == ord("r"):
-                rows = collect_rows()
-                break
-            if ord("0") <= key <= ord("9"):
-                selected = 10 if key == ord("0") else key - ord("0")
-                if 1 <= selected <= len(rows):
-                    goto_target(rows[selected - 1].target)
-                    if popup:
-                        return 0
-                rows = collect_rows()
-                break
-            time.sleep(0.02)
-        else:
+        now = time.monotonic()
+        if now >= next_data_refresh:
+            cache.start_refresh()
+            next_data_refresh = now + DATA_REFRESH_SECONDS
+        if now >= next_frame:
+            rows = cache.snapshot()
+            draw(stdscr, rows, tick)
             tick += 1
-            rows = collect_rows()
+            next_frame = now + REFRESH_SECONDS
+
+        key = stdscr.getch()
+        if key in (ord("q"), 27):
+            return 0
+        if key == ord("r"):
+            cache.start_refresh()
+            next_data_refresh = time.monotonic() + DATA_REFRESH_SECONDS
+            continue
+        if ord("0") <= key <= ord("9"):
+            rows = cache.snapshot()
+            selected = 10 if key == ord("0") else key - ord("0")
+            if 1 <= selected <= len(rows):
+                goto_target(rows[selected - 1].target)
+                if popup:
+                    return 0
+            cache.start_refresh()
+            next_data_refresh = time.monotonic() + DATA_REFRESH_SECONDS
 
 
 def main() -> int:
