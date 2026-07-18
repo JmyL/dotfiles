@@ -28,7 +28,7 @@ if tmux list-windows -t "$sid" -F '#{window_index}' 2>/dev/null | grep -qx "$wid
 fi
 
 focus_target() {
-  local tty="$1" switched_sid=""
+  local tty="$1" switched_sid="" client_pid=""
 
   if should_skip_tty "$tty"; then
     return 1
@@ -36,17 +36,20 @@ focus_target() {
 
   tmux switch-client -c "$tty" -t "$sid" 2>/dev/null || return 1
 
-  switched_sid="$(
-    tmux list-clients -F '#{client_tty} #{session_id}' 2>/dev/null |
-      awk -v tty="$tty" '$1 == tty { print $2; exit }'
-  )"
+  IFS=$'\t' read -r switched_sid client_pid < <(
+    tmux list-clients -F '#{client_tty}	#{session_id}	#{client_pid}' 2>/dev/null |
+      awk -F '\t' -v tty="$tty" '$1 == tty { print $2 "\t" $3; exit }'
+  )
   if [[ "$switched_sid" != "$sid" ]]; then
+    return 1
+  fi
+  if should_skip_client_pid "$client_pid"; then
     return 1
   fi
 
   (( window_ok )) && tmux select-window -t "$sid:$widx" 2>/dev/null || true
   (( pane_ok )) && tmux select-pane -t "$sid:$widx.$pidx" 2>/dev/null || true
-  printf '%s\n' "$tty"
+  printf '%s\t%s\n' "$tty" "$client_pid"
   return 0
 }
 
@@ -59,6 +62,18 @@ should_skip_tty() {
     [[ -n "$skip" ]] || continue
     skip_norm="${skip#/dev/}"
     [[ "$tty_norm" == "$skip_norm" ]] && return 0
+  done
+  return 1
+}
+
+should_skip_client_pid() {
+  local client_pid="$1" skip
+
+  [[ -n "$client_pid" ]] || return 1
+  IFS=: read -r -a skip_client_pids <<< "${TMUX_GOTO_PANE_SKIP_CLIENT_PIDS:-}"
+  for skip in "${skip_client_pids[@]}"; do
+    [[ -n "$skip" ]] || continue
+    [[ "$client_pid" == "$skip" ]] && return 0
   done
   return 1
 }

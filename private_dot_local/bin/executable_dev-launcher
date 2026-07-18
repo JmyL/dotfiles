@@ -22,6 +22,9 @@ if [[ -n "${SYSTEM_DEV_TOOLBOX:-}" && ! -r /run/.containerenv ]]; then
   if [[ -v TMUX_GOTO_PANE_SKIP_TTYS ]]; then
     toolbox_env+=("TMUX_GOTO_PANE_SKIP_TTYS=$TMUX_GOTO_PANE_SKIP_TTYS")
   fi
+  if [[ -v TMUX_GOTO_PANE_SKIP_CLIENT_PIDS ]]; then
+    toolbox_env+=("TMUX_GOTO_PANE_SKIP_CLIENT_PIDS=$TMUX_GOTO_PANE_SKIP_CLIENT_PIDS")
+  fi
   exec toolbox run -c "$SYSTEM_DEV_TOOLBOX" "${toolbox_env[@]}" "$@"
 fi
 

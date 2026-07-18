@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Resolve the Sway window hosting a tmux client process.
+
+Usage:
+  sway-tmux-client-window <client-pid> [client-tty]
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+
+def running_in_container():
+    return os.path.exists("/run/.containerenv")
+
+
+def reexec_on_host():
+    if not running_in_container() or os.environ.get("SWAY_TMUX_CLIENT_WINDOW_HOST_ENTRY"):
+        return
+    if not shutil.which("flatpak-spawn"):
+        return
+    env = os.environ.copy()
+    env["SWAY_TMUX_CLIENT_WINDOW_HOST_ENTRY"] = "1"
+    os.execvpe(
+        "flatpak-spawn",
+        ["flatpak-spawn", "--host", "sway-tmux-client-window", *sys.argv[1:]],
+        env,
+    )
+
+
+def leaf_windows(node, acc):
+    if isinstance(node, dict):
+        if node.get("pid") is not None:
+            acc.append(node)
+        for key in ("nodes", "floating_nodes"):
+            for child in node.get(key, []):
+                leaf_windows(child, acc)
+    return acc
+
+
+def proc_parents():
+    out = subprocess.run(
+        ["ps", "-eo", "pid=,ppid="], text=True, capture_output=True
+    ).stdout
+    parents = {}
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) != 2:
+            continue
+        pid, ppid = int(parts[0]), int(parts[1])
+        parents[pid] = ppid
+    return parents
+
+
+def ancestry(pid, parents):
+    seen = set()
+    while pid and pid not in seen:
+        seen.add(pid)
+        yield pid
+        pid = parents.get(pid, 0)
+
+
+def env_value(pid, name):
+    try:
+        with open(f"/proc/{pid}/environ", "rb") as f:
+            entries = f.read().split(b"\0")
+    except OSError:
+        return None
+    prefix = f"{name}=".encode()
+    for entry in entries:
+        if entry.startswith(prefix):
+            return entry[len(prefix) :].decode(errors="ignore")
+    return None
+
+
+def main():
+    reexec_on_host()
+    if len(sys.argv) < 2:
+        sys.exit(2)
+
+    try:
+        client_pid = int(sys.argv[1])
+    except ValueError:
+        sys.exit(2)
+
+    tree_result = subprocess.run(
+        ["swaymsg", "-t", "get_tree"], text=True, capture_output=True
+    )
+    if tree_result.returncode != 0 or not tree_result.stdout.strip():
+        sys.exit(1)
+
+    leaves = leaf_windows(json.loads(tree_result.stdout), [])
+    leaf_by_pid = {int(leaf["pid"]): leaf["id"] for leaf in leaves if leaf.get("pid")}
+    parents = proc_parents()
+
+    for pid in ancestry(client_pid, parents):
+        if pid in leaf_by_pid:
+            print(leaf_by_pid[pid])
+            return
+
+        kitty_pid = env_value(pid, "KITTY_PID")
+        if not kitty_pid:
+            continue
+        try:
+            kitty_pid_int = int(kitty_pid)
+        except ValueError:
+            continue
+        if kitty_pid_int in leaf_by_pid:
+            print(leaf_by_pid[kitty_pid_int])
+            return
+
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

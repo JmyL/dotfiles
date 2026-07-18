@@ -15,6 +15,7 @@ focus_con_id() {
 }
 
 skip_ttys=()
+skip_client_pids=()
 
 for _ in $(seq 1 20); do
   skip_env=""
@@ -25,8 +26,20 @@ for _ in $(seq 1 20); do
       skip_env="$skip_env:$skipped_tty"
     fi
   done
+  skip_pids_env=""
+  for skipped_pid in "${skip_client_pids[@]}"; do
+    if [[ -z "$skip_pids_env" ]]; then
+      skip_pids_env="$skipped_pid"
+    else
+      skip_pids_env="$skip_pids_env:$skipped_pid"
+    fi
+  done
 
-  worker_output="$(TMUX_GOTO_PANE_SKIP_TTYS="$skip_env" dev-launcher tmux-goto-pane-worker "$input_target" 2>/dev/null)"
+  worker_output="$(
+    TMUX_GOTO_PANE_SKIP_TTYS="$skip_env" \
+      TMUX_GOTO_PANE_SKIP_CLIENT_PIDS="$skip_pids_env" \
+      dev-launcher tmux-goto-pane-worker "$input_target" 2>/dev/null
+  )"
   status=$?
   if (( status == 1 )); then
     notify-send -a "AI Agent" "Couldn't jump to pane" "That pane no longer exists." 2>/dev/null || true
@@ -38,8 +51,13 @@ for _ in $(seq 1 20); do
     exit "$status"
   fi
 
-  tty="$(printf '%s\n' "$worker_output" | tail -n1)"
+  IFS=$'\t' read -r tty client_pid < <(printf '%s\n' "$worker_output" | tail -n1)
   [[ -n "$tty" ]] || exit 0
+
+  if [[ -n "${client_pid:-}" ]] && con_id="$(sway-tmux-client-window "$client_pid" "$tty" 2>/dev/null)"; then
+    focus_con_id "$con_id"
+    exit 0
+  fi
 
   if con_id="$(sway-tty-window "$tty" 2>/dev/null)"; then
     focus_con_id "$con_id"
@@ -47,6 +65,7 @@ for _ in $(seq 1 20); do
   fi
 
   skip_ttys+=("$tty")
+  [[ -n "${client_pid:-}" ]] && skip_client_pids+=("$client_pid")
 done
 
 exit 0
