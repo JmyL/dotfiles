@@ -62,7 +62,7 @@ def main():
                 "",
                 summary,
                 body,
-                ["goto", "Go to pane", "default", ""],
+                ["default", "Go to pane", "goto", "Go to pane"],
                 {"urgency": GLib.Variant("y", URGENCY_NORMAL)},
                 EXPIRE_TIMEOUT_MS,
             ),
