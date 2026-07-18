@@ -14,6 +14,7 @@ device="${SWAY_DICTATE_DEVICE:-cpu}"
 threads="${SWAY_DICTATE_THREADS:-$(nproc 2>/dev/null || printf '4')}"
 beam_size="${SWAY_DICTATE_BEAM_SIZE:-1}"
 vad_filter="${SWAY_DICTATE_VAD_FILTER:-0}"
+paste_keys="${SWAY_DICTATE_PASTE_KEYS:-ctrl+shift+v}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
 
@@ -147,7 +148,18 @@ PY
     fi
 
     if command -v wtype >/dev/null 2>&1; then
-        wtype -M ctrl -k v
+        case "$paste_keys" in
+            ctrl+v)
+                wtype -M ctrl -k v
+                ;;
+            ctrl+shift+v)
+                wtype -M ctrl -M shift -k v
+                ;;
+            *)
+                notify -u critical "Dictation failed" "Unsupported paste shortcut: $paste_keys"
+                exit 2
+                ;;
+        esac
         notify "Dictation inserted"
     else
         notify -u critical "Dictation copied only" "Install wtype to paste into the focused window."
