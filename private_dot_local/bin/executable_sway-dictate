@@ -2,12 +2,17 @@
 set -euo pipefail
 
 worker="${SWAY_DICTATE_WORKER:-$HOME/.local/bin/sway-dictate-worker}"
+launcher="${SWAY_DICTATE_LAUNCHER:-$HOME/.local/bin/dev-launcher}"
 
-if ! command -v dev-launcher >/dev/null 2>&1; then
+if [[ ! -x "$launcher" ]]; then
+    launcher="$(command -v dev-launcher || true)"
+fi
+
+if [[ -z "$launcher" ]]; then
     if command -v notify-send >/dev/null 2>&1; then
         notify-send -u critical "Dictation unavailable" "dev-launcher is not installed"
     fi
     exit 127
 fi
 
-exec dev-launcher "$worker" "$@"
+exec "$launcher" "$worker" "$@"
