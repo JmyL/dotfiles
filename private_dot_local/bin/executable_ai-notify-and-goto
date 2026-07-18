@@ -3,10 +3,14 @@
 
 Usage: ai-notify-and-goto <agent> <target> <summary> <body>
 """
+import json
+import re
 import subprocess
 import sys
 import os
 import shutil
+import time
+from pathlib import Path
 
 
 def running_in_container():
@@ -43,15 +47,69 @@ EXPIRE_TIMEOUT_MS = 10_000
 MAX_WAIT_SECONDS = 6 * 3600
 
 
-def tmux_target(target: str) -> str | None:
+def target_segment(target: str, prefix: str) -> str | None:
     for segment in target.split(","):
-        if segment.startswith("tmux:"):
-            return segment.removeprefix("tmux:")
-    if target.startswith(("sway-window:", "sway-con:")):
-        return None
-    if target.startswith("%") or ":" in target:
-        return target
+        if segment.startswith(prefix):
+            return segment.removeprefix(prefix)
     return None
+
+
+def tmux_target(target: str) -> str | None:
+    pane = target_segment(target, "tmux:")
+    if pane:
+        return pane
+    if "," not in target and not target.startswith(("sway-window:", "sway-con:", "kitty-window:")):
+        if target.startswith("%") or ":" in target:
+            return target
+    return None
+
+
+def kitty_window_target(target: str) -> str | None:
+    kitty_window_id = target_segment(target, "kitty-window:")
+    if kitty_window_id and re.fullmatch(r"[0-9]+", kitty_window_id):
+        return kitty_window_id
+    return None
+
+
+def state_dir() -> Path:
+    return Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "ai-hook-notify"
+
+
+def state_path(kitty_window_id: str) -> Path:
+    return state_dir() / f"kitty-window-{kitty_window_id}.json"
+
+
+def write_kitty_state(kitty_window_id: str, notif_id: int, agent: str, target: str) -> None:
+    try:
+        state_dir().mkdir(mode=0o700, parents=True, exist_ok=True)
+        path = state_path(kitty_window_id)
+        path.write_text(
+            json.dumps(
+                {
+                    "notif_id": notif_id,
+                    "agent": agent,
+                    "target": target,
+                    "created_at": int(time.time()),
+                },
+                separators=(",", ":"),
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        path.chmod(0o600)
+    except OSError:
+        pass
+
+
+def clear_kitty_state(kitty_window_id: str | None) -> None:
+    if not kitty_window_id:
+        return
+    try:
+        state_path(kitty_window_id).unlink()
+    except FileNotFoundError:
+        pass
+    except OSError:
+        pass
 
 
 def main():
@@ -112,12 +170,15 @@ def main():
     notif_id["value"] = reply.unpack()[0]
 
     pane_target = tmux_target(target)
+    kitty_window_id = None if pane_target else kitty_window_target(target)
     if pane_target:
         subprocess.run(
             ["dev-launcher", "tmux", "set-option", "-p", "-t", pane_target, "@ai_notif_id", str(notif_id["value"])],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+    elif kitty_window_id:
+        write_kitty_state(kitty_window_id, notif_id["value"], agent, target)
 
     GLib.timeout_add_seconds(MAX_WAIT_SECONDS, loop.quit)
     loop.run()
@@ -128,6 +189,8 @@ def main():
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+    else:
+        clear_kitty_state(kitty_window_id)
 
     if result["action"]:
         subprocess.run(["ai-goto-target", target])

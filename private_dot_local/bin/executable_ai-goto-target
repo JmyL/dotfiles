@@ -34,6 +34,8 @@ for segment in "${segments[@]}"; do
         dev-launcher tmux-goto-pane-worker "$pane" >/dev/null 2>&1 || tmux-goto-pane "$pane" >/dev/null 2>&1 || true
       fi
       ;;
+    kitty-window:*)
+      ;;
     *)
       tmux-goto-pane "$segment" >/dev/null 2>&1 || true
       ;;

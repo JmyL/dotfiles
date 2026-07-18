@@ -40,6 +40,14 @@ ai_attention_locate() {
       looking_at_it=1
     fi
   fi
+
+  if [[ -n "${KITTY_WINDOW_ID:-}" ]]; then
+    if [[ -n "$target" ]]; then
+      target="$target,kitty-window:$KITTY_WINDOW_ID"
+    else
+      target="kitty-window:$KITTY_WINDOW_ID"
+    fi
+  fi
 }
 
 tmux_sway_con_id() {
