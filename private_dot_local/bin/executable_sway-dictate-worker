@@ -15,6 +15,7 @@ threads="${SWAY_DICTATE_THREADS:-$(nproc 2>/dev/null || printf '4')}"
 beam_size="${SWAY_DICTATE_BEAM_SIZE:-1}"
 vad_filter="${SWAY_DICTATE_VAD_FILTER:-0}"
 paste_keys="${SWAY_DICTATE_PASTE_KEYS:-ctrl+shift+v}"
+record_startup_delay="${SWAY_DICTATE_RECORD_STARTUP_DELAY:-0.05}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
 
@@ -77,7 +78,7 @@ start_recording() {
     esac
 
     echo $! >"$pid_file"
-    sleep 0.2
+    sleep "$record_startup_delay"
 
     if ! recording_active; then
         rm -f "$pid_file"
