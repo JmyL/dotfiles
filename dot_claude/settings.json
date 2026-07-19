@@ -31,6 +31,14 @@
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "ai-mark-busy claude",
+            "type": "command"
+          }
+        ]
       }
     ],
     "Stop": [
