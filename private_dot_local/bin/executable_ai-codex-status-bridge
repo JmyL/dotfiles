@@ -93,6 +93,37 @@ def find_text(obj: object, keys: set[str]) -> str:
     return ""
 
 
+def find_reviewer(obj: object) -> str:
+    reviewer_keys = {"approvals_reviewer", "approval_reviewer", "reviewer"}
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if str(key).lower() in reviewer_keys and isinstance(value, str):
+                return value.lower().replace("-", "_")
+        for value in obj.values():
+            found = find_reviewer(value)
+            if found:
+                return found
+    elif isinstance(obj, list):
+        for value in obj:
+            found = find_reviewer(value)
+            if found:
+                return found
+    return ""
+
+
+def non_actionable_blocked_message(message: str) -> bool:
+    text = " ".join(message.split()).lower()
+    if not text:
+        return False
+    return bool(
+        re.search(r"\bquestions?\s+\d+\s*/\s*\d+\s+answered\b", text)
+        or "automatic approval" in text
+        or "auto approval" in text
+        or "auto-review" in text
+        or "auto_review" in text
+    )
+
+
 def status_to_state(status: object) -> tuple[str | None, str]:
     if not isinstance(status, dict):
         return None, ""
@@ -102,6 +133,8 @@ def status_to_state(status: object) -> tuple[str | None, str]:
         if isinstance(flags, list) and (
             "waitingOnUserInput" in flags or "waitingOnApproval" in flags
         ):
+            if "waitingOnApproval" in flags and find_reviewer(status) == "auto_review":
+                return "busy", ""
             message = find_text(
                 status,
                 {
@@ -116,6 +149,8 @@ def status_to_state(status: object) -> tuple[str | None, str]:
             )
             if not message:
                 message = "Codex needs your input"
+            if non_actionable_blocked_message(message):
+                return "busy", ""
             return "blocked", message
         return "busy", ""
     if status_type == "systemError":

@@ -9,11 +9,6 @@ source "$HOME/.local/bin/ai-attention-common"
 ai_attention_locate
 [[ -n "$target" ]] || exit 0
 
-if (( looking_at_it )); then
-  ai-state-daemon report-state --source hook --state idle --agent "$agent" --target "$target" --cwd "$PWD" >/dev/null 2>&1 || true
-  exit 0
-fi
-
 if (( has_tmux_target )); then
   dev-launcher tmux set-option -p -t "$tmux_target" @ai_cli 1
 fi
@@ -39,17 +34,29 @@ folder="$(jq -r '.folder // empty' <<<"$info_json" 2>/dev/null)"
 message="$(jq -r '.message // empty' <<<"$info_json" 2>/dev/null)"
 title="${folder:-$sname}"
 message="${message:-${agent^} needs your input}"
-if [[ "$agent" == "codex" ]]; then
-  session_id="$(printf '%s' "$payload" | ai_codex_session_id_from_payload)"
-  ai-state-daemon report-state --source hook --state blocked --agent "$agent" --target "$target" --cwd "$PWD" --session-id "$session_id" --message "$message" >/dev/null 2>&1 || true
-else
-  ai-state-daemon report-state --source hook --state blocked --agent "$agent" --target "$target" --cwd "$PWD" --message "$message" >/dev/null 2>&1 || true
+
+if MESSAGE="$message" python3 -c '
+import os
+import re
+text = " ".join(os.environ.get("MESSAGE", "").split()).lower()
+if (
+    re.search(r"\bquestions?\s+\d+\s*/\s*\d+\s+answered\b", text)
+    or "automatic approval" in text
+    or "auto approval" in text
+    or "auto-review" in text
+    or "auto_review" in text
+):
+    raise SystemExit(0)
+raise SystemExit(1)
+' >/dev/null 2>&1
+then
+  exit 0
 fi
 
 # PermissionRequest also fires for auto-review/policy checks that do not require
-# user input. Keep the tmux blocked marker, but notify only when the request is
-# routed to the user, or when the reviewer cannot be determined.
-should_notify_permission_request() {
+# user input. Report blocked only when the request is routed to the user, or
+# when the reviewer cannot be determined.
+should_report_permission_request_blocked() {
   case "${AI_NOTIFY_PERMISSION_REQUEST:-auto}" in
     1|true|TRUE|yes|YES|on|ON) return 0 ;;
     0|false|FALSE|no|NO|off|OFF) return 1 ;;
@@ -138,6 +145,13 @@ sys.exit(0)
 ' 2>/dev/null
 }
 
-should_notify_permission_request || exit 0
+should_report_permission_request_blocked || exit 0
+
+if [[ "$agent" == "codex" ]]; then
+  session_id="$(printf '%s' "$payload" | ai_codex_session_id_from_payload)"
+  ai-state-daemon report-state --source hook --state blocked --agent "$agent" --target "$target" --cwd "$PWD" --session-id "$session_id" --message "$message" >/dev/null 2>&1 || true
+else
+  ai-state-daemon report-state --source hook --state blocked --agent "$agent" --target "$target" --cwd "$PWD" --message "$message" >/dev/null 2>&1 || true
+fi
 
 exit 0

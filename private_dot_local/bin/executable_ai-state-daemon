@@ -102,6 +102,19 @@ def pane_is_unfocused(pane: str) -> bool:
     return pane_active != "1" or window_active != "1"
 
 
+def non_actionable_blocked_message(message: str) -> bool:
+    text = " ".join(message.split()).lower()
+    if not text:
+        return False
+    return bool(
+        re.search(r"\bquestions?\s+\d+\s*/\s*\d+\s+answered\b", text)
+        or "automatic approval" in text
+        or "auto approval" in text
+        or "auto-review" in text
+        or "auto_review" in text
+    )
+
+
 @dataclass
 class Signal:
     state: str
@@ -341,6 +354,8 @@ class StateManager:
     def notify_blocked(self, record: PaneRecord, message: str) -> None:
         if not self.notify or not record.target:
             return
+        if non_actionable_blocked_message(message):
+            return
         if record.pane and not pane_is_unfocused(record.pane):
             return
         title = Path(record.cwd).name or record.label or record.agent.title()
@@ -485,6 +500,11 @@ class StateManagerTests(unittest.TestCase):
             {"command": "report-state", "source": "app", "target": "tmux:%1", "state": "blocked", "message": "Approve git push"}
         )
         self.assertEqual(manager.records["tmux:%1"].effective_message, "Approve git push")
+
+    def test_non_actionable_blocked_message(self) -> None:
+        self.assertTrue(non_actionable_blocked_message("Questions 1/1 answered"))
+        self.assertTrue(non_actionable_blocked_message("Automatic approval"))
+        self.assertFalse(non_actionable_blocked_message("Approve git push"))
 
 
 def main() -> int:

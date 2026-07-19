@@ -1,68 +1,12 @@
 #!/usr/bin/env bash
-# Fired by the tmux pane-focus-in hook. When the pane gaining focus is
-# blocked/done (unseen), dismisses its pending desktop notification (if any)
-# and clears the state back to idle. Runs whether the user got here by
-# clicking the notification or by navigating there directly.
+# Fired by the tmux pane-focus-in hook. When the pane gaining focus has a
+# pending desktop notification, dismiss it. State is owned by ai-state-daemon
+# and must not be cleared just because the pane is focused.
 set -uo pipefail
 
 pane="${1:-}" state="${2:-}" notif_id="${3:-}"
 
 [[ "$state" == "done" || "$state" == "blocked" ]] || exit 0
-
-source "$HOME/.local/bin/ai-attention-common"
-
-clear_agent="ai"
-clear_target="tmux:$pane"
-clear_cwd="$PWD"
-IFS=$'\t' read -r mapped_agent mapped_target mapped_cwd < <(
-  AI_TMUX_PANE="$pane" python3 -c '
-import glob
-import json
-import os
-
-pane = os.environ.get("AI_TMUX_PANE", "")
-base = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "ai-hook-notify", "codex-sessions")
-matches = []
-for path in glob.glob(os.path.join(base, "*.json")):
-    try:
-        stat = os.stat(path)
-        with open(path, encoding="utf-8") as handle:
-            data = json.load(handle)
-    except Exception:
-        continue
-    if not isinstance(data, dict):
-        continue
-    target = data.get("target")
-    if not isinstance(target, str) or not target:
-        continue
-    mapped_pane = data.get("tmux_pane")
-    has_pane = mapped_pane == pane or any(segment == f"tmux:{pane}" for segment in target.split(","))
-    if has_pane:
-        updated = data.get("updated_at")
-        try:
-            updated_float = float(updated)
-        except (TypeError, ValueError):
-            updated_float = stat.st_mtime
-        matches.append((updated_float, data))
-
-if matches:
-    data = max(matches, key=lambda item: item[0])[1]
-    print(
-        "{}\t{}\t{}".format(
-            data.get("agent") if isinstance(data.get("agent"), str) else "codex",
-            data.get("target") if isinstance(data.get("target"), str) else "",
-            data.get("cwd") if isinstance(data.get("cwd"), str) else "",
-        )
-    )
-' 2>/dev/null
-)
-if [[ -n "${mapped_target:-}" ]]; then
-  clear_agent="${mapped_agent:-codex}"
-  clear_target="$mapped_target"
-  clear_cwd="${mapped_cwd:-$PWD}"
-fi
-
-ai_runtime_state_write idle "$clear_agent" "$clear_target" "$clear_cwd" ""
 
 if [[ -n "$notif_id" ]]; then
   gdbus call --session --dest org.freedesktop.Notifications \
@@ -70,7 +14,6 @@ if [[ -n "$notif_id" ]]; then
     --method org.freedesktop.Notifications.CloseNotification "$notif_id" >/dev/null 2>&1 || true
 fi
 
-dev-launcher tmux set-option -p -u -t "$pane" @ai_state
 dev-launcher tmux set-option -p -u -t "$pane" @ai_notif_id
 
 exit 0
