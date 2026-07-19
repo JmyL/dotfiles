@@ -56,7 +56,8 @@ exec swayidle -w \
          timeout 300 '~/.local/bin/idle-inhibited || $lock' \
          timeout 600 '~/.local/bin/idle-inhibited || swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
          timeout 1800 '~/.local/bin/idle-inhibited || systemctl suspend' \
-         before-sleep '$lock'
+         before-sleep '$lock' \
+         after-resume 'swaymsg "output * power on"'
 
 ### Bar
 #
