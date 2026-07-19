@@ -25,6 +25,13 @@ show_message() {
         --duration "${SWAY_OSD_MESSAGE_DURATION:-1800}"
 }
 
+show_brightness_failure() {
+    play_sound "${SWAY_OSD_SOUND_BRIGHTNESS_FAILED:-dialog-error}"
+    show_message \
+        "${SWAY_OSD_NO_BRIGHTNESS_MESSAGE:-No brightness-adjustable display}" \
+        "${SWAY_OSD_NO_BRIGHTNESS_ICON:-display-brightness-symbolic}"
+}
+
 backlight_outputs() {
     local backlight_dir="${SWAY_OSD_BACKLIGHT_DIR:-/sys/class/backlight}"
     local backlight_device
@@ -85,18 +92,14 @@ case "${1:-}" in
         brightness_action="${2:?missing brightness action}"
 
         if ! has_active_backlight_output; then
-            show_message \
-                "${SWAY_OSD_NO_BRIGHTNESS_MESSAGE:-No brightness-adjustable display}" \
-                "${SWAY_OSD_NO_BRIGHTNESS_ICON:-display-brightness-symbolic}"
+            show_brightness_failure
             exit 0
         fi
 
         if swayosd-client --brightness "$brightness_action"; then
             play_sound "${SWAY_OSD_SOUND_BRIGHTNESS:-bell}"
         else
-            show_message \
-                "${SWAY_OSD_NO_BRIGHTNESS_MESSAGE:-No brightness-adjustable display}" \
-                "${SWAY_OSD_NO_BRIGHTNESS_ICON:-display-brightness-symbolic}"
+            show_brightness_failure
         fi
         ;;
     *)
