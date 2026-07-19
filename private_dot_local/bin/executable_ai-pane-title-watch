@@ -1,0 +1,388 @@
+#!/usr/bin/env python3
+"""Watch tmux pane titles for Codex "Action Required" states."""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import glob
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+import unittest
+from dataclasses import dataclass
+from pathlib import Path
+
+
+SUBSCRIPTION_NAME = "ai-pane-title"
+FORMAT = "#{@ai_cli}\t#{@ai_state}\t#{@ai_title_blocked}\t#{pane_title}"
+ACTION_REQUIRED = "Action Required"
+NOTIFY_THROTTLE_SECONDS = 60
+
+
+def runtime_dir() -> Path:
+    return Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "ai-hook-notify"
+
+
+def agents_dir() -> Path:
+    return runtime_dir() / "agents"
+
+
+def session_dir() -> Path:
+    return runtime_dir() / "codex-sessions"
+
+
+def sanitize(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", value)
+
+
+def control_unescape(value: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        return chr(int(match.group(1), 8))
+
+    return re.sub(r"\\([0-7]{3})", replace, value)
+
+
+@dataclass(frozen=True)
+class PaneTitleEvent:
+    pane: str
+    ai_cli: bool
+    ai_state: str
+    title_blocked: bool
+    title: str
+
+
+@dataclass(frozen=True)
+class PaneMapping:
+    agent: str
+    target: str
+    cwd: str
+
+
+def parse_subscription_changed(line: str) -> PaneTitleEvent | None:
+    if not line.startswith("%subscription-changed "):
+        return None
+
+    parts = line.split(" ")
+    if len(parts) < 7 or parts[1] != SUBSCRIPTION_NAME:
+        return None
+    try:
+        colon_index = parts.index(":", 6)
+    except ValueError:
+        return None
+
+    pane = parts[5]
+    raw_value = " ".join(parts[colon_index + 1 :])
+    value = control_unescape(raw_value)
+    fields = value.split("\t", 3)
+    while len(fields) < 4:
+        fields.append("")
+
+    return PaneTitleEvent(
+        pane=pane,
+        ai_cli=fields[0] == "1",
+        ai_state=fields[1],
+        title_blocked=fields[2] == "1",
+        title=fields[3],
+    )
+
+
+def should_mark_blocked(event: PaneTitleEvent) -> bool:
+    return event.ai_cli and ACTION_REQUIRED in event.title
+
+
+def should_clear_title_blocked(event: PaneTitleEvent) -> bool:
+    return event.title_blocked and ACTION_REQUIRED not in event.title
+
+
+def runtime_state_key(target: str) -> str:
+    for segment in target.split(","):
+        if segment.startswith("tmux:"):
+            return "tmux-" + sanitize(segment[5:])
+    for segment in target.split(","):
+        if segment.startswith("kitty-window:"):
+            return "kitty-window-" + sanitize(segment[13:])
+    import hashlib
+
+    return "target-" + hashlib.sha256(target.encode("utf-8", "surrogateescape")).hexdigest()[:24]
+
+
+def write_runtime_state(state: str, agent: str, target: str, cwd: str, summary: str) -> None:
+    if not target:
+        return
+    try:
+        directory = agents_dir()
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = directory / f"{runtime_state_key(target)}.json"
+        tmp = directory / f".tmp-{os.getpid()}-{time.time_ns()}.json"
+        payload = {
+            "state": state,
+            "agent": agent,
+            "target": target,
+            "cwd": cwd,
+            "summary": summary,
+            "updated_at": int(time.time()),
+        }
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except OSError:
+        pass
+
+
+def tmux(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["dev-launcher", "tmux", *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+
+def pane_is_unfocused(pane: str) -> bool:
+    result = tmux("display-message", "-p", "-t", pane, "#{pane_active}\t#{window_active}")
+    if result.returncode != 0:
+        return True
+    pane_active, _, window_active = result.stdout.strip().partition("\t")
+    return pane_active != "1" or window_active != "1"
+
+
+def pane_cwd(pane: str) -> str:
+    result = tmux("display-message", "-p", "-t", pane, "#{pane_current_path}")
+    if result.returncode == 0:
+        return result.stdout.strip()
+    return ""
+
+
+def find_pane_mapping(pane: str) -> PaneMapping:
+    matches: list[tuple[float, dict[str, object]]] = []
+    for path in glob.glob(str(session_dir() / "*.json")):
+        try:
+            stat = os.stat(path)
+            with open(path, encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        target = data.get("target")
+        if not isinstance(target, str) or not target:
+            continue
+        mapped_pane = data.get("tmux_pane")
+        has_pane = mapped_pane == pane or any(segment == f"tmux:{pane}" for segment in target.split(","))
+        if not has_pane:
+            continue
+        updated = data.get("updated_at")
+        try:
+            updated_float = float(updated)
+        except (TypeError, ValueError):
+            updated_float = stat.st_mtime
+        matches.append((updated_float, data))
+
+    if matches:
+        data = max(matches, key=lambda item: item[0])[1]
+        return PaneMapping(
+            agent=str(data.get("agent") or "codex"),
+            target=str(data.get("target") or f"tmux:{pane}"),
+            cwd=str(data.get("cwd") or ""),
+        )
+
+    return PaneMapping(agent="codex", target=f"tmux:{pane}", cwd=pane_cwd(pane))
+
+
+def set_pane_title_blocked(pane: str) -> None:
+    tmux("set-option", "-p", "-t", pane, "@ai_cli", "1")
+    tmux("set-option", "-p", "-t", pane, "@ai_state", "blocked")
+    tmux("set-option", "-p", "-t", pane, "@ai_title_blocked", "1")
+
+
+def clear_pane_title_blocked(pane: str, current_state: str) -> None:
+    tmux("set-option", "-p", "-u", "-t", pane, "@ai_title_blocked")
+    if current_state == "blocked":
+        tmux("set-option", "-p", "-u", "-t", pane, "@ai_state")
+
+
+def notify_once(pane: str, target: str, title: str, body: str) -> None:
+    try:
+        runtime_dir().mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = runtime_dir() / f"title-blocked-{sanitize(pane)}-{sanitize(title)}"
+        now = int(time.time())
+        try:
+            last = int(path.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            last = 0
+        if now - last < NOTIFY_THROTTLE_SECONDS:
+            return
+        path.write_text(f"{now}\n", encoding="utf-8")
+    except OSError:
+        pass
+
+    try:
+        subprocess.Popen(
+            ["setsid", "-f", "ai-notify-and-goto", "codex", target, title, body],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        pass
+
+
+def handle_event(event: PaneTitleEvent) -> None:
+    if should_mark_blocked(event):
+        mapping = find_pane_mapping(event.pane)
+        cwd = mapping.cwd or pane_cwd(event.pane)
+        body = "Codex needs your input"
+        set_pane_title_blocked(event.pane)
+        write_runtime_state("blocked", mapping.agent, mapping.target, cwd, body)
+        if pane_is_unfocused(event.pane):
+            notify_once(event.pane, mapping.target, Path(cwd).name or "Codex", body)
+        return
+
+    if should_clear_title_blocked(event):
+        mapping = find_pane_mapping(event.pane)
+        cwd = mapping.cwd or pane_cwd(event.pane)
+        clear_pane_title_blocked(event.pane, event.ai_state)
+        if event.ai_state == "blocked":
+            write_runtime_state("idle", mapping.agent, mapping.target, cwd, "")
+
+
+def control_command() -> str:
+    return f"refresh-client -B '{SUBSCRIPTION_NAME}:%*:{FORMAT}'\n"
+
+
+def list_sessions() -> list[str]:
+    result = tmux("list-sessions", "-F", "#{session_id}")
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def spawn_session_daemon(session: str) -> None:
+    try:
+        subprocess.Popen(
+            [sys.argv[0], "--daemon", "--session", session],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        pass
+
+
+def run_control_client(session: str) -> int:
+    proc = subprocess.Popen(
+        ["dev-launcher", "tmux", "-C", "attach-session", "-t", session],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        bufsize=1,
+    )
+    assert proc.stdin is not None
+    assert proc.stdout is not None
+    proc.stdin.write(control_command())
+    proc.stdin.flush()
+
+    for line in proc.stdout:
+        if should_stop:
+            break
+        event = parse_subscription_changed(line.rstrip("\n"))
+        if event is not None:
+            handle_event(event)
+
+    try:
+        proc.terminate()
+    except OSError:
+        pass
+    try:
+        proc.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    return 0
+
+
+should_stop = False
+
+
+def stop(_signum: int, _frame: object) -> None:
+    global should_stop
+    should_stop = True
+
+
+def daemon(session: str) -> int:
+    lock_dir = runtime_dir()
+    lock_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    lock_path = lock_dir / f"pane-title-watch-{sanitize(session)}.lock"
+    with lock_path.open("w", encoding="utf-8") as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return 0
+
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGINT, stop)
+        backoff = 0.2
+        while not should_stop:
+            try:
+                run_control_client(session)
+                if not should_stop:
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, 5.0)
+            except Exception:
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 5.0)
+    return 0
+
+
+class ParserTests(unittest.TestCase):
+    def test_parse_subscription_changed(self) -> None:
+        line = "%subscription-changed ai-pane-title $1 @2 0 %3 : 1\tbusy\t\tCodex - Action Required"
+        event = parse_subscription_changed(line)
+        self.assertEqual(event, PaneTitleEvent("%3", True, "busy", False, "Codex - Action Required"))
+
+    def test_parse_escaped_title(self) -> None:
+        line = r"%subscription-changed ai-pane-title $1 @2 0 %3 : 1\011blocked\0111\011Action\040Required"
+        event = parse_subscription_changed(line)
+        self.assertEqual(event, PaneTitleEvent("%3", True, "blocked", True, "Action Required"))
+
+    def test_mark_requires_ai_cli(self) -> None:
+        event = PaneTitleEvent("%3", False, "busy", False, "Action Required")
+        self.assertFalse(should_mark_blocked(event))
+
+    def test_clear_only_marker_owned(self) -> None:
+        self.assertTrue(should_clear_title_blocked(PaneTitleEvent("%3", True, "blocked", True, "codex")))
+        self.assertFalse(should_clear_title_blocked(PaneTitleEvent("%3", True, "blocked", False, "codex")))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--daemon", action="store_true")
+    parser.add_argument("--session", default="")
+    parser.add_argument("--all", action="store_true")
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+
+    if args.self_test:
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(ParserTests)
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+        return 0 if result.wasSuccessful() else 1
+
+    if not args.daemon:
+        parser.error("--daemon is required unless --self-test is used")
+    if args.all:
+        for session in list_sessions():
+            spawn_session_daemon(session)
+        return 0
+    session = args.session or os.environ.get("TMUX_TITLE_WATCH_SESSION") or ""
+    if not session:
+        parser.error("--session is required")
+    return daemon(session)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

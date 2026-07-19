@@ -12,6 +12,7 @@ ai_runtime_state_remove_target "tmux:$pane"
 
 dev-launcher tmux set-option -p -u -t "$pane" @ai_cli 2>/dev/null || true
 dev-launcher tmux set-option -p -u -t "$pane" @ai_state 2>/dev/null || true
+dev-launcher tmux set-option -p -u -t "$pane" @ai_title_blocked 2>/dev/null || true
 dev-launcher tmux set-option -p -u -t "$pane" @ai_notif_id 2>/dev/null || true
 
 exit 0
