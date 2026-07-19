@@ -146,6 +146,8 @@ class PaneRecord:
     effective_message: str = ""
     blocked_episode: int = 0
     notified_episode: int = 0
+    done_episode: int = 0
+    notified_done_episode: int = 0
     updated_at: float = field(default_factory=time.time)
 
 
@@ -247,12 +249,15 @@ class StateManager:
             label=str(payload.get("label") or ""),
             session_id=str(payload.get("session_id") or ""),
         )
+        previous_source_state = record.signals[source].state if source in record.signals else ""
         record.signals[source] = Signal(
             state=state,
             source=source,
             message=str(payload.get("message") or ""),
             ttl=float(payload.get("ttl") or 0.0),
         )
+        if state == "done" and previous_source_state != "done":
+            record.done_episode += 1
         self.recompute(record)
 
     def report_observation(self, payload: dict[str, Any]) -> None:
@@ -306,6 +311,13 @@ class StateManager:
         if state == "blocked" and record.notified_episode != record.blocked_episode:
             self.notify_blocked(record, message)
             record.notified_episode = record.blocked_episode
+        if record.done_episode and record.notified_done_episode != record.done_episode:
+            done_message = ""
+            done_signals = [signal for signal in record.signals.values() if signal.state == "done"]
+            if done_signals:
+                done_message = max(done_signals, key=lambda item: item.updated_at).message
+            self.notify_done(record, done_message)
+            record.notified_done_episode = record.done_episode
 
     def persist(self, record: PaneRecord) -> None:
         if not self.persist_enabled:
@@ -360,6 +372,23 @@ class StateManager:
             return
         title = Path(record.cwd).name or record.label or record.agent.title()
         body = message or f"{record.agent.title()} needs your input"
+        try:
+            subprocess.Popen(
+                ["setsid", "-f", "ai-notify-and-goto", record.agent, record.target, title, body],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            pass
+
+    def notify_done(self, record: PaneRecord, message: str) -> None:
+        if not self.notify or not record.target:
+            return
+        if record.pane and not pane_is_unfocused(record.pane):
+            return
+        title = Path(record.cwd).name or record.label or record.agent.title()
+        body = message or f"{record.agent.title()} completed"
         try:
             subprocess.Popen(
                 ["setsid", "-f", "ai-notify-and-goto", record.agent, record.target, title, body],
@@ -493,6 +522,22 @@ class StateManagerTests(unittest.TestCase):
         self.assertEqual(record.blocked_episode, 1)
         manager.report_state({"command": "report-state", "source": "app", "target": "tmux:%1", "state": "blocked"})
         self.assertEqual(record.blocked_episode, 1)
+
+    def test_done_episode_notifies_once(self) -> None:
+        manager = StateManager(notify=False, tmux_enabled=False, persist_enabled=False)
+        manager.report_state({"command": "report-state", "source": "hook", "target": "tmux:%1", "state": "done"})
+        record = manager.records["tmux:%1"]
+        self.assertEqual(record.done_episode, 1)
+        manager.report_state({"command": "report-state", "source": "hook", "target": "tmux:%1", "state": "done"})
+        self.assertEqual(record.done_episode, 1)
+
+    def test_done_report_notifies_even_when_app_idle_wins(self) -> None:
+        manager = StateManager(notify=False, tmux_enabled=False, persist_enabled=False)
+        manager.report_state({"command": "report-state", "source": "app", "target": "tmux:%1", "state": "idle"})
+        manager.report_state({"command": "report-state", "source": "hook", "target": "tmux:%1", "state": "done"})
+        record = manager.records["tmux:%1"]
+        self.assertEqual(record.effective_state, "idle")
+        self.assertEqual(record.done_episode, 1)
 
     def test_blocked_message_is_effective(self) -> None:
         manager = StateManager(notify=False, tmux_enabled=False, persist_enabled=False)
