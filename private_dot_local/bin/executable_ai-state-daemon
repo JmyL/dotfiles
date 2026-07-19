@@ -1,0 +1,523 @@
+#!/usr/bin/env python3
+"""Single owner for AI pane state, runtime state, and blocked notifications."""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+import re
+import select
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+
+VALID_STATES = {"busy", "blocked", "idle", "done"}
+SOURCE_PRIORITY = {"observation": 10, "title": 10, "hook": 50, "app": 100}
+SOURCE_TTL = {"observation": 8.0, "title": 8.0, "hook": 90.0, "app": 300.0}
+STALE_SESSION_SECONDS = 24 * 60 * 60
+
+
+def runtime_dir() -> Path:
+    return Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "ai-hook-notify"
+
+
+def socket_path() -> Path:
+    return runtime_dir() / "ai-state-daemon.sock"
+
+
+def agents_dir() -> Path:
+    return runtime_dir() / "agents"
+
+
+def session_dir() -> Path:
+    return runtime_dir() / "codex-sessions"
+
+
+def sanitize(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", value)
+
+
+def runtime_state_key(target: str) -> str:
+    for segment in target.split(","):
+        if segment.startswith("tmux:"):
+            return "tmux-" + sanitize(segment[5:])
+    for segment in target.split(","):
+        if segment.startswith("kitty-window:"):
+            return "kitty-window-" + sanitize(segment[13:])
+    return "target-" + hashlib.sha256(target.encode("utf-8", "surrogateescape")).hexdigest()[:24]
+
+
+def tmux_pane_from_target(target: str) -> str:
+    for segment in target.split(","):
+        if segment.startswith("tmux:"):
+            return segment[5:]
+    return ""
+
+
+def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, tmp_name = tempfile.mkstemp(prefix=".tmp-", suffix=".json", dir=path.parent, text=True)
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, separators=(",", ":"))
+            handle.write("\n")
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    finally:
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def tmux(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["dev-launcher", "tmux", *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+
+def pane_is_unfocused(pane: str) -> bool:
+    if not pane:
+        return True
+    result = tmux("display-message", "-p", "-t", pane, "#{pane_active}\t#{window_active}")
+    if result.returncode != 0:
+        return True
+    pane_active, _, window_active = result.stdout.strip().partition("\t")
+    return pane_active != "1" or window_active != "1"
+
+
+@dataclass
+class Signal:
+    state: str
+    source: str
+    message: str = ""
+    updated_at: float = field(default_factory=time.time)
+    ttl: float = 0.0
+
+    @property
+    def priority(self) -> int:
+        return SOURCE_PRIORITY.get(self.source, 0)
+
+    def expired(self, now: float) -> bool:
+        ttl = self.ttl or SOURCE_TTL.get(self.source, 30.0)
+        return now - self.updated_at > ttl
+
+
+@dataclass
+class PaneRecord:
+    target: str
+    agent: str = "ai"
+    cwd: str = ""
+    label: str = ""
+    session_id: str = ""
+    transcript_path: str = ""
+    pane: str = ""
+    signals: dict[str, Signal] = field(default_factory=dict)
+    effective_state: str = "idle"
+    effective_message: str = ""
+    blocked_episode: int = 0
+    notified_episode: int = 0
+    updated_at: float = field(default_factory=time.time)
+
+
+class StateManager:
+    def __init__(self, notify: bool = True, tmux_enabled: bool = True, persist_enabled: bool = True) -> None:
+        self.records: dict[str, PaneRecord] = {}
+        self.sessions: dict[str, str] = {}
+        self.notify = notify
+        self.tmux_enabled = tmux_enabled
+        self.persist_enabled = persist_enabled
+
+    def target_for_session(self, session_id: str) -> str:
+        if session_id in self.sessions:
+            return self.sessions[session_id]
+        now = time.time()
+        try:
+            paths = list(session_dir().glob("*.json"))
+        except OSError:
+            return ""
+        for path in paths:
+            try:
+                if now - path.stat().st_mtime > STALE_SESSION_SECONDS:
+                    continue
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(data, dict):
+                continue
+            if data.get("session_id") == session_id and isinstance(data.get("target"), str):
+                target = data["target"]
+                self.sessions[session_id] = target
+                self.ensure_record(
+                    target=target,
+                    agent=str(data.get("agent") or "codex"),
+                    cwd=str(data.get("cwd") or ""),
+                    session_id=session_id,
+                )
+                return target
+        return ""
+
+    def ensure_record(
+        self,
+        target: str,
+        agent: str = "ai",
+        cwd: str = "",
+        label: str = "",
+        session_id: str = "",
+        transcript_path: str = "",
+    ) -> PaneRecord:
+        record = self.records.get(target)
+        if record is None:
+            record = PaneRecord(target=target)
+            self.records[target] = record
+        if agent:
+            record.agent = agent
+        if cwd:
+            record.cwd = cwd
+        if label:
+            record.label = label
+        if session_id:
+            record.session_id = session_id
+            self.sessions[session_id] = target
+        if transcript_path:
+            record.transcript_path = transcript_path
+        record.pane = tmux_pane_from_target(target) or record.pane
+        record.updated_at = time.time()
+        return record
+
+    def report_session(self, payload: dict[str, Any]) -> None:
+        target = str(payload.get("target") or "")
+        session_id = str(payload.get("session_id") or "")
+        if not target:
+            return
+        record = self.ensure_record(
+            target=target,
+            agent=str(payload.get("agent") or "codex"),
+            cwd=str(payload.get("cwd") or ""),
+            label=str(payload.get("label") or ""),
+            session_id=session_id,
+            transcript_path=str(payload.get("transcript_path") or ""),
+        )
+        if "hook" not in record.signals:
+            record.signals["hook"] = Signal("idle", "hook", ttl=SOURCE_TTL["hook"])
+        self.persist(record)
+
+    def report_state(self, payload: dict[str, Any]) -> None:
+        target = str(payload.get("target") or "")
+        if not target:
+            session_id = str(payload.get("session_id") or "")
+            target = self.target_for_session(session_id) if session_id else ""
+        state = str(payload.get("state") or "").lower()
+        if not target or state not in VALID_STATES:
+            return
+        source = str(payload.get("source") or "hook")
+        record = self.ensure_record(
+            target=target,
+            agent=str(payload.get("agent") or ""),
+            cwd=str(payload.get("cwd") or ""),
+            label=str(payload.get("label") or ""),
+            session_id=str(payload.get("session_id") or ""),
+        )
+        record.signals[source] = Signal(
+            state=state,
+            source=source,
+            message=str(payload.get("message") or ""),
+            ttl=float(payload.get("ttl") or 0.0),
+        )
+        self.recompute(record)
+
+    def report_observation(self, payload: dict[str, Any]) -> None:
+        payload = dict(payload)
+        payload["source"] = str(payload.get("source") or "observation")
+        payload["ttl"] = float(payload.get("ttl") or SOURCE_TTL["observation"])
+        self.report_state(payload)
+
+    def release_pane(self, payload: dict[str, Any]) -> None:
+        target = str(payload.get("target") or "")
+        if not target:
+            return
+        record = self.records.pop(target, None)
+        pane = tmux_pane_from_target(target)
+        if self.tmux_enabled and pane:
+            tmux("set-option", "-p", "-u", "-t", pane, "@ai_state")
+            tmux("set-option", "-p", "-u", "-t", pane, "@ai_title_blocked")
+        try:
+            (agents_dir() / f"{runtime_state_key(target)}.json").unlink()
+        except OSError:
+            pass
+        if record and record.session_id:
+            try:
+                (session_dir() / f"{record.session_id}.json").unlink()
+            except OSError:
+                pass
+
+    def recompute(self, record: PaneRecord) -> None:
+        now = time.time()
+        record.signals = {
+            source: signal for source, signal in record.signals.items() if not signal.expired(now)
+        }
+        if record.signals:
+            signal = max(record.signals.values(), key=lambda item: (item.priority, item.updated_at))
+            state = signal.state
+            message = signal.message
+        else:
+            state = "idle"
+            message = ""
+
+        previous = record.effective_state
+        if state == "blocked" and previous != "blocked":
+            record.blocked_episode += 1
+            record.notified_episode = 0
+        if state != "blocked":
+            record.effective_message = ""
+        record.effective_state = state
+        record.effective_message = message
+        record.updated_at = now
+        self.persist(record)
+        if state == "blocked" and record.notified_episode != record.blocked_episode:
+            self.notify_blocked(record, message)
+            record.notified_episode = record.blocked_episode
+
+    def persist(self, record: PaneRecord) -> None:
+        if not self.persist_enabled:
+            return
+        target = record.target
+        pane = record.pane or tmux_pane_from_target(target)
+        if self.tmux_enabled and pane:
+            tmux("set-option", "-p", "-t", pane, "@ai_cli", "1")
+            if record.effective_state == "idle":
+                tmux("set-option", "-p", "-u", "-t", pane, "@ai_state")
+            else:
+                tmux("set-option", "-p", "-t", pane, "@ai_state", record.effective_state)
+            if any(sig.source in {"title", "observation"} and sig.state == "blocked" for sig in record.signals.values()):
+                tmux("set-option", "-p", "-t", pane, "@ai_title_blocked", "1")
+            else:
+                tmux("set-option", "-p", "-u", "-t", pane, "@ai_title_blocked")
+
+        if target:
+            atomic_write_json(
+                agents_dir() / f"{runtime_state_key(target)}.json",
+                {
+                    "state": record.effective_state,
+                    "agent": record.agent,
+                    "target": target,
+                    "cwd": record.cwd,
+                    "label": record.label,
+                    "summary": record.effective_message,
+                    "updated_at": int(record.updated_at),
+                },
+            )
+        if record.session_id:
+            atomic_write_json(
+                session_dir() / f"{record.session_id}.json",
+                {
+                    "session_id": record.session_id,
+                    "agent": record.agent,
+                    "target": target,
+                    "tmux_pane": pane,
+                    "cwd": record.cwd,
+                    "summary": record.effective_message,
+                    "transcript_path": record.transcript_path,
+                    "updated_at": int(record.updated_at),
+                },
+            )
+
+    def notify_blocked(self, record: PaneRecord, message: str) -> None:
+        if not self.notify or not record.target:
+            return
+        if record.pane and not pane_is_unfocused(record.pane):
+            return
+        title = Path(record.cwd).name or record.label or record.agent.title()
+        body = message or f"{record.agent.title()} needs your input"
+        try:
+            subprocess.Popen(
+                ["setsid", "-f", "ai-notify-and-goto", record.agent, record.target, title, body],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            pass
+
+    def handle(self, payload: dict[str, Any]) -> None:
+        command = payload.get("command")
+        if command == "report-session":
+            self.report_session(payload)
+        elif command == "report-state":
+            self.report_state(payload)
+        elif command == "report-observation":
+            self.report_observation(payload)
+        elif command == "release-pane":
+            self.release_pane(payload)
+
+
+def send_report(payload: dict[str, Any]) -> int:
+    path = socket_path()
+    try:
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(0.2)
+        client.connect(str(path))
+        client.sendall(json.dumps(payload, ensure_ascii=False).encode("utf-8") + b"\n")
+        client.close()
+        return 0
+    except OSError:
+        return 0
+
+
+def run_daemon() -> int:
+    base = runtime_dir()
+    base.mkdir(parents=True, exist_ok=True, mode=0o700)
+    lock_path = base / "ai-state-daemon.lock"
+    with lock_path.open("w", encoding="utf-8") as lock_file:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return 0
+
+        path = socket_path()
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server.bind(str(path))
+        os.chmod(path, 0o600)
+        server.listen(32)
+        server.setblocking(False)
+
+        manager = StateManager()
+        should_stop = False
+
+        def stop(_signum: int, _frame: object) -> None:
+            nonlocal should_stop
+            should_stop = True
+
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGINT, stop)
+        clients: list[socket.socket] = []
+        buffers: dict[socket.socket, bytes] = {}
+        try:
+            while not should_stop:
+                readable, _, _ = select.select([server, *clients], [], [], 0.5)
+                for sock in readable:
+                    if sock is server:
+                        conn, _ = server.accept()
+                        conn.setblocking(False)
+                        clients.append(conn)
+                        buffers[conn] = b""
+                        continue
+                    try:
+                        chunk = sock.recv(65536)
+                    except OSError:
+                        chunk = b""
+                    if not chunk:
+                        clients.remove(sock)
+                        buffers.pop(sock, None)
+                        sock.close()
+                        continue
+                    data = buffers.get(sock, b"") + chunk
+                    lines = data.split(b"\n")
+                    buffers[sock] = lines.pop()
+                    for line in lines:
+                        try:
+                            payload = json.loads(line.decode("utf-8"))
+                        except (UnicodeDecodeError, json.JSONDecodeError):
+                            continue
+                        if isinstance(payload, dict):
+                            manager.handle(payload)
+        finally:
+            for conn in clients:
+                conn.close()
+            server.close()
+            try:
+                path.unlink()
+            except OSError:
+                pass
+    return 0
+
+
+class StateManagerTests(unittest.TestCase):
+    def test_app_busy_wins_over_title_idle(self) -> None:
+        manager = StateManager(notify=False, tmux_enabled=False, persist_enabled=False)
+        manager.report_state({"command": "report-state", "source": "app", "target": "tmux:%1", "state": "busy"})
+        manager.report_observation({"command": "report-observation", "target": "tmux:%1", "state": "idle"})
+        self.assertEqual(manager.records["tmux:%1"].effective_state, "busy")
+
+    def test_hook_blocked_not_cleared_by_title_idle(self) -> None:
+        manager = StateManager(notify=False, tmux_enabled=False, persist_enabled=False)
+        manager.report_state({"command": "report-state", "source": "hook", "target": "tmux:%1", "state": "blocked"})
+        manager.report_observation({"command": "report-observation", "target": "tmux:%1", "state": "idle"})
+        self.assertEqual(manager.records["tmux:%1"].effective_state, "blocked")
+
+    def test_app_idle_clears_blocked(self) -> None:
+        manager = StateManager(notify=False, tmux_enabled=False, persist_enabled=False)
+        manager.report_state({"command": "report-state", "source": "hook", "target": "tmux:%1", "state": "blocked"})
+        manager.report_state({"command": "report-state", "source": "app", "target": "tmux:%1", "state": "idle"})
+        self.assertEqual(manager.records["tmux:%1"].effective_state, "idle")
+
+    def test_blocked_episode_notifies_once(self) -> None:
+        manager = StateManager(notify=False, tmux_enabled=False, persist_enabled=False)
+        manager.report_state({"command": "report-state", "source": "app", "target": "tmux:%1", "state": "blocked"})
+        record = manager.records["tmux:%1"]
+        self.assertEqual(record.blocked_episode, 1)
+        manager.report_state({"command": "report-state", "source": "app", "target": "tmux:%1", "state": "blocked"})
+        self.assertEqual(record.blocked_episode, 1)
+
+    def test_blocked_message_is_effective(self) -> None:
+        manager = StateManager(notify=False, tmux_enabled=False, persist_enabled=False)
+        manager.report_state(
+            {"command": "report-state", "source": "app", "target": "tmux:%1", "state": "blocked", "message": "Approve git push"}
+        )
+        self.assertEqual(manager.records["tmux:%1"].effective_message, "Approve git push")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    sub = parser.add_subparsers(dest="command")
+    sub.add_parser("daemon")
+    sub.add_parser("self-test")
+    for name in ("report-session", "report-state", "report-observation", "release-pane"):
+        p = sub.add_parser(name)
+        p.add_argument("--target", default="")
+        p.add_argument("--session-id", default="")
+        p.add_argument("--agent", default="")
+        p.add_argument("--state", default="")
+        p.add_argument("--source", default="")
+        p.add_argument("--cwd", default="")
+        p.add_argument("--label", default="")
+        p.add_argument("--message", default="")
+        p.add_argument("--transcript-path", default="")
+        p.add_argument("--ttl", type=float, default=0.0)
+    args = parser.parse_args()
+
+    if args.command == "daemon":
+        return run_daemon()
+    if args.command == "self-test":
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(StateManagerTests)
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
+        return 0 if result.wasSuccessful() else 1
+    if args.command in {"report-session", "report-state", "report-observation", "release-pane"}:
+        send_report({key: value for key, value in vars(args).items() if value not in ("", 0.0, None)})
+        return 0
+    parser.print_help()
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

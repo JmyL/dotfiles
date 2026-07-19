@@ -30,16 +30,12 @@ ai_attention_locate
 [[ -n "$target" ]] || exit 0
 
 if (( looking_at_it )); then
-  if (( has_tmux_target )); then
-    dev-launcher tmux set-option -p -u -t "$tmux_target" @ai_state
-  fi
-  ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
+  ai-state-daemon report-state --source hook --state idle --agent "$agent" --target "$target" --cwd "$PWD" >/dev/null 2>&1 || true
   exit 0
 fi
 
 if (( has_tmux_target )); then
   dev-launcher tmux set-option -p -t "$tmux_target" @ai_cli 1
-  dev-launcher tmux set-option -p -t "$tmux_target" @ai_state done
 fi
 
 folder=""
@@ -69,12 +65,11 @@ print(f"{folder}\t{summary}")
 ' <<<"$payload" 2>/dev/null)
 title="${folder:-$sname}"
 body="${summary:-${agent^} completed}"
-ai_runtime_state_write done "$agent" "$target" "$PWD" "$body"
 if [[ "$agent" == "codex" ]]; then
   session_id="$(printf '%s' "$payload" | ai_codex_session_id_from_payload)"
-  ai_codex_session_map_write "$session_id" "$agent" "$target" "$PWD" "$body"
+  ai-state-daemon report-state --source hook --state done --agent "$agent" --target "$target" --cwd "$PWD" --session-id "$session_id" --message "$body" >/dev/null 2>&1 || true
+else
+  ai-state-daemon report-state --source hook --state done --agent "$agent" --target "$target" --cwd "$PWD" --message "$body" >/dev/null 2>&1 || true
 fi
-
-setsid -f ai-notify-and-goto "$agent" "$target" "$title" "$body"   < /dev/null > /dev/null 2>&1 &
 
 exit 0

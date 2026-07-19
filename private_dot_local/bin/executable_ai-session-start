@@ -8,10 +8,18 @@ payload="$(cat)"
 source "$HOME/.local/bin/ai-attention-common"
 ai_attention_locate
 if [[ -n "$target" ]]; then
-  ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
   if [[ "$agent" == "codex" ]]; then
     session_id="$(printf '%s' "$payload" | ai_codex_session_id_from_payload)"
-    ai_codex_session_map_write "$session_id" "$agent" "$target" "$PWD" ""
+    transcript_path="$(printf '%s' "$payload" | python3 -c 'import json,sys; 
+try:
+    payload=json.load(sys.stdin)
+except Exception:
+    payload={}
+value=payload.get("transcript_path") or payload.get("transcriptPath") or ""
+print(value if isinstance(value,str) else "")' 2>/dev/null)"
+    ai-state-daemon report-session --agent "$agent" --target "$target" --cwd "$PWD" --session-id "$session_id" --transcript-path "$transcript_path" >/dev/null 2>&1 || true
+  else
+    ai-state-daemon report-session --agent "$agent" --target "$target" --cwd "$PWD" >/dev/null 2>&1 || true
   fi
 fi
 
