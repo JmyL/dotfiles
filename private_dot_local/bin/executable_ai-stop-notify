@@ -5,7 +5,7 @@ set -uo pipefail
 agent="${1:-ai}"
 payload="$(cat)"
 
-# Stop fires when Codex accepts a turn as complete. If a Stop hook has already
+# Stop fires when the agent accepts a turn as complete. If a Stop hook has already
 # forced a continuation, or there is no assistant message to summarize, avoid a
 # misleading desktop notification.
 if printf '%s' "$payload" | python3 -c '
@@ -30,12 +30,16 @@ ai_attention_locate
 [[ -n "$target" ]] || exit 0
 
 if (( looking_at_it )); then
-  ai-state-daemon report-state --source hook --state idle --agent "$agent" --target "$target" --cwd "$PWD" >/dev/null 2>&1 || true
+  if (( has_tmux_target )); then
+    dev-launcher tmux set-option -p -u -t "$tmux_target" @ai_state
+  fi
+  ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
   exit 0
 fi
 
 if (( has_tmux_target )); then
   dev-launcher tmux set-option -p -t "$tmux_target" @ai_cli 1
+  dev-launcher tmux set-option -p -t "$tmux_target" @ai_state done
 fi
 
 folder=""
@@ -65,11 +69,8 @@ print(f"{folder}\t{summary}")
 ' <<<"$payload" 2>/dev/null)
 title="${folder:-$sname}"
 body="${summary:-${agent^} completed}"
-if [[ "$agent" == "codex" ]]; then
-  session_id="$(printf '%s' "$payload" | ai_codex_session_id_from_payload)"
-  ai-state-daemon report-state --source hook --state done --agent "$agent" --target "$target" --cwd "$PWD" --session-id "$session_id" --message "$body" >/dev/null 2>&1 || true
-else
-  ai-state-daemon report-state --source hook --state done --agent "$agent" --target "$target" --cwd "$PWD" --message "$body" >/dev/null 2>&1 || true
-fi
+ai_runtime_state_write done "$agent" "$target" "$PWD" "$body"
+
+setsid -f ai-notify-and-goto "$agent" "$target" "$title" "$body" < /dev/null > /dev/null 2>&1 &
 
 exit 0

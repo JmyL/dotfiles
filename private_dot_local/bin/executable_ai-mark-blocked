@@ -9,8 +9,17 @@ source "$HOME/.local/bin/ai-attention-common"
 ai_attention_locate
 [[ -n "$target" ]] || exit 0
 
+if (( looking_at_it )); then
+  if (( has_tmux_target )); then
+    dev-launcher tmux set-option -p -u -t "$tmux_target" @ai_state
+  fi
+  ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
+  exit 0
+fi
+
 if (( has_tmux_target )); then
   dev-launcher tmux set-option -p -t "$tmux_target" @ai_cli 1
+  dev-launcher tmux set-option -p -t "$tmux_target" @ai_state blocked
 fi
 
 info_json="$(AI_AGENT="$agent" python3 -c '
@@ -147,11 +156,33 @@ sys.exit(0)
 
 should_report_permission_request_blocked || exit 0
 
-if [[ "$agent" == "codex" ]]; then
-  session_id="$(printf '%s' "$payload" | ai_codex_session_id_from_payload)"
-  ai-state-daemon report-state --source hook --state blocked --agent "$agent" --target "$target" --cwd "$PWD" --session-id "$session_id" --message "$message" >/dev/null 2>&1 || true
-else
-  ai-state-daemon report-state --source hook --state blocked --agent "$agent" --target "$target" --cwd "$PWD" --message "$message" >/dev/null 2>&1 || true
+ai_runtime_state_write blocked "$agent" "$target" "$PWD" "$message"
+
+notify_key="$(printf '%s' "$payload" | TARGET="$target" AGENT="$agent" python3 -c '
+import hashlib, json, os, re, sys
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    payload = {}
+raw = "|".join([
+    os.environ.get("AGENT", "ai"),
+    os.environ.get("TARGET", ""),
+    str(payload.get("turn_id") or payload.get("tool_use_id") or payload.get("session_id") or "unknown"),
+])
+print(re.sub(r"[^A-Za-z0-9_.-]", "_", hashlib.sha256(raw.encode()).hexdigest()[:24]))
+' 2>/dev/null)"
+state_dir="${XDG_RUNTIME_DIR:-/tmp}/ai-hook-notify"
+state_file="$state_dir/blocked-${notify_key:-unknown}"
+now="$(date +%s)"
+mkdir -p "$state_dir" 2>/dev/null || true
+if [[ -f "$state_file" ]]; then
+  last="$(cat "$state_file" 2>/dev/null || printf 0)"
+  if [[ "$last" =~ ^[0-9]+$ ]] && (( now - last < 60 )); then
+    exit 0
+  fi
 fi
+printf '%s\n' "$now" > "$state_file" 2>/dev/null || true
+
+setsid -f ai-notify-and-goto "$agent" "$target" "$title" "$message" < /dev/null > /dev/null 2>&1 &
 
 exit 0

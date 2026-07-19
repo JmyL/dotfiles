@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
-# Fired by the tmux pane-focus-in hook. When the pane gaining focus has a
-# pending desktop notification, dismiss it. State is owned by ai-state-daemon
-# and must not be cleared just because the pane is focused.
+# Fired by the tmux pane-focus-in hook. When the pane gaining focus is
+# blocked/done (unseen), dismisses its pending desktop notification (if any)
+# and clears the state back to idle. Runs whether the user got here by
+# clicking the notification or by navigating there directly.
 set -uo pipefail
 
 pane="${1:-}" state="${2:-}" notif_id="${3:-}"
 
 [[ "$state" == "done" || "$state" == "blocked" ]] || exit 0
+
+source "$HOME/.local/bin/ai-attention-common"
+
+clear_agent="ai"
+clear_target="tmux:$pane"
+clear_cwd="$PWD"
+ai_runtime_state_write idle "$clear_agent" "$clear_target" "$clear_cwd" ""
 
 if [[ -n "$notif_id" ]]; then
   gdbus call --session --dest org.freedesktop.Notifications \
@@ -14,6 +22,7 @@ if [[ -n "$notif_id" ]]; then
     --method org.freedesktop.Notifications.CloseNotification "$notif_id" >/dev/null 2>&1 || true
 fi
 
+dev-launcher tmux set-option -p -u -t "$pane" @ai_state
 dev-launcher tmux set-option -p -u -t "$pane" @ai_notif_id
 
 exit 0
