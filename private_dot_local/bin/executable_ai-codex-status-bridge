@@ -166,7 +166,7 @@ def status_to_state(status: object) -> tuple[str | None, str]:
     if status_type == "systemError":
         return "blocked", "Codex system error"
     if status_type == "idle":
-        return None, ""
+        return "idle", ""
     return None, ""
 
 
@@ -269,7 +269,7 @@ def handle_thread_status(thread_id: str, status: object, mappings: dict[str, dic
     if not state:
         return
 
-    set_tmux_state(pane, state)
+    set_tmux_state(pane, None if state == "idle" else state)
     write_runtime_state(state, agent, target, cwd, message)
     if state == "blocked" and pane_is_unfocused(pane):
         notify_once(thread_id, target, Path(cwd).name or "Codex", message or "Codex needs your input")
