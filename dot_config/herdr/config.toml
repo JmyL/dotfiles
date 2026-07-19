@@ -1,5 +1,8 @@
 onboarding = false
 
+[theme]
+name = "catppuccin"
+
 [keys]
 # Prefix key to enter prefix mode (default: "ctrl+b")
 
@@ -117,11 +120,17 @@ key = "alt+shift+l"
 type = "plugin_action"
 command = "herdr-splits.resize-right"
 
+# [[keys.command]]
+# key = "alt+o"
+# type = "plugin_action"
+# command = "cloudmanic.herdr-plus.projects"
+# description = "herdr-plus: projects"
+
 [[keys.command]]
 key = "alt+o"
 type = "plugin_action"
-command = "cloudmanic.herdr-plus.projects"
-description = "herdr-plus: projects"
+command = "herdr-navigator.open"
+description = "jump to anything"
 
 [[keys.command]]
 key = "alt+space"
