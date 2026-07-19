@@ -47,6 +47,41 @@ function commandOutput(command: string, args: string[]): string {
     return result.status === 0 ? result.stdout.trim() : "";
 }
 
+function tmuxSwayConId(sessionId: string): string {
+    if (!sessionId) {
+        return "";
+    }
+
+    const clients = spawnSync("tmux", ["list-clients", "-t", sessionId, "-F", "#{client_activity}\t#{client_tty}\t#{client_pid}"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+    });
+    if (clients.status !== 0) {
+        return "";
+    }
+
+    const clientPids = clients.stdout
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+            const [activity, , pid] = line.split("\t");
+            return { activity: Number(activity || 0), pid: pid || "" };
+        })
+        .filter((client) => client.pid)
+        .sort((a, b) => b.activity - a.activity)
+        .map((client) => client.pid);
+
+    for (const pid of clientPids) {
+        const conId = commandOutput("sway-process-window", [pid]);
+        if (conId) {
+            return conId;
+        }
+    }
+
+    return "";
+}
+
 function locateAttention(): Attention | undefined {
     const pane = tmuxPane();
     if (!pane) {
@@ -80,23 +115,14 @@ function locateAttention(): Attention | undefined {
     }
 
     const [sessionId, sessionName, paneActive, windowActive] = display.stdout.trimEnd().split("\t");
+    const conId = tmuxSwayConId(sessionId) || commandOutput("sway-process-window", [String(process.pid)]);
+    const target = conId ? `sway-window:${conId},tmux:${pane}` : `tmux:${pane}`;
     let lookingAtIt = false;
-    if (paneActive === "1" && windowActive === "1" && commandSucceeds("which", ["swaymsg"])) {
-        const clients = spawnSync(
-            "tmux",
-            ["list-clients", "-t", sessionId, "-F", "#{client_activity} #{client_tty}"],
-            { encoding: "utf8" },
-        );
-        const bestTty = clients.stdout
-            .trim()
-            .split("\n")
-            .filter(Boolean)
-            .sort((a, b) => Number(b.split(" ")[0]) - Number(a.split(" ")[0]))[0]
-            ?.split(" ")[1];
-        lookingAtIt = !!bestTty && commandSucceeds("sway-tty-window", ["--is-focused", bestTty]);
+    if (paneActive === "1" && windowActive === "1" && conId) {
+        lookingAtIt = commandSucceeds("sway-window-focused", [conId]);
     }
 
-    return { target: `tmux:${pane}`, sessionName, lookingAtIt };
+    return { target, sessionName, lookingAtIt };
 }
 
 function runtimeStateKey(target: string): string {
@@ -245,6 +271,8 @@ export default function (pi: ExtensionAPI) {
         activeCwd = ctx.cwd;
         activeTarget = locateAttention()?.target;
         setPaneOption("@ai_cli", "1");
+        setPaneOption("@ai_state");
+        setPaneOption("@ai_notif_id");
         if (activeTarget) {
             writeRuntimeState("idle", activeTarget, activeCwd, "");
         }
