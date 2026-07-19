@@ -139,3 +139,71 @@ ai_runtime_state_remove_target() {
   [[ -n "$key" ]] || return 0
   rm -f "$state_dir/$key.json" 2>/dev/null || true
 }
+
+ai_codex_session_map_write() {
+  local session_id="${1:-}" agent="${2:-codex}" target_arg="${3:-}" cwd="${4:-$PWD}" summary="${5:-}"
+  local state_dir state_file
+
+  [[ -n "$session_id" && -n "$target_arg" ]] || return 0
+  state_dir="${XDG_RUNTIME_DIR:-/tmp}/ai-hook-notify/codex-sessions"
+  mkdir -p "$state_dir" 2>/dev/null || return 0
+  state_file="$state_dir/$session_id.json"
+
+  AI_SESSION_ID="$session_id" AI_AGENT="$agent" AI_TARGET="$target_arg" AI_CWD="$cwd" AI_SUMMARY="$summary" AI_STATE_FILE="$state_file" python3 -c '
+import json
+import os
+import re
+import tempfile
+import time
+
+session_id = os.environ.get("AI_SESSION_ID", "")
+if not re.match(r"^[A-Za-z0-9_.:-]+$", session_id):
+    raise SystemExit(0)
+
+target = os.environ.get("AI_TARGET", "")
+tmux_pane = ""
+for segment in target.split(","):
+    if segment.startswith("tmux:"):
+        tmux_pane = segment[5:]
+        break
+
+path = os.environ["AI_STATE_FILE"]
+payload = {
+    "session_id": session_id,
+    "agent": os.environ.get("AI_AGENT", "codex"),
+    "target": target,
+    "tmux_pane": tmux_pane,
+    "cwd": os.environ.get("AI_CWD", ""),
+    "summary": os.environ.get("AI_SUMMARY", ""),
+    "updated_at": int(time.time()),
+}
+directory = os.path.dirname(path)
+fd, tmp = tempfile.mkstemp(prefix=".tmp-", suffix=".json", dir=directory, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, separators=(",", ":"))
+        handle.write("\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+finally:
+    try:
+        os.unlink(tmp)
+    except FileNotFoundError:
+        pass
+' 2>/dev/null || true
+}
+
+ai_codex_session_id_from_payload() {
+  python3 -c '
+import json
+import sys
+
+try:
+    payload = json.load(sys.stdin)
+except Exception:
+    payload = {}
+
+value = payload.get("session_id") or payload.get("thread_id") or payload.get("threadId")
+print(value if isinstance(value, str) else "")
+' 2>/dev/null
+}

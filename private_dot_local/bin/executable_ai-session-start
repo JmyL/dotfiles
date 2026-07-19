@@ -3,11 +3,17 @@
 set -uo pipefail
 
 agent="${1:-ai}"
-cat >/dev/null
+payload="$(cat)"
 
 source "$HOME/.local/bin/ai-attention-common"
 ai_attention_locate
-[[ -n "$target" ]] && ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
+if [[ -n "$target" ]]; then
+  ai_runtime_state_write idle "$agent" "$target" "$PWD" ""
+  if [[ "$agent" == "codex" ]]; then
+    session_id="$(printf '%s' "$payload" | ai_codex_session_id_from_payload)"
+    ai_codex_session_map_write "$session_id" "$agent" "$target" "$PWD" ""
+  fi
+fi
 
 [[ -n "${TMUX_PANE:-}" ]] || exit 0
 

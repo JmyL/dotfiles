@@ -1,0 +1,350 @@
+#!/usr/bin/env python3
+"""Bridge Codex app-server thread status into the local AI attention state."""
+from __future__ import annotations
+
+import argparse
+import fcntl
+import json
+import os
+import re
+import select
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+POLL_SECONDS = 0.5
+STALE_SESSION_SECONDS = 24 * 60 * 60
+NOTIFY_THROTTLE_SECONDS = 60
+
+
+def runtime_dir() -> Path:
+    return Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "ai-hook-notify"
+
+
+def session_dir() -> Path:
+    return runtime_dir() / "codex-sessions"
+
+
+def agents_dir() -> Path:
+    return runtime_dir() / "agents"
+
+
+def sanitize(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", value)
+
+
+def runtime_state_key(target: str) -> str:
+    for segment in target.split(","):
+        if segment.startswith("tmux:"):
+            return "tmux-" + sanitize(segment[5:])
+    for segment in target.split(","):
+        if segment.startswith("kitty-window:"):
+            return "kitty-window-" + sanitize(segment[13:])
+    import hashlib
+
+    return "target-" + hashlib.sha256(target.encode("utf-8", "surrogateescape")).hexdigest()[:24]
+
+
+def load_session_map() -> dict[str, dict[str, object]]:
+    now = time.time()
+    rows: dict[str, dict[str, object]] = {}
+    try:
+        paths = list(session_dir().glob("*.json"))
+    except OSError:
+        return rows
+
+    for path in paths:
+        try:
+            if now - path.stat().st_mtime > STALE_SESSION_SECONDS:
+                continue
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        session_id = data.get("session_id")
+        target = data.get("target")
+        if isinstance(session_id, str) and session_id and isinstance(target, str) and target:
+            rows[session_id] = data
+    return rows
+
+
+def write_runtime_state(state: str, agent: str, target: str, cwd: str, summary: str) -> None:
+    if not target:
+        return
+    try:
+        directory = agents_dir()
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = directory / f"{runtime_state_key(target)}.json"
+        tmp = directory / f".tmp-{os.getpid()}-{time.time_ns()}.json"
+        payload = {
+            "state": state,
+            "agent": agent,
+            "target": target,
+            "cwd": cwd,
+            "summary": summary,
+            "updated_at": int(time.time()),
+        }
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, path)
+    except OSError:
+        pass
+
+
+def tmux(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["dev-launcher", "tmux", *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+
+
+def pane_is_unfocused(pane: str) -> bool:
+    if not pane:
+        return True
+    result = tmux("display-message", "-p", "-t", pane, "#{pane_active}\t#{window_active}")
+    if result.returncode != 0:
+        return True
+    pane_active, _, window_active = result.stdout.strip().partition("\t")
+    return pane_active != "1" or window_active != "1"
+
+
+def set_tmux_state(pane: str, state: str | None) -> None:
+    if not pane:
+        return
+    tmux("set-option", "-p", "-t", pane, "@ai_cli", "1")
+    if state:
+        tmux("set-option", "-p", "-t", pane, "@ai_state", state)
+    else:
+        tmux("set-option", "-p", "-u", "-t", pane, "@ai_state")
+
+
+def notify_once(session_id: str, target: str, title: str, body: str) -> None:
+    state_dir = runtime_dir()
+    try:
+        state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = state_dir / f"codex-status-blocked-{sanitize(session_id)}"
+        now = int(time.time())
+        try:
+            last = int(path.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            last = 0
+        if now - last < NOTIFY_THROTTLE_SECONDS:
+            return
+        path.write_text(f"{now}\n", encoding="utf-8")
+    except OSError:
+        pass
+
+    try:
+        subprocess.Popen(
+            ["setsid", "-f", "ai-notify-and-goto", "codex", target, title, body],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        pass
+
+
+def status_to_state(status: object) -> tuple[str | None, str]:
+    if not isinstance(status, dict):
+        return None, ""
+    status_type = status.get("type")
+    if status_type == "active":
+        flags = status.get("activeFlags")
+        if isinstance(flags, list) and (
+            "waitingOnUserInput" in flags or "waitingOnApproval" in flags
+        ):
+            return "blocked", "Codex needs your input"
+        return "busy", ""
+    if status_type == "systemError":
+        return "blocked", "Codex system error"
+    if status_type == "idle":
+        return None, ""
+    return None, ""
+
+
+class Rpc:
+    def __init__(self, socket_path: str) -> None:
+        self.socket_path = socket_path
+        self.proc: subprocess.Popen[str] | None = None
+        self.next_id = 1
+        self.pending: dict[int, str] = {}
+
+    def start(self) -> None:
+        self.stop()
+        self.proc = subprocess.Popen(
+            ["codex", "app-server", "proxy", "--sock", self.socket_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+        )
+        self.send("initialize", {
+            "clientInfo": {
+                "name": "ai_codex_status_bridge",
+                "title": "AI Codex Status Bridge",
+                "version": "0.1.0",
+            },
+            "capabilities": {
+                "experimentalApi": True,
+                "optOutNotificationMethods": [
+                    "item/agentMessage/delta",
+                    "item/reasoning/textDelta",
+                    "item/reasoning/summaryTextDelta",
+                ],
+            },
+        }, "initialize")
+        self.notify("initialized", {})
+
+    def stop(self) -> None:
+        if self.proc:
+            try:
+                self.proc.terminate()
+                self.proc.wait(timeout=1)
+            except Exception:
+                try:
+                    self.proc.kill()
+                except OSError:
+                    pass
+        self.proc = None
+        self.pending.clear()
+
+    def send(self, method: str, params: object, label: str) -> None:
+        if not self.proc or not self.proc.stdin:
+            raise BrokenPipeError
+        request_id = self.next_id
+        self.next_id += 1
+        self.pending[request_id] = label
+        self.proc.stdin.write(json.dumps({"method": method, "id": request_id, "params": params}) + "\n")
+        self.proc.stdin.flush()
+
+    def notify(self, method: str, params: object) -> None:
+        if not self.proc or not self.proc.stdin:
+            raise BrokenPipeError
+        self.proc.stdin.write(json.dumps({"method": method, "params": params}) + "\n")
+        self.proc.stdin.flush()
+
+    def poll_loaded(self) -> None:
+        self.send("thread/loaded/list", {"limit": 200}, "thread/loaded/list")
+
+    def read_available(self) -> list[dict[str, object]]:
+        if not self.proc or not self.proc.stdout:
+            return []
+        if self.proc.poll() is not None:
+            raise BrokenPipeError
+        messages: list[dict[str, object]] = []
+        while True:
+            readable, _, _ = select.select([self.proc.stdout], [], [], 0)
+            if not readable:
+                break
+            line = self.proc.stdout.readline()
+            if not line:
+                raise BrokenPipeError
+            try:
+                msg = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(msg, dict):
+                messages.append(msg)
+        return messages
+
+
+def handle_thread_status(thread_id: str, status: object, mappings: dict[str, dict[str, object]]) -> None:
+    mapping = mappings.get(thread_id)
+    if not mapping:
+        return
+    target = str(mapping.get("target") or "")
+    pane = str(mapping.get("tmux_pane") or "")
+    cwd = str(mapping.get("cwd") or "")
+    agent = str(mapping.get("agent") or "codex")
+    state, message = status_to_state(status)
+    if not state:
+        return
+
+    set_tmux_state(pane, state)
+    write_runtime_state(state, agent, target, cwd, message)
+    if state == "blocked" and pane_is_unfocused(pane):
+        notify_once(thread_id, target, Path(cwd).name or "Codex", message or "Codex needs your input")
+
+
+def handle_message(msg: dict[str, object], mappings: dict[str, dict[str, object]]) -> None:
+    if msg.get("method") == "thread/status/changed":
+        params = msg.get("params")
+        if isinstance(params, dict):
+            thread_id = params.get("threadId")
+            if isinstance(thread_id, str):
+                handle_thread_status(thread_id, params.get("status"), mappings)
+        return
+
+    result = msg.get("result")
+    data = result.get("data") if isinstance(result, dict) else None
+    if isinstance(data, list):
+        for thread in data:
+            if not isinstance(thread, dict):
+                continue
+            thread_id = thread.get("id") or thread.get("sessionId")
+            if isinstance(thread_id, str):
+                handle_thread_status(thread_id, thread.get("status"), mappings)
+
+
+def run(socket_path: str) -> int:
+    lock_dir = runtime_dir()
+    lock_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    lock_path = lock_dir / f"codex-status-bridge-{sanitize(socket_path)}.lock"
+    lock_file = lock_path.open("w", encoding="utf-8")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return 0
+
+    should_stop = False
+
+    def stop(_signum: int, _frame: object) -> None:
+        nonlocal should_stop
+        should_stop = True
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+
+    rpc = Rpc(socket_path)
+    last_poll = 0.0
+    backoff = 0.2
+    while not should_stop:
+        try:
+            if not rpc.proc or rpc.proc.poll() is not None:
+                rpc.start()
+                backoff = 0.2
+                last_poll = 0.0
+            now = time.monotonic()
+            if now - last_poll >= POLL_SECONDS:
+                rpc.poll_loaded()
+                last_poll = now
+            mappings = load_session_map()
+            for msg in rpc.read_available():
+                handle_message(msg, mappings)
+            time.sleep(0.05)
+        except Exception:
+            rpc.stop()
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 5.0)
+    rpc.stop()
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--socket", required=True)
+    args = parser.parse_args()
+    return run(args.socket)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

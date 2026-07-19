@@ -70,6 +70,10 @@ print(f"{folder}\t{summary}")
 title="${folder:-$sname}"
 body="${summary:-${agent^} completed}"
 ai_runtime_state_write done "$agent" "$target" "$PWD" "$body"
+if [[ "$agent" == "codex" ]]; then
+  session_id="$(printf '%s' "$payload" | ai_codex_session_id_from_payload)"
+  ai_codex_session_map_write "$session_id" "$agent" "$target" "$PWD" "$body"
+fi
 
 setsid -f ai-notify-and-goto "$agent" "$target" "$title" "$body"   < /dev/null > /dev/null 2>&1 &
 
