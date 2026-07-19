@@ -362,6 +362,10 @@ export default function (pi: ExtensionAPI) {
         if (!rootSession) {
             return;
         }
+        if (blockedCount > 0) {
+            return;
+        }
+
         blockedCount = 0;
         blockedQuestionToolCalls.clear();
         const folder = activeCwd ? basename(activeCwd) : "Pi";
