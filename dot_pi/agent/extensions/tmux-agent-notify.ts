@@ -214,6 +214,37 @@ function lastAssistantSummary(messages: unknown[]): string {
     return "(no summary)";
 }
 
+function questionPromptSummary(input: unknown): string {
+    if (!input || typeof input !== "object") {
+        return "Pi needs your input";
+    }
+
+    const questions = (input as Record<string, unknown>).questions;
+    if (!Array.isArray(questions)) {
+        return "Pi needs your input";
+    }
+
+    for (const item of questions) {
+        if (!item || typeof item !== "object") {
+            continue;
+        }
+        const question = (item as Record<string, unknown>).question;
+        if (typeof question === "string" && question.trim()) {
+            const summary = question.replace(/\s+/g, " ").trim();
+            return summary.length > 140 ? `${summary.slice(0, 137)}...` : summary;
+        }
+    }
+
+    return "Pi needs your input";
+}
+
+function markBusy(target: string | undefined, cwd: string | undefined): void {
+    setPaneOption("@ai_state", "busy");
+    if (target) {
+        writeRuntimeState("busy", target, cwd, "");
+    }
+}
+
 function notifyDone(title: string, body: string): void {
     const attention = locateAttention();
     if (!attention) {
@@ -262,6 +293,7 @@ export default function (pi: ExtensionAPI) {
     let blockedCount = 0;
     let activeCwd: string | undefined;
     let activeTarget: string | undefined;
+    const blockedQuestionToolCalls = new Set<string>();
 
     pi.on("session_start", (_event, ctx) => {
         if (ctx?.hasUI !== true) {
@@ -283,11 +315,9 @@ export default function (pi: ExtensionAPI) {
             return;
         }
         blockedCount = 0;
-        setPaneOption("@ai_state", "busy");
+        blockedQuestionToolCalls.clear();
         activeTarget = locateAttention()?.target || activeTarget;
-        if (activeTarget) {
-            writeRuntimeState("busy", activeTarget, activeCwd, "");
-        }
+        markBusy(activeTarget, activeCwd);
     });
 
     pi.events.on("herdr:blocked", (data) => {
@@ -297,10 +327,7 @@ export default function (pi: ExtensionAPI) {
         if (!data?.active) {
             blockedCount = Math.max(0, blockedCount - 1);
             if (blockedCount === 0) {
-                setPaneOption("@ai_state", "busy");
-                if (activeTarget) {
-                    writeRuntimeState("busy", activeTarget, activeCwd, "");
-                }
+                markBusy(activeTarget, activeCwd);
             }
             return;
         }
@@ -309,11 +336,34 @@ export default function (pi: ExtensionAPI) {
         notifyBlocked(String(data.label || "Pi needs your input"), activeCwd);
     });
 
+    pi.on("tool_call", (event) => {
+        if (!rootSession || event.toolName !== "ask_user_question") {
+            return;
+        }
+
+        blockedQuestionToolCalls.add(event.toolCallId);
+        blockedCount += 1;
+        notifyBlocked(questionPromptSummary(event.input), activeCwd);
+    });
+
+    pi.on("tool_execution_end", (event) => {
+        if (!rootSession || !blockedQuestionToolCalls.delete(event.toolCallId)) {
+            return;
+        }
+
+        blockedCount = Math.max(0, blockedCount - 1);
+        if (blockedCount === 0) {
+            activeTarget = locateAttention()?.target || activeTarget;
+            markBusy(activeTarget, activeCwd);
+        }
+    });
+
     pi.on("agent_end", (event) => {
         if (!rootSession) {
             return;
         }
         blockedCount = 0;
+        blockedQuestionToolCalls.clear();
         const folder = activeCwd ? basename(activeCwd) : "Pi";
         notifyDone(folder, lastAssistantSummary(Array.isArray(event.messages) ? event.messages : []));
     });
