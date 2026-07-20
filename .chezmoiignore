@@ -8,3 +8,7 @@
 # Host-local bash overrides.
 .bashrc.local.d/*
 !.bashrc.local.d/README
+
+# Work remote helpers — keep unmanaged
+.local/bin/ree-*
+.config/ree/
