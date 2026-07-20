@@ -70,6 +70,15 @@
             "type": "command"
           }
         ]
+      },
+      {
+        "matcher": "elicitation_response",
+        "hooks": [
+          {
+            "command": "ai-mark-busy claude",
+            "type": "command"
+          }
+        ]
       }
     ]
   },
