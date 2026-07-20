@@ -13,6 +13,13 @@ if [[ -z "${SYSTEM_DEV_TOOLBOX:-}" && -d "$HOME/.bashrc.local.d" ]]; then
   unset rc
 fi
 
+# Commands launched by sway inherit sway's own environment, not a login
+# shell's, so $HOME/.local/bin (uv, etc.) is missing from PATH.
+if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+  PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+fi
+export PATH
+
 if [[ -n "${SYSTEM_DEV_TOOLBOX:-}" && ! -r /run/.containerenv ]]; then
   if ! command -v toolbox >/dev/null 2>&1; then
     echo "dev-launcher: SYSTEM_DEV_TOOLBOX is set but toolbox is not available" >&2
