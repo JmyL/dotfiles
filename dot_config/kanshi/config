@@ -12,29 +12,34 @@
 
 profile docked-dp1 {
     output eDP-1 disable
-    output DP-1 enable position 0,0
+    output DP-1 enable position 0,0 mode preferred
+    exec sh -c 'sleep 1; swaymsg "output * power on"'
 }
 
 profile docked-dp1-dp2 {
     output eDP-1 disable
     output DP-2 disable
-    output DP-1 enable position 0,0 scale 1.6
+    output DP-1 enable position 0,0 scale 1.6 mode preferred
+    exec sh -c 'sleep 1; swaymsg "output * power on"'
 }
 
 profile docked-hdmi {
     output eDP-1 disable
     output HDMI-A-1 enable position 0,0 mode preferred
     exec kanshi-autoscale HDMI-A-1
+    exec sh -c 'sleep 1; swaymsg "output * power on"'
 }
 
 
 profile docked-dp2 {
     output eDP-1 disable
-    output DP-2 enable position 0,0
+    output DP-2 enable position 0,0 mode preferred
+    exec sh -c 'sleep 1; swaymsg "output * power on"'
 }
 
 profile laptop {
     output eDP-1 enable position 0,0
+    exec sh -c 'sleep 1; swaymsg "output * power on"'
 }
 
 # Example presentation mirror profile. Adjust the external output name if
