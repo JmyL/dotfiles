@@ -12,7 +12,8 @@
 
 profile docked-dp1 {
     output eDP-1 disable
-    output DP-1 enable position 0,0
+    output DP-1 enable position 0,0 mode preferred
+    exec kanshi-autoscale DP-1
 }
 
 profile docked-dp1-dp2 {
@@ -30,7 +31,8 @@ profile docked-hdmi {
 
 profile docked-dp2 {
     output eDP-1 disable
-    output DP-2 enable position 0,0
+    output DP-2 enable position 0,0 mode preferred
+    exec kanshi-autoscale DP-2
 }
 
 profile laptop {
