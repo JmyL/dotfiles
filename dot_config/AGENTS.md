@@ -25,6 +25,13 @@ When an agent is launched from this home directory, assume the task is to modify
 - Keep secrets out of tracked files. Use chezmoi private/encrypted/ignored mechanisms for sensitive data.
 - For tmux status-bar confirmations, prefer tmux-native `confirm-before` with `y/n` prompts unless an explicit default-on-Enter behavior is required.
 
+## Neovim plugin updates (lazy.nvim)
+
+`~/.config/nvim` is its own git repository. Prefer infrequent, intentional plugin updates over habitual `:Lazy sync`.
+
+- After updating plugins, commit `lazy-lock.json` together with any related config changes under `~/.config/nvim` in the same commit, so a working pair of lock + config can be restored together.
+- If an update breaks Neovim, restore the previous lock (and config) rather than debugging against a mixed state.
+
 ## Tool inventory
 
 When adding or modifying dotfiles that introduce a dependency on an external command, check `~/.config/tool-inventory.md`.
