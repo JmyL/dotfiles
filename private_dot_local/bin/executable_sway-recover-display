@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Emergency display recovery after suspend/resume black screens.
+#
+# kanshi's docked profiles disable eDP when an external is connected, so if
+# modeset on HDMI/DP is wedged the laptop panel stays dark. Stop kanshi first,
+# then force the internal panel on and disable externals.
+set -euo pipefail
+
+pkill -x kanshi 2>/dev/null || true
+
+mapfile -t outputs < <(swaymsg -t get_outputs -r | jq -r '.[].name')
+
+for name in "${outputs[@]}"; do
+  if [[ "$name" == eDP-* ]]; then
+    swaymsg output "$name" enable power on position 0,0 || true
+  else
+    swaymsg output "$name" disable || true
+  fi
+done
+
+swaymsg 'output * power on' || true
+
+if command -v notify-send >/dev/null 2>&1; then
+  notify-send 'Display recovery' \
+    'Forced laptop panel on; kanshi stopped. Unplug HDMI or Super+Shift+r to restart kanshi.'
+fi

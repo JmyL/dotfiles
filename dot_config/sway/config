@@ -36,6 +36,8 @@ default_floating_border pixel 3
 gaps inner 6
 gaps outer 0
 
+focus_on_window_activation focus
+
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
@@ -297,6 +299,9 @@ bindsym $mod+d mode "$dictation_mode", exec sh -c '"$HOME/.local/bin/dev-launche
     bindsym Print exec grim
     # Toggle external-only and extended display modes
     bindsym $mod+m exec ~/.local/bin/sway-toggle-external-extend
+    # Black-screen recovery: stop kanshi, disable externals, force eDP on
+    # (--locked so it still works under swaylock after resume)
+    bindsym --locked $mod+Shift+m exec ~/.local/bin/sway-recover-display
     # Toggle notification center
     bindsym $mod+n exec swaync-client -t -sw
     # Clear all notifications
