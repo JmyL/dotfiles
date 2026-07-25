@@ -26,6 +26,14 @@ When an agent is launched from this home directory, assume the task is to modify
 - Keep secrets out of tracked files. Use chezmoi private/encrypted/ignored mechanisms for sensitive data.
 - For tmux status-bar confirmations, prefer tmux-native `confirm-before` with `y/n` prompts unless an explicit default-on-Enter behavior is required.
 
+## Shell script formatting
+
+Neovim formats shell with `shfmt -i 2` (conform). Write bash that already matches that style so format-on-save is a no-op:
+
+- Two-space indent (not tabs).
+- No spaces inside arithmetic: `((x))`, not `(( x ))`.
+- In `case` arms, align patterns with the `case` keyword (do not indent them further); put spaces around `|` in pattern lists (`claude | agent | pi`).
+
 ## Neovim plugin updates (lazy.nvim)
 
 `~/.config/nvim` is its own git repository. Prefer infrequent, intentional plugin updates over habitual `:Lazy sync`.

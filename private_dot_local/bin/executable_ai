@@ -10,7 +10,7 @@ passthrough=()
 seen_separator=0
 
 for arg in "$@"; do
-  if (( seen_separator )); then
+  if ((seen_separator)); then
     passthrough+=("$arg")
   elif [[ "$arg" == "--" ]]; then
     seen_separator=1
@@ -26,18 +26,18 @@ run_agent() {
   shift
   local -a args=("$@")
 
-  if (( resume_recent )); then
+  if ((resume_recent)); then
     case "$cmd" in
-      claude|agent|pi)
-        args=(--continue "${args[@]}")
-        ;;
-      codex)
-        args=(resume --last "${args[@]}")
-        ;;
-      *)
-        echo "ai: resume-recent-session is not supported for $cmd" >&2
-        exit 1
-        ;;
+    claude | agent | pi)
+      args=(--continue "${args[@]}")
+      ;;
+    codex)
+      args=(resume --last "${args[@]}")
+      ;;
+    *)
+      echo "ai: resume-recent-session is not supported for $cmd" >&2
+      exit 1
+      ;;
     esac
   fi
 
