@@ -5,12 +5,55 @@ if [[ -n "${TMUX_PANE:-}" ]]; then
   tmux set-option -p -t "$TMUX_PANE" @ai_cli 1
 fi
 
+resume_recent=0
+passthrough=()
+seen_separator=0
+
+for arg in "$@"; do
+  if (( seen_separator )); then
+    passthrough+=("$arg")
+  elif [[ "$arg" == "--" ]]; then
+    seen_separator=1
+  elif [[ "$arg" == "resume-recent-session" ]]; then
+    resume_recent=1
+  else
+    passthrough+=("$arg")
+  fi
+done
+
+run_agent() {
+  local cmd="$1"
+  shift
+  local -a args=("$@")
+
+  if (( resume_recent )); then
+    case "$cmd" in
+      claude|agent|pi)
+        args=(--continue "${args[@]}")
+        ;;
+      codex)
+        args=(resume --last "${args[@]}")
+        ;;
+      *)
+        echo "ai: resume-recent-session is not supported for $cmd" >&2
+        exit 1
+        ;;
+    esac
+  fi
+
+  exec "$cmd" "${args[@]}"
+}
+
 if command -v claude >/dev/null 2>&1; then
-  exec claude "$@"
+  run_agent claude "${passthrough[@]}"
 fi
 
 if command -v codex >/dev/null 2>&1; then
-  exec codex "$@"
+  run_agent codex "${passthrough[@]}"
 fi
 
-exec pi "$@"
+if command -v agent >/dev/null 2>&1; then
+  run_agent agent "${passthrough[@]}"
+fi
+
+run_agent pi "${passthrough[@]}"
