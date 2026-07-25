@@ -44,16 +44,16 @@ run_agent() {
   exec "$cmd" "${args[@]}"
 }
 
+if command -v agent >/dev/null 2>&1; then
+  run_agent agent "${passthrough[@]}"
+fi
+
 if command -v claude >/dev/null 2>&1; then
   run_agent claude "${passthrough[@]}"
 fi
 
 if command -v codex >/dev/null 2>&1; then
   run_agent codex "${passthrough[@]}"
-fi
-
-if command -v agent >/dev/null 2>&1; then
-  run_agent agent "${passthrough[@]}"
 fi
 
 run_agent pi "${passthrough[@]}"
