@@ -1,0 +1,5 @@
+Include ~/.config/work/ssh/*
+
+Host *
+  ConnectTimeout 10
+  TCPKeepAlive yes

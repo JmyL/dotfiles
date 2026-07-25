@@ -9,6 +9,6 @@
 .bashrc.local.d/*
 !.bashrc.local.d/README
 
-# Work remote helpers — keep unmanaged
-.local/bin/ree-*
-.config/ree/
+# Work / company overlays — managed by ~/.local/share/chezmoi-work
+.local/bin/work/
+.config/work/

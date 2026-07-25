@@ -15,13 +15,14 @@ To tell which one you're on: `cat /etc/os-release` (`ID=fedora` vs `ID=ubuntu`/`
 
 When an agent is launched from this home directory, assume the task is to modify dotfiles and manage them with chezmoi.
 
-- Chezmoi source directory: `~/.local/share/chezmoi`.
-- Prefer editing the live dotfile in `$HOME` first, then run `chezmoi add <path>` to update the chezmoi source from the live file.
+- Personal chezmoi source: `~/.local/share/chezmoi` (repo `JmyL/dotfiles`).
+- Work chezmoi source: `~/.local/share/chezmoi-work` (private repo `sungsik-nam-vay/dotfiles-work`), config `~/.config/chezmoi/chezmoi-work.toml`. Apply after personal: `chezmoi --config ~/.config/chezmoi/chezmoi-work.toml apply`. Work paths live under `~/.config/work/` and `~/.local/bin/work/`.
+- Prefer editing the live dotfile in `$HOME` first, then run `chezmoi add <path>` (or `chezmoi --config ~/.config/chezmoi/chezmoi-work.toml add <path>` for work files) to update the matching chezmoi source from the live file.
 - For existing unmanaged home files, use `chezmoi add <path>` after making or verifying the desired live-file change.
 - For dotfile changes in this home workspace, treat the full default workflow as: edit the live dotfile, run `chezmoi add <path>`, review with `chezmoi diff` when practical, then commit the chezmoi repository and push. Do this for normal dotfile change requests, not only when the user explicitly says "manage". Skip the commit only when the user asks not to commit, asks to inspect/test only, or the change is intentionally incomplete. Push automatically after every commit to this repo, without waiting to be asked; skip the push only if the user says not to, or the commit is intentionally incomplete/local-only.
-- On Fedora Silverblue, push the chezmoi repository through `~/.local/bin/dev-launcher git -C ~/.local/share/chezmoi push` so the command runs in the toolbox environment with the available GitHub credentials. Direct host pushes may fail because the host lacks `gh` or network/credential access.
+- Push personal chezmoi as `JmyL`; push work chezmoi as `sungsik-nam-vay` (`gh auth switch --user ...` if needed). On Fedora Silverblue, push the personal chezmoi repository through `~/.local/bin/dev-launcher git -C ~/.local/share/chezmoi push` so the command runs in the toolbox environment with the available GitHub credentials. Direct host pushes may fail because the host lacks `gh` or network/credential access.
 - Use `chezmoi diff` after `chezmoi add` when practical to review what will be tracked.
-- Do not edit files in `~/.local/share/chezmoi` directly for normal dotfile changes unless the user explicitly asks, the live file cannot be safely edited, or a chezmoi template/source-only file requires direct source edits.
+- Do not edit files in `~/.local/share/chezmoi` (or `chezmoi-work`) directly for normal dotfile changes unless the user explicitly asks, the live file cannot be safely edited, or a chezmoi template/source-only file requires direct source edits.
 - Keep secrets out of tracked files. Use chezmoi private/encrypted/ignored mechanisms for sensitive data.
 - For tmux status-bar confirmations, prefer tmux-native `confirm-before` with `y/n` prompts unless an explicit default-on-Enter behavior is required.
 

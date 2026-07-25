@@ -1,9 +1,0 @@
-name: ree-vehicle-configs
-root: ~/projects/ree-vehicle-configs
-
-windows:
-  - config:
-      layout: ef6e,281x68,0,0{140x68,0,0,21,140x68,141,0,22}
-      panes:
-        - nvim
-        - ai -c
