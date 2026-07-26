@@ -1,0 +1,10 @@
+# Opens the herdr-plus project definitions directly for editing.
+
+name = "herdr-plus-projects"
+description = "Edit herdr-plus project definition files"
+group = "default"
+working_dir = "~/.config/herdr/plugins/config/cloudmanic.herdr-plus/projects"
+
+[[tabs]]
+name = "editor"
+command = "nvim"
