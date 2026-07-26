@@ -4,5 +4,13 @@ set -euo pipefail
 project="${1:-}"
 [[ -n "$project" ]] || exit 0
 
-escaped="$(printf '%q' "$project")"
-tmux run-shell "sleep 0.1; tmux display-popup -x C -y C -w 80% -h 80% -E 'tmuxinator new $escaped'"
+editor="${EDITOR:-nvim}"
+if tmuxinator-chezmoi is-work "$project"; then
+  cmd=$(printf 'tmuxinator-chezmoi prepare-new %q && %q "$(tmuxinator-chezmoi yaml-path %q)" && tmuxinator-chezmoi track-add %q' \
+    "$project" "$editor" "$project" "$project")
+else
+  cmd=$(printf 'tmuxinator new %q && tmuxinator-chezmoi track-add %q' "$project" "$project")
+fi
+
+escaped_cmd="$(printf %q "$cmd")"
+tmux run-shell "sleep 0.1; tmux display-popup -x C -y C -w 80% -h 80% -E 'bash -lc $escaped_cmd'"

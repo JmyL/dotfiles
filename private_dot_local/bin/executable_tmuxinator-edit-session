@@ -5,9 +5,9 @@ project="${1:-}"
 [[ -n "$project" ]] || exit 0
 
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator"
-project_file="$config_dir/$project.yml"
+project_file="$(tmuxinator-chezmoi resolve "$project" 2>/dev/null || true)"
 
-if [[ ! -f "$project_file" ]]; then
+if [[ -z "$project_file" || ! -f "$project_file" ]]; then
   tmux display-message "Project not found: $project" 2>/dev/null || printf '%s\n' "Project not found: $project"
   exit 0
 fi
@@ -18,7 +18,8 @@ if tmux has-session -t "$session" 2>/dev/null; then
   exit 0
 fi
 
-tmux new-session -d -s "$session" -n "$project" -c "$config_dir" "tmuxinator edit '$project'"
-tmux split-window -h -t "$session:1" -c "$config_dir" "ai"
+edit_cwd="$(dirname "$project_file")"
+tmux new-session -d -s "$session" -n "$project" -c "$edit_cwd" "tmuxinator edit '$project'"
+tmux split-window -h -t "$session:1" -c "$edit_cwd" "ai"
 tmux select-pane -t "$session:1.1"
 tmux switch-client -t "$session"

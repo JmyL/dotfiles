@@ -1,0 +1,296 @@
+#!/usr/bin/env bash
+# Route ree-/vay- tmuxinator sessions through work chezmoi; others through personal.
+set -euo pipefail
+
+xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
+work_config="$xdg_config/chezmoi/chezmoi-work.toml"
+xdg_tmuxinator="$xdg_config/tmuxinator"
+work_tmuxinator="$xdg_config/work/tmuxinator"
+personal_source="${CHEZMOI_SOURCE:-$HOME/.local/share/chezmoi}"
+work_source="$HOME/.local/share/chezmoi-work"
+personal_gh="JmyL"
+work_gh="sungsik-nam-vay"
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: tmuxinator-chezmoi <command> [args]
+
+Commands:
+  is-work <name>
+  kind <name>
+  yaml-path <name>
+  link-path <name>
+  resolve <name>
+  prepare-new <name>
+  ensure-link <name>
+  track-add <name>
+  track-delete <name>
+EOF
+  exit 2
+}
+
+is_work_name() {
+  case "$1" in
+  ree-* | vay-*) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+kind_for() {
+  if is_work_name "$1"; then
+    printf 'work\n'
+  else
+    printf 'personal\n'
+  fi
+}
+
+yaml_path() {
+  local name="$1"
+  if is_work_name "$name"; then
+    printf '%s\n' "$work_tmuxinator/$name.yml"
+  else
+    printf '%s\n' "$xdg_tmuxinator/$name.yml"
+  fi
+}
+
+link_path() {
+  printf '%s\n' "$xdg_tmuxinator/$1.yml"
+}
+
+resolve_existing() {
+  local name="$1" link target
+  link="$(link_path "$name")"
+  if [[ -L "$link" ]]; then
+    target="$(readlink -f "$link" 2>/dev/null || true)"
+    [[ -n "$target" && -e "$target" ]] || return 1
+    printf '%s\n' "$target"
+  elif [[ -f "$link" ]]; then
+    printf '%s\n' "$link"
+  elif [[ -f "$work_tmuxinator/$name.yml" ]]; then
+    printf '%s\n' "$work_tmuxinator/$name.yml"
+  else
+    return 1
+  fi
+}
+
+chezmoi_for() {
+  local kind="$1"
+  shift
+  if [[ "$kind" == work ]]; then
+    chezmoi --config "$work_config" "$@"
+  else
+    chezmoi "$@"
+  fi
+}
+
+source_dir_for() {
+  if [[ "$1" == work ]]; then
+    printf '%s\n' "$work_source"
+  else
+    printf '%s\n' "$personal_source"
+  fi
+}
+
+gh_user_for() {
+  if [[ "$1" == work ]]; then
+    printf '%s\n' "$work_gh"
+  else
+    printf '%s\n' "$personal_gh"
+  fi
+}
+
+ensure_work_symlink() {
+  local name="$1" link
+  link="$(link_path "$name")"
+  mkdir -p "$work_tmuxinator" "$xdg_tmuxinator"
+  ln -sfn "../work/tmuxinator/$name.yml" "$link"
+}
+
+write_stub() {
+  local name="$1" path="$2"
+  mkdir -p "$(dirname "$path")"
+  cat >"$path" <<EOF
+name: $name
+root: ~
+
+windows:
+  - editor:
+      panes:
+        -
+EOF
+}
+
+prepare_new() {
+  local name="$1" path
+  path="$(yaml_path "$name")"
+  if [[ -e "$(link_path "$name")" || -e "$path" ]]; then
+    printf 'Project already exists: %s\n' "$name" >&2
+    return 1
+  fi
+  write_stub "$name" "$path"
+  if is_work_name "$name"; then
+    ensure_work_symlink "$name"
+  fi
+  printf '%s\n' "$path"
+}
+
+ensure_link() {
+  local name="$1"
+  if is_work_name "$name"; then
+    [[ -f "$(yaml_path "$name")" ]] || {
+      printf 'Missing work yaml: %s\n' "$(yaml_path "$name")" >&2
+      return 1
+    }
+    ensure_work_symlink "$name"
+  fi
+}
+
+append_chezmoiremove() {
+  local source_dir="$1"
+  shift
+  local file="$source_dir/.chezmoiremove" path
+  touch "$file"
+  for path in "$@"; do
+    grep -Fxq -- "$path" "$file" 2>/dev/null && continue
+    printf '%s\n' "$path" >>"$file"
+  done
+}
+
+forget_target() {
+  local kind="$1" target="$2"
+  chezmoi_for "$kind" forget "$target" >/dev/null 2>&1 || true
+}
+
+commit_push() {
+  local kind="$1" message="$2"
+  local source_dir gh_user
+  source_dir="$(source_dir_for "$kind")"
+  gh_user="$(gh_user_for "$kind")"
+
+  git -C "$source_dir" add -A
+  if git -C "$source_dir" diff --cached --quiet; then
+    return 0
+  fi
+  git -C "$source_dir" commit -m "$message"
+
+  gh auth switch --user "$gh_user" >/dev/null
+  if [[ "$HOME" == /var/home/* && -x "$HOME/.local/bin/dev-launcher" && "$kind" == personal ]]; then
+    "$HOME/.local/bin/dev-launcher" git -C "$source_dir" push
+  else
+    git -C "$source_dir" push
+  fi
+}
+
+track_add() {
+  local name="$1" kind path link
+  kind="$(kind_for "$name")"
+  path="$(yaml_path "$name")"
+  link="$(link_path "$name")"
+
+  [[ -f "$path" ]] || {
+    printf 'No yaml to track: %s\n' "$path" >&2
+    return 1
+  }
+
+  if [[ "$kind" == work ]]; then
+    ensure_work_symlink "$name"
+    chezmoi_for work add "$path" "$link"
+  else
+    chezmoi_for personal add "$link"
+  fi
+  commit_push "$kind" "Track tmuxinator session $name"
+}
+
+remove_live() {
+  local name="$1" kind="$2" link yaml target
+  link="$(link_path "$name")"
+  yaml="$(yaml_path "$name")"
+
+  if [[ -L "$link" ]]; then
+    target="$(readlink -f "$link" 2>/dev/null || true)"
+    rm -f "$link"
+    [[ -n "$target" && -e "$target" ]] && rm -f "$target"
+  else
+    rm -f "$link"
+  fi
+  if [[ "$kind" == work ]]; then
+    rm -f "$yaml"
+  fi
+}
+
+remove_source_entries() {
+  local name="$1" kind="$2" source_dir
+  source_dir="$(source_dir_for "$kind")"
+  if [[ "$kind" == work ]]; then
+    forget_target work "$(link_path "$name")"
+    forget_target work "$(yaml_path "$name")"
+    rm -f "$source_dir/dot_config/tmuxinator/symlink_${name}.yml"
+    rm -f "$source_dir/dot_config/work/tmuxinator/${name}.yml"
+  else
+    forget_target personal "$(link_path "$name")"
+    rm -f "$source_dir/dot_config/tmuxinator/${name}.yml"
+  fi
+}
+
+track_delete() {
+  local name="$1" kind
+  kind="$(kind_for "$name")"
+
+  remove_live "$name" "$kind"
+  remove_source_entries "$name" "$kind"
+
+  if [[ "$kind" == work ]]; then
+    append_chezmoiremove "$(source_dir_for work)" \
+      ".config/tmuxinator/${name}.yml" \
+      ".config/work/tmuxinator/${name}.yml"
+  else
+    append_chezmoiremove "$(source_dir_for personal)" \
+      ".config/tmuxinator/${name}.yml"
+  fi
+  commit_push "$kind" "Remove tmuxinator session $name"
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+is-work)
+  [[ $# -eq 1 ]] || usage
+  is_work_name "$1"
+  ;;
+kind)
+  [[ $# -eq 1 ]] || usage
+  kind_for "$1"
+  ;;
+yaml-path)
+  [[ $# -eq 1 ]] || usage
+  yaml_path "$1"
+  ;;
+link-path)
+  [[ $# -eq 1 ]] || usage
+  link_path "$1"
+  ;;
+resolve)
+  [[ $# -eq 1 ]] || usage
+  resolve_existing "$1"
+  ;;
+prepare-new)
+  [[ $# -eq 1 ]] || usage
+  prepare_new "$1"
+  ;;
+ensure-link)
+  [[ $# -eq 1 ]] || usage
+  ensure_link "$1"
+  ;;
+track-add)
+  [[ $# -eq 1 ]] || usage
+  track_add "$1"
+  ;;
+track-delete)
+  [[ $# -eq 1 ]] || usage
+  track_delete "$1"
+  ;;
+*)
+  usage
+  ;;
+esac

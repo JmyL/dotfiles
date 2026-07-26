@@ -2,7 +2,8 @@
 set -euo pipefail
 
 project="${1:-}"
-file="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator/$project.yml"
+file="$(tmuxinator-chezmoi resolve "$project" 2>/dev/null || true)"
+[[ -n "$file" ]] || file="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator/$project.yml"
 
 if tmux has-session -t "$project" 2>/dev/null; then
   window="$(tmux list-windows -t "$project" -F '#{window_index}' 2>/dev/null | sort -n | head -1)"

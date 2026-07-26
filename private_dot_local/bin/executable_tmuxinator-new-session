@@ -13,7 +13,15 @@ if tmux has-session -t "$session" 2>/dev/null; then
   exit 0
 fi
 
-tmux new-session -d -s "$session" -n "$project" -c "$config_dir" "tmuxinator new '$project'"
+editor="${EDITOR:-nvim}"
+if tmuxinator-chezmoi is-work "$project"; then
+  create_cmd=$(printf 'tmuxinator-chezmoi prepare-new %q && %q "$(tmuxinator-chezmoi yaml-path %q)" && tmuxinator-chezmoi track-add %q' \
+    "$project" "$editor" "$project" "$project")
+else
+  create_cmd=$(printf 'tmuxinator new %q && tmuxinator-chezmoi track-add %q' "$project" "$project")
+fi
+
+tmux new-session -d -s "$session" -n "$project" -c "$config_dir" "bash -lc $(printf %q "$create_cmd")"
 tmux split-window -h -t "$session:1" -c "$config_dir" "pi"
 tmux select-pane -t "$session:1.1"
 tmux switch-client -t "$session"
