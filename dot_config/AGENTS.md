@@ -27,6 +27,15 @@ When an agent is launched from this home directory, assume the task is to modify
 - Keep secrets out of tracked files. Use chezmoi private/encrypted/ignored mechanisms for sensitive data.
 - For tmux status-bar confirmations, prefer tmux-native `confirm-before` with `y/n` prompts unless an explicit default-on-Enter behavior is required.
 
+## Herdr plugins
+
+When changing Herdr plugin behavior, keybindings, or local plugin repos, check the cross-machine install path before finishing.
+
+- `~/.config/herdr/plugins.list` is the declarative list consumed by `~/.local/bin/herdr-install-plugins`. Lines are `<github-repo> [ref]`; refs can be branches or tags.
+- Local `herdr plugin link ...` is for development on the current machine only. For changes that must reach other PCs, push the plugin repo branch/tag referenced in `plugins.list`.
+- If a plugin change requires a different repo/ref, update the live `~/.config/herdr/plugins.list`, run `chezmoi add ~/.config/herdr/plugins.list`, review `chezmoi diff`, then commit and push the dotfiles repo.
+- If the plugin installer script changes, edit `~/.local/bin/herdr-install-plugins`, run `bash -n ~/.local/bin/herdr-install-plugins`, then manage it with `chezmoi add ~/.local/bin/herdr-install-plugins`.
+
 ## Shell script formatting
 
 Neovim formats shell with `shfmt -i 2` (conform). Write bash that already matches that style so format-on-save is a no-op:

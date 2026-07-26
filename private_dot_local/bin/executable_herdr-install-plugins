@@ -21,8 +21,8 @@ while read -r repo ref extra; do
   fi
 
   if [[ -n "${ref:-}" ]]; then
-    herdr plugin install "$repo" --ref "$ref"
+    herdr plugin install "$repo" --ref "$ref" --yes
   else
-    herdr plugin install "$repo"
+    herdr plugin install "$repo" --yes
   fi
 done <"$list"
