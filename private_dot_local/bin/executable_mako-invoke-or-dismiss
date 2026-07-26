@@ -13,20 +13,40 @@ current_id() {
     '
 }
 
+visible_id() {
+  local id=$1
+
+  (timeout 1s makoctl list -j 2>/dev/null || printf '[]\n') |
+    jq -r --arg id "$id" '
+      (.data? // .notifications? // .) as $root
+      | if ($root | type) == "array" then
+          $root[]
+          | select((.id | tostring) == $id)
+          | .id
+        else
+          empty
+        end
+    ' |
+    head -n 1
+}
+
 invoke_mako_default() {
-  local id
-  id="$(current_id)"
+  local id=${1:-}
+
+  if [[ -z $id ]]; then
+    id="$(current_id)"
+  fi
   [[ -n "$id" ]] || return 1
 
   timeout 1s makoctl invoke -n "$id" default ||
     timeout 1s makoctl invoke -n "$id" ||
     true
 
-  # If invoking had no effect, treat Enter as an acknowledgement and dismiss it.
+  # If invoking had no effect, treat Enter/selection as an acknowledgement and dismiss it.
   sleep 0.1
-  if [[ "$(current_id)" == "$id" ]]; then
+  if [[ -n "$(visible_id "$id")" ]]; then
     timeout 1s makoctl dismiss --no-history -n "$id" || true
   fi
 }
 
-invoke_mako_default || true
+invoke_mako_default "${1:-}" || true

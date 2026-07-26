@@ -4,7 +4,7 @@ set -euo pipefail
 prompt='Notifications> '
 
 notification_entries() {
-  (makoctl list -j 2>/dev/null || printf '[]\n') |
+  (makoctl history -j 2>/dev/null || printf '[]\n') |
     jq -r '
       (.data? // .notifications? // .) as $root
       | if ($root | type) == "array" then $root[] else empty end
@@ -40,6 +40,6 @@ case $choice in
 \[*\]*)
   id=${choice%%]*}
   id=${id#\[}
-  makoctl invoke -n "$id"
+  ~/.local/bin/mako-invoke-or-dismiss "$id"
   ;;
 esac
