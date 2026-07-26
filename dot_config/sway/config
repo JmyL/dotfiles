@@ -302,10 +302,8 @@ bindsym $mod+d mode "$dictation_mode", exec sh -c '"$HOME/.local/bin/dev-launche
     # Black-screen recovery: stop kanshi, disable externals, force eDP on
     # (--locked so it still works under swaylock after resume)
     bindsym --locked $mod+Shift+m exec ~/.local/bin/sway-recover-display
-    # Show notifications menu
-    bindsym $mod+n exec ~/.local/bin/mako-notification-menu
     # Clear visible notifications
-    bindsym $mod+Shift+n exec makoctl dismiss --all --no-history
+    bindsym $mod+Ctrl+BackSpace exec makoctl dismiss --all --no-history
     # Dismiss the latest visible notification
     bindsym $mod+BackSpace exec makoctl dismiss --no-history
     # Activate the latest notification, or dismiss it if it has no default action
