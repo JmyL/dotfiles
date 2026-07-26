@@ -145,7 +145,7 @@ command = "cloudmanic.herdr-plus.quick-actions"
 description = "herdr-plus: quick actions"
 
 [ui.toast]
-delivery = "herdr"
+delivery = "off"
 
 [[keys.command]]
 key = ["alt+shift+y"]
