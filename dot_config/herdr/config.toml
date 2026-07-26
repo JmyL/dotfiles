@@ -29,11 +29,11 @@ new_worktree = ["prefix+shift+g", "ctrl+alt+g"]
 # remove_worktree = ""  # optional, unset by default; opens confirmation
 rename_workspace = ["prefix+shift+w", "ctrl+alt+r"]
 close_workspace = ["prefix+shift+d", "ctrl+alt+q"]
-previous_workspace = "ctrl+alt+k" # optional, unset by default
-next_workspace = "ctrl+alt+j"     # optional, unset by default
-previous_agent = "ctrl+k"     # optional, unset by default
-next_agent = "ctrl+j"         # optional, unset by default
-focus_agent = ["prefix+alt+1..9"]
+previous_workspace = "ctrl+alt+i" # optional, unset by default
+next_workspace = "ctrl+alt+u"     # optional, unset by default
+previous_agent = "ctrl+alt+k"     # optional, unset by default
+next_agent = "ctrl+alt+j"         # optional, unset by default
+focus_agent = ["prefix+alt+1..9", "ctrl+alt+1..9"]
 
 # remote_image_paste = "ctrl+v" # only active in herdr --remote; empty disables raw-key image paste
 new_tab = ["prefix+c","alt+t"]
@@ -155,4 +155,4 @@ description = "pluck visible token"
 
 [ui]
 agent_panel_sort = "spaces"
-
+hide_tab_bar_when_single_tab = true
