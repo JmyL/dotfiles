@@ -9,10 +9,12 @@ if [[ -z "$target" ]]; then
   exit 1
 fi
 
-# Keep the previous behavior: move to the last session first, then kill the
-# session that was active when M-q was pressed.  If there is nowhere to move,
-# do not kill the last remaining session.
-if sesh last; then
+next_session="$(
+  tmux list-sessions -F '#{session_id}' 2>/dev/null |
+    awk -v target="$target" '$0 != target { print; exit }'
+)"
+
+if [[ -n "$next_session" ]] && tmux switch-client -t "$next_session"; then
   tmux kill-session -t "$target"
 else
   tmux display-message -d 1000 "Only one session" 2>/dev/null || true
