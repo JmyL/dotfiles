@@ -28,27 +28,14 @@ notification_entries() {
     done
 }
 
-choice=$(
-  {
-    notification_entries
-    printf 'Restore latest expired notification\n'
-    printf 'Clear visible notifications\n'
-    printf 'Dismiss latest notification\n'
-  } | fuzzel --dmenu --width 100 --prompt "$prompt"
-) || exit 0
+entries="$(notification_entries)"
+[[ -n "$entries" ]] || exit 0
+
+choice=$(printf '%s\n' "$entries" | fuzzel --dmenu --width 100 --prompt "$prompt") || exit 0
 
 case $choice in
 '')
   exit 0
-  ;;
-'Restore latest expired notification')
-  makoctl restore
-  ;;
-'Clear visible notifications')
-  makoctl dismiss --all
-  ;;
-'Dismiss latest notification')
-  makoctl dismiss
   ;;
 \[*\]*)
   id=${choice%%]*}
