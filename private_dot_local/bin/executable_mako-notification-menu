@@ -17,29 +17,31 @@ notification_entries() {
       | @tsv
     ' |
     while IFS=$'\t' read -r id app summary body; do
-      label=$app
-      if [[ -n $summary ]]; then
-        label+=" | $summary"
+      if [[ -n $summary && -n $body ]]; then
+        label="$summary: $body"
+      elif [[ -n $summary ]]; then
+        label=$summary
+      elif [[ -n $body ]]; then
+        label=$body
+      else
+        label=$app
       fi
-      if [[ -n $body ]]; then
-        label+=" | $body"
-      fi
-      printf '[%s] %s\n' "$id" "$label"
+
+      printf '%s\t%s\n' "$id" "$label"
     done
 }
 
-entries="$(notification_entries)"
-[[ -n "$entries" ]] || exit 0
+mapfile -t entries < <(notification_entries)
+((${#entries[@]})) || exit 0
 
-choice=$(printf '%s\n' "$entries" | fuzzel --dmenu --width 100 --prompt "$prompt") || exit 0
+choice=$(printf '%s\n' "${entries[@]#*$'\t'}" | fuzzel --dmenu --width 100 --prompt "$prompt") || exit 0
+[[ -n $choice ]] || exit 0
 
-case $choice in
-'')
-  exit 0
-  ;;
-\[*\]*)
-  id=${choice%%]*}
-  id=${id#\[}
-  ~/.local/bin/mako-invoke-or-dismiss "$id"
-  ;;
-esac
+for entry in "${entries[@]}"; do
+  id=${entry%%$'\t'*}
+  label=${entry#*$'\t'}
+  if [[ $label == "$choice" ]]; then
+    ~/.local/bin/mako-invoke-or-dismiss "$id"
+    break
+  fi
+done
