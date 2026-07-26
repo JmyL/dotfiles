@@ -1,3 +1,16 @@
 # Herdr plugins to install
-# Run: xargs -a ~/.config/herdr/plugins.list -I{} herdr plugin install {}
+# Format: <github-repo> [ref]
+# Run:
+#   while read -r repo ref; do
+#     case "$repo" in ''|'#'*) continue ;; esac
+#     if [ -n "$ref" ]; then
+#       herdr plugin install "$repo" --ref "$ref"
+#     else
+#       herdr plugin install "$repo"
+#     fi
+#   done < ~/.config/herdr/plugins.list
+cloudmanic/herdr-plus
+rmarganti/herdr-pluck
 lmilojevicc/herdr-splits.nvim
+JmyL/herdr-focus-notify linux-swaync-focus
+JmyL/herdr-navigator jump-back-agent-workspace
