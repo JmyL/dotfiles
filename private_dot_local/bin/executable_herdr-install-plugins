@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+list="${1:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/plugins.list}"
+
+if [[ ! -f "$list" ]]; then
+  printf 'Herdr plugin list not found: %s\n' "$list" >&2
+  exit 1
+fi
+
+while read -r repo ref extra; do
+  case "$repo" in
+  '' | '#'*)
+    continue
+    ;;
+  esac
+
+  if [[ -n "${extra:-}" ]]; then
+    printf 'Invalid line in %s: %s %s %s\n' "$list" "$repo" "${ref:-}" "$extra" >&2
+    exit 1
+  fi
+
+  if [[ -n "${ref:-}" ]]; then
+    herdr plugin install "$repo" --ref "$ref"
+  else
+    herdr plugin install "$repo"
+  fi
+done <"$list"

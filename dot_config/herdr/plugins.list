@@ -1,14 +1,6 @@
 # Herdr plugins to install
 # Format: <github-repo> [ref]
-# Run:
-#   while read -r repo ref; do
-#     case "$repo" in ''|'#'*) continue ;; esac
-#     if [ -n "$ref" ]; then
-#       herdr plugin install "$repo" --ref "$ref"
-#     else
-#       herdr plugin install "$repo"
-#     fi
-#   done < ~/.config/herdr/plugins.list
+# Run: herdr-install-plugins
 cloudmanic/herdr-plus
 rmarganti/herdr-pluck
 lmilojevicc/herdr-splits.nvim
