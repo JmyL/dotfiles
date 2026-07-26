@@ -5,7 +5,22 @@ if [[ -n "${TMUX_PANE:-}" ]]; then
   tmux set-option -p -t "$TMUX_PANE" @ai_cli 1
 fi
 
-resume_recent=0
+show_help() {
+  cat <<'EOF'
+Usage: ai [OPTIONS] [--] [ARGS...]
+
+Run the first available AI CLI in this order: agent, claude, codex, pi.
+
+Options:
+  -R, --resume-last-session  Resume the last/recent session
+  -h, --help                 Show this help
+
+All other arguments are passed through to the selected CLI.
+Use -- before ARGS to pass values that look like ai options.
+EOF
+}
+
+resume_last=0
 passthrough=()
 seen_separator=0
 
@@ -14,8 +29,11 @@ for arg in "$@"; do
     passthrough+=("$arg")
   elif [[ "$arg" == "--" ]]; then
     seen_separator=1
-  elif [[ "$arg" == "resume-recent-session" ]]; then
-    resume_recent=1
+  elif [[ "$arg" == "--resume-last-session" || "$arg" == "-R" ]]; then
+    resume_last=1
+  elif [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
+    show_help
+    exit 0
   else
     passthrough+=("$arg")
   fi
@@ -26,7 +44,7 @@ run_agent() {
   shift
   local -a args=("$@")
 
-  if ((resume_recent)); then
+  if ((resume_last)); then
     case "$cmd" in
     claude | agent | pi)
       args=(--continue "${args[@]}")
@@ -35,7 +53,7 @@ run_agent() {
       args=(resume --last "${args[@]}")
       ;;
     *)
-      echo "ai: resume-recent-session is not supported for $cmd" >&2
+      echo "ai: --resume-last-session is not supported for $cmd" >&2
       exit 1
       ;;
     esac
