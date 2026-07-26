@@ -2,7 +2,7 @@
 set -euo pipefail
 
 current_id() {
-  (makoctl list -j 2>/dev/null || printf '[]\n') |
+  (timeout 1s makoctl list -j 2>/dev/null || printf '[]\n') |
     jq -r '
       (.data? // .notifications? // .) as $root
       | if ($root | type) == "array" and ($root | length) > 0 then
@@ -13,13 +13,20 @@ current_id() {
     '
 }
 
-id="$(current_id)"
-[[ -n "$id" ]] || exit 0
+invoke_mako_default() {
+  local id
+  id="$(current_id)"
+  [[ -n "$id" ]] || return 1
 
-makoctl invoke -n "$id" || true
+  timeout 1s makoctl invoke -n "$id" default ||
+    timeout 1s makoctl invoke -n "$id" ||
+    true
 
-# If invoking had no effect, treat Enter as an acknowledgement and dismiss it.
-sleep 0.1
-if [[ "$(current_id)" == "$id" ]]; then
-  makoctl dismiss -n "$id"
-fi
+  # If invoking had no effect, treat Enter as an acknowledgement and dismiss it.
+  sleep 0.1
+  if [[ "$(current_id)" == "$id" ]]; then
+    timeout 1s makoctl dismiss -n "$id" || true
+  fi
+}
+
+invoke_mako_default || true
