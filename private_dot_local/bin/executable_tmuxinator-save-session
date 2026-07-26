@@ -37,10 +37,9 @@ done
 }
 
 mkdir -p "$config_dir"
-yml="$(tmuxinator-chezmoi yaml-path "$session")"
-link="$(tmuxinator-chezmoi link-path "$session")"
+yml="$config_dir/$session.yml"
 
-if [[ (-f "$yml" || -e "$link") && "$force" -ne 1 ]]; then
+if [[ -f "$yml" && "$force" -ne 1 ]]; then
   error "$session.yml already exists"
   exit 10
 fi
@@ -61,8 +60,6 @@ tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 indices_file="$tmpdir/indices"
 echo "$windows_raw" | grep -v '^$' >"$indices_file"
-
-mkdir -p "$(dirname "$yml")"
 
 # --- Build YAML ---
 # for loop (no stdin) + here-string (no fd conflict)
@@ -107,8 +104,5 @@ mkdir -p "$(dirname "$yml")"
   done <"$indices_file"
 
 } >"$yml"
-
-tmuxinator-chezmoi ensure-link "$session"
-tmuxinator-chezmoi track-add "$session"
 
 exit 0
