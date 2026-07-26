@@ -1,1 +1,4 @@
 .local/bin/mako-notification-menu
+.config/mako/config
+.config/sway/config.d/20-mako.conf
+.local/bin/mako-invoke-or-dismiss

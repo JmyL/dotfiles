@@ -1,0 +1,39 @@
+.notification {
+  border-radius: 14px;
+  background: rgba(30, 30, 46, 0.96);
+  padding: 8px;
+}
+
+.notification.critical {
+  border: 3px solid #f38ba8;
+  box-shadow: 0 0 24px rgba(243, 139, 168, 0.65);
+}
+
+.notification-content {
+  padding: 8px;
+}
+
+.summary {
+  color: #f9e2af;
+  font-size: 1.05em;
+  font-weight: 700;
+}
+
+.body {
+  color: #cdd6f4;
+}
+
+.app-name {
+  color: #89b4fa;
+  font-weight: 600;
+}
+
+.close-button {
+  border-radius: 999px;
+  background: #f38ba8;
+  color: #1e1e2e;
+}
+
+.close-button:hover {
+  background: #eba0ac;
+}
