@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+prompt='Notifications> '
+
+notification_entries() {
+  (makoctl list -j 2>/dev/null || printf '[]\n') |
+    jq -r '
+      (.data? // .notifications? // .) as $root
+      | if ($root | type) == "array" then $root[] else empty end
+      | [
+          (.id | tostring),
+          (.app_name // .["app-name"] // .appName // .application // "notification"),
+          (.summary // ""),
+          (.body // "")
+        ]
+      | @tsv
+    ' |
+    while IFS=$'\t' read -r id app summary body; do
+      label=$app
+      if [[ -n $summary ]]; then
+        label+=" | $summary"
+      fi
+      if [[ -n $body ]]; then
+        label+=" | $body"
+      fi
+      printf '[%s] %s\n' "$id" "$label"
+    done
+}
+
+choice=$(
+  {
+    notification_entries
+    printf 'Restore latest expired notification\n'
+    printf 'Clear visible notifications\n'
+    printf 'Dismiss latest notification\n'
+  } | fuzzel --dmenu --width 100 --prompt "$prompt"
+) || exit 0
+
+case $choice in
+'')
+  exit 0
+  ;;
+'Restore latest expired notification')
+  makoctl restore
+  ;;
+'Clear visible notifications')
+  makoctl dismiss --all
+  ;;
+'Dismiss latest notification')
+  makoctl dismiss
+  ;;
+\[*\]*)
+  id=${choice%%]*}
+  id=${id#\[}
+  makoctl invoke -n "$id"
+  ;;
+esac

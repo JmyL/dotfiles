@@ -302,12 +302,14 @@ bindsym $mod+d mode "$dictation_mode", exec sh -c '"$HOME/.local/bin/dev-launche
     # Black-screen recovery: stop kanshi, disable externals, force eDP on
     # (--locked so it still works under swaylock after resume)
     bindsym --locked $mod+Shift+m exec ~/.local/bin/sway-recover-display
-    # Toggle notification center
-    bindsym $mod+n exec swaync-client -t -sw
-    # Clear all notifications
-    bindsym $mod+Shift+n exec swaync-client -C
+    # Show notifications menu
+    bindsym $mod+n exec ~/.local/bin/mako-notification-menu
+    # Clear visible notifications
+    bindsym $mod+Shift+n exec makoctl dismiss --all
     # Activate (click) the latest notification's default action
-    bindsym $mod+Return exec swaync-client -a 0 -sw
+    bindsym $mod+Return exec makoctl invoke
+    # Restore the most recently expired notification
+    bindsym $mod+semicolon exec makoctl restore
     # Show clipboard history
     bindsym $mod+Shift+v exec cliphist list | fuzzel --dmenu --width 85 --prompt 'Clipboard> ' | cliphist decode | wl-copy
     # Toggle idle/sleep inhibitor

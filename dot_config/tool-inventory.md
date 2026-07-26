@@ -114,7 +114,7 @@ Notifications/system controls:
 
 - `libnotify` / `notify-send`
 - `canberra-gtk-play` for notification sounds
-- `swaync-client`
+- `mako` / `makoctl`
 - `swayosd-client`
 - `powerprofilesctl`
 - `xdg-utils` (`xdg-open`)
@@ -210,7 +210,7 @@ This is the broad workstation-oriented install set. Some packages may vary by Fe
 sudo dnf install \
   aerc atuin bat binutils catdoc chezmoi cliphist curl direnv dnf-plugins-core \
   docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak fuzzel fzf git gnupg2 grim \
-  grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
+  grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx mako man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
   khal khard vdirsyncer \
@@ -231,7 +231,7 @@ flatpak install flathub com.brave.Browser
 May need separate installation depending on Fedora version/repositories:
 
 - `swayosd-client`
-- `swaync-client`
+- `mako` / `makoctl`
 - `sesh`
 - `tmuxinator`
 - `pi`
@@ -248,7 +248,7 @@ sudo apt update
 sudo apt install \
   aerc atuin bat binutils catdoc cliphist curl direnv docx2txt eza fcitx5 fcitx5-hangul \
   fd-find ffmpeg flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
-  libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
+  libcanberra-gtk3-bin libnotify-bin links lynx mako man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
   khal khard vdirsyncer \
   slurp sox starship swappy sway swayidle swaylock swayosd thunar tmux \
@@ -273,7 +273,7 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - brave-browser
 - `grimshot` may come from `sway-contrib` or need a manual install depending on release.
 - `swayosd-client`
-- `swaync-client`
+- `mako` / `makoctl`
 - `sesh`: go install github.com/joshmedeski/sesh/v2@latest
 - `tmuxinator`
 - `pi`
