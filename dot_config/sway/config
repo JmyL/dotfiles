@@ -308,8 +308,8 @@ bindsym $mod+d mode "$dictation_mode", exec sh -c '"$HOME/.local/bin/dev-launche
     bindsym $mod+Shift+n exec makoctl dismiss --all
     # Dismiss the latest visible notification
     bindsym $mod+BackSpace exec makoctl dismiss
-    # Activate (click) the latest notification's default action
-    bindsym $mod+Return exec makoctl invoke
+    # Activate the latest notification, or dismiss it if it has no default action
+    bindsym $mod+Return exec ~/.local/bin/mako-invoke-or-dismiss
     # Restore the most recently expired notification
     bindsym $mod+semicolon exec makoctl restore
     # Show clipboard history
