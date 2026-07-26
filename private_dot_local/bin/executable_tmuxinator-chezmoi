@@ -161,17 +161,40 @@ forget_target() {
   chezmoi_for "$kind" forget "$target" >/dev/null 2>&1 || true
 }
 
+# Paths relative to the chezmoi source dir for this session name.
+source_paths_for() {
+  local name="$1" kind="$2"
+  if [[ "$kind" == work ]]; then
+    printf '%s\n' \
+      "dot_config/work/tmuxinator/${name}.yml" \
+      "dot_config/tmuxinator/symlink_${name}.yml"
+  else
+    printf '%s\n' "dot_config/tmuxinator/${name}.yml"
+  fi
+}
+
+# Stage and commit only the given source-relative paths, then push.
 commit_push() {
   local kind="$1" message="$2"
+  shift 2
   local source_dir gh_user
+  local -a paths=()
+  local p
+
+  [[ $# -gt 0 ]] || return 0
+
   source_dir="$(source_dir_for "$kind")"
   gh_user="$(gh_user_for "$kind")"
 
-  git -C "$source_dir" add -A
-  if git -C "$source_dir" diff --cached --quiet; then
+  for p in "$@"; do
+    paths+=("$p")
+  done
+
+  git -C "$source_dir" add -- "${paths[@]}"
+  if git -C "$source_dir" diff --cached --quiet -- "${paths[@]}"; then
     return 0
   fi
-  git -C "$source_dir" commit -m "$message"
+  git -C "$source_dir" commit -m "$message" -- "${paths[@]}"
 
   gh auth switch --user "$gh_user" >/dev/null
   if [[ "$HOME" == /var/home/* && -x "$HOME/.local/bin/dev-launcher" && "$kind" == personal ]]; then
@@ -183,6 +206,7 @@ commit_push() {
 
 track_add() {
   local name="$1" kind path link
+  local -a paths=()
   kind="$(kind_for "$name")"
   path="$(yaml_path "$name")"
   link="$(link_path "$name")"
@@ -198,7 +222,8 @@ track_add() {
   else
     chezmoi_for personal add "$link"
   fi
-  commit_push "$kind" "Track tmuxinator session $name"
+  mapfile -t paths < <(source_paths_for "$name" "$kind")
+  commit_push "$kind" "Track tmuxinator session $name" "${paths[@]}"
 }
 
 remove_live() {
@@ -234,10 +259,14 @@ remove_source_entries() {
 
 track_delete() {
   local name="$1" kind
+  local -a paths=()
   kind="$(kind_for "$name")"
 
   remove_live "$name" "$kind"
   remove_source_entries "$name" "$kind"
+
+  mapfile -t paths < <(source_paths_for "$name" "$kind")
+  paths+=(".chezmoiremove")
 
   if [[ "$kind" == work ]]; then
     append_chezmoiremove "$(source_dir_for work)" \
@@ -247,7 +276,7 @@ track_delete() {
     append_chezmoiremove "$(source_dir_for personal)" \
       ".config/tmuxinator/${name}.yml"
   fi
-  commit_push "$kind" "Remove tmuxinator session $name"
+  commit_push "$kind" "Remove tmuxinator session $name" "${paths[@]}"
 }
 
 cmd="${1:-}"
