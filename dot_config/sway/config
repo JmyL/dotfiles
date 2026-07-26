@@ -305,9 +305,9 @@ bindsym $mod+d mode "$dictation_mode", exec sh -c '"$HOME/.local/bin/dev-launche
     # Show notifications menu
     bindsym $mod+n exec ~/.local/bin/mako-notification-menu
     # Clear visible notifications
-    bindsym $mod+Shift+n exec makoctl dismiss --all
+    bindsym $mod+Shift+n exec makoctl dismiss --all --no-history
     # Dismiss the latest visible notification
-    bindsym $mod+BackSpace exec makoctl dismiss
+    bindsym $mod+BackSpace exec makoctl dismiss --no-history
     # Activate the latest notification, or dismiss it if it has no default action
     bindsym $mod+Return exec ~/.local/bin/mako-invoke-or-dismiss
     # Restore the most recently expired notification

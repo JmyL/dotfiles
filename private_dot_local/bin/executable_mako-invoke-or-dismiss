@@ -25,7 +25,7 @@ invoke_mako_default() {
   # If invoking had no effect, treat Enter as an acknowledgement and dismiss it.
   sleep 0.1
   if [[ "$(current_id)" == "$id" ]]; then
-    timeout 1s makoctl dismiss -n "$id" || true
+    timeout 1s makoctl dismiss --no-history -n "$id" || true
   fi
 }
 
