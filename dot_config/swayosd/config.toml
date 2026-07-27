@@ -1,3 +1,8 @@
+# Caps Lock is remapped to Ctrl (sway xkb_options ctrl:nocaps).
+# The libinput backend still sees the physical Caps Lock key unless
+# /etc/xdg/swayosd/backend.toml has: ignore_caps_lock_key = true
+# Then: sudo systemctl restart swayosd-libinput-backend.service
+
 [server]
 ## style file for the OSD
 # style = "/etc/xdg/swayosd/style.css"
