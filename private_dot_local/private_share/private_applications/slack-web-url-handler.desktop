@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Slack (Browser)
+Comment=Open slack:// deep links in the web browser
+Exec=bash -c 'exec "$HOME/.local/bin/open-url" "$@"' open-url %u
+Type=Application
+NoDisplay=true
+MimeType=x-scheme-handler/slack;
