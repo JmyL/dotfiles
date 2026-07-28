@@ -91,6 +91,7 @@ Core desktop tools:
 - `thunar`
 - `flatpak`
 - Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup
+- Brave extension [Force Slack in Browser](https://chrome.google.com/webstore/detail/force-slack-in-browser/gfggogadjpapemlonlgpbofdeefkjakf) (`gfggogadjpapemlonlgpbofdeefkjakf`) — open Slack `archives` permalinks in the web client without the desktop-app prompt
 - `wireplumber` (`wpctl`) and `pipewire-bin`/`pipewire-utils` (`pw-dump`) — used by `sway-audio-switch` to list/switch default audio devices
 
 Screenshot/recording/clipboard:
