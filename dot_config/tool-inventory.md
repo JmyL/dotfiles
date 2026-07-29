@@ -117,6 +117,7 @@ Notifications/system controls:
 - `canberra-gtk-play` for notification sounds
 - `swaync-client`
 - `swayosd-client`
+- `blueman` (`blueman-applet`, `blueman-manager`) — applet is started from `~/.config/sway/config.d/20-blueman.conf` so manager does not cold-start it
 - `powerprofilesctl`
 - `xdg-utils` (`xdg-open`)
 - `flatpak-spawn` when using toolbox/container URL opening
@@ -209,7 +210,7 @@ This is the broad workstation-oriented install set. Some packages may vary by Fe
 
 ```sh
 sudo dnf install \
-  aerc atuin bat binutils catdoc chezmoi cliphist curl direnv dnf-plugins-core \
+  aerc atuin bat binutils blueman catdoc chezmoi cliphist curl direnv dnf-plugins-core \
   docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak fuzzel fzf git gnupg2 grim \
   grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils \
@@ -247,7 +248,7 @@ Test/package names may vary by Ubuntu release. This is aimed at recent Ubuntu ve
 ```sh
 sudo apt update
 sudo apt install \
-  aerc atuin bat binutils catdoc cliphist curl direnv docx2txt eza fcitx5 fcitx5-hangul \
+  aerc atuin bat binutils blueman catdoc cliphist curl direnv docx2txt eza fcitx5 fcitx5-hangul \
   fd-find ffmpeg flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
   libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
