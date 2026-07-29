@@ -98,7 +98,7 @@ seat * hide_cursor 3000
     bindsym $mod+i exec $term
 
     # Start Brave browser
-    bindsym $mod+Shift+i exec brave-browser
+    bindsym $mod+Shift+i exec ~/.local/bin/brave-browser
 
     # Start file browser
     bindsym $mod+e exec thunar
