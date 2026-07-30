@@ -1,0 +1,16 @@
+name = "blogging"
+working_dir = "~/Projects/jmyl.github.io/"
+
+[[tabs]]
+name = "editor"
+
+[[tabs.panes]]
+command = "v"
+
+[[tabs.panes]]
+command = "ai"
+split = "right"
+
+[[tabs.panes]]
+command = "bash -lc 'hugo serve & hugo_pid=$!; until curl -fsS http://localhost:1313/ >/dev/null 2>&1; do sleep 0.5; done; xdg-open http://localhost:1313/ >/dev/null 2>&1 & wait \"$hugo_pid\"'"
+split = "down"

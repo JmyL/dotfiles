@@ -1,0 +1,6 @@
+name = "vifm"
+working_dir = "~"
+
+[[tabs]]
+name = "config"
+command = "vifm"

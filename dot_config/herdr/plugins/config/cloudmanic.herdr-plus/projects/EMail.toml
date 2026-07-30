@@ -1,0 +1,10 @@
+name = "EMail"
+working_dir = "~/Downloads"
+
+[[tabs]]
+name = "aerc"
+command = "aerc"
+
+[[tabs]]
+name = "Files"
+command = "vifm ~/Downloads ~/Dropbox"

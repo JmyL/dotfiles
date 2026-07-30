@@ -1,0 +1,6 @@
+name = "ask"
+working_dir = "/tmp"
+
+[[tabs]]
+name = "config"
+command = "agent --mode=ask"

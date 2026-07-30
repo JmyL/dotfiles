@@ -1,0 +1,12 @@
+name = "nvim"
+working_dir = "~/.config/nvim"
+
+[[tabs]]
+name = "config"
+
+[[tabs.panes]]
+command = "nvim"
+
+[[tabs.panes]]
+command = "ai"
+split = "right"

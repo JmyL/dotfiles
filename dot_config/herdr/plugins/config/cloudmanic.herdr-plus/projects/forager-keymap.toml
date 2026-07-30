@@ -1,0 +1,12 @@
+name = "forager-keymap"
+working_dir = "~/Projects/forager-zmk-config"
+
+[[tabs]]
+name = "editor"
+
+[[tabs.panes]]
+command = "v config/forager.keymap"
+
+[[tabs.panes]]
+command = "ai"
+split = "right"

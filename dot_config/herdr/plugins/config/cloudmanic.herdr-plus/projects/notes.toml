@@ -1,0 +1,12 @@
+name = "notes"
+working_dir = "~/Documents/Obsidian"
+
+[[tabs]]
+name = "editor"
+
+[[tabs.panes]]
+command = "nvim"
+
+[[tabs.panes]]
+command = "tuxedo"
+split = "right"
