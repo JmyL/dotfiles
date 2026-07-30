@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Signal waybar's window-icon module the instant sway's focused window changes.
+"""Signal waybar's window-icon module when sway focus changes.
 
 Avoids the image module's interval-based polling, which redraws (and briefly
 flickers) the icon every tick even when nothing changed.
+
+Listens to window focus/close and workspace focus so empty workspaces clear
+the previous icon (workspace switches alone do not emit window focus events).
 """
 
 from __future__ import annotations
@@ -15,6 +18,8 @@ from pathlib import Path
 
 PIDFILE = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "waybar-window-focus-watcher.pid"
 WAYBAR_SIGNAL = "RTMIN+9"
+# window focus/close + workspace focus (empty ws has no window focus event)
+REFRESH_CHANGES = frozenset({"focus", "close"})
 
 
 def already_running() -> bool:
@@ -37,7 +42,7 @@ def main() -> None:
     PIDFILE.write_text(str(os.getpid()))
 
     proc = subprocess.Popen(
-        ["swaymsg", "-t", "subscribe", "-m", '["window"]'],
+        ["swaymsg", "-t", "subscribe", "-m", '["window","workspace"]'],
         text=True,
         stdout=subprocess.PIPE,
     )
@@ -50,7 +55,7 @@ def main() -> None:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if event.get("change") == "focus":
+        if event.get("change") in REFRESH_CHANGES:
             subprocess.run(["/usr/bin/pkill", "-" + WAYBAR_SIGNAL, "waybar"], check=False)
 
 
