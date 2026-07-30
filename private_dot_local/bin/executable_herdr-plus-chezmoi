@@ -1,31 +1,33 @@
 #!/usr/bin/env bash
-# Route tmuxinator sessions by YAML root: under $HOME/projects → work chezmoi; else personal.
+# Route herdr-plus projects by working_dir: under $HOME/projects → work chezmoi; else personal.
 set -euo pipefail
 
 xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
 work_config="$xdg_config/chezmoi/chezmoi-work.toml"
-xdg_tmuxinator="$xdg_config/tmuxinator"
-work_tmuxinator="$xdg_config/work/tmuxinator"
+plugin_projects="$xdg_config/herdr/plugins/config/cloudmanic.herdr-plus/projects"
+work_projects="$xdg_config/work/herdr-plus/projects"
 personal_source="${CHEZMOI_SOURCE:-$HOME/.local/share/chezmoi}"
 work_source="$HOME/.local/share/chezmoi-work"
 personal_gh="JmyL"
 work_gh="sungsik-nam-vay"
 projects_root="$HOME/projects"
+# discovery → ~/.config is five levels up
+work_link_target="../../../../../work/herdr-plus/projects"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: tmuxinator-chezmoi <command> [args]
+Usage: herdr-plus-chezmoi <command> [args]
 
 Commands:
-  is-work-root <root>
-  kind-from-root <root>
+  is-work-root <path>
+  kind-from-root <path>
   kind <name>
-  yaml-path <name> [root]
+  toml-path <name> [working_dir]
   link-path <name>
   resolve <name>
-  prepare-new <name> [root]
+  prepare-new <name> <working_dir>
   ensure-link <name>
-  install-yaml <name> <file>
+  install-toml <name> <file>
   ensure-layout <name>
   track-add <name>
   track-delete <name>
@@ -94,47 +96,47 @@ unquote() {
   printf '%s\n' "$s"
 }
 
-root_from_yaml() {
+working_dir_from_toml() {
   local file="$1" line
   [[ -f "$file" ]] || return 1
-  line="$(grep -E '^root:' "$file" | head -1 || true)"
+  line="$(grep -E '^working_dir[[:space:]]*=' "$file" | head -1 || true)"
   [[ -n "$line" ]] || {
     printf '~\n'
     return 0
   }
-  line="${line#root:}"
+  line="${line#*=}"
   unquote "$line"
 }
 
 kind_for_name() {
-  local name="$1" path root
+  local name="$1" path wd
   path="$(resolve_existing "$name" 2>/dev/null || true)"
   if [[ -n "$path" && -f "$path" ]]; then
-    root="$(root_from_yaml "$path")"
-    kind_from_root "$root"
+    wd="$(working_dir_from_toml "$path")"
+    kind_from_root "$wd"
     return 0
   fi
   printf 'personal\n'
 }
 
 link_path() {
-  printf '%s\n' "$xdg_tmuxinator/$1.yml"
+  printf '%s\n' "$plugin_projects/$1.toml"
 }
 
-yaml_path_for_kind() {
+toml_path_for_kind() {
   local name="$1" kind="$2"
   if [[ "$kind" == work ]]; then
-    printf '%s\n' "$work_tmuxinator/$name.yml"
+    printf '%s\n' "$work_projects/$name.toml"
   else
-    printf '%s\n' "$xdg_tmuxinator/$name.yml"
+    printf '%s\n' "$plugin_projects/$name.toml"
   fi
 }
 
-yaml_path() {
-  local name="$1" root="${2:-}" kind path
-  if [[ -n "$root" ]]; then
-    kind="$(kind_from_root "$root")"
-    yaml_path_for_kind "$name" "$kind"
+toml_path() {
+  local name="$1" wd="${2:-}" kind path
+  if [[ -n "$wd" ]]; then
+    kind="$(kind_from_root "$wd")"
+    toml_path_for_kind "$name" "$kind"
     return 0
   fi
   path="$(resolve_existing "$name" 2>/dev/null || true)"
@@ -142,7 +144,7 @@ yaml_path() {
     printf '%s\n' "$path"
     return 0
   fi
-  yaml_path_for_kind "$name" personal
+  toml_path_for_kind "$name" personal
 }
 
 resolve_existing() {
@@ -154,8 +156,8 @@ resolve_existing() {
     printf '%s\n' "$target"
   elif [[ -f "$link" ]]; then
     printf '%s\n' "$link"
-  elif [[ -f "$work_tmuxinator/$name.yml" ]]; then
-    printf '%s\n' "$work_tmuxinator/$name.yml"
+  elif [[ -f "$work_projects/$name.toml" ]]; then
+    printf '%s\n' "$work_projects/$name.toml"
   else
     return 1
   fi
@@ -190,33 +192,37 @@ gh_user_for() {
 ensure_work_symlink() {
   local name="$1" link
   link="$(link_path "$name")"
-  mkdir -p "$work_tmuxinator" "$xdg_tmuxinator"
-  ln -sfn "../work/tmuxinator/$name.yml" "$link"
+  mkdir -p "$work_projects" "$plugin_projects"
+  ln -sfn "$work_link_target/$name.toml" "$link"
 }
 
 write_stub() {
-  local name="$1" path="$2" root="${3:-~}"
+  local name="$1" path="$2" wd="$3"
   mkdir -p "$(dirname "$path")"
   cat >"$path" <<EOF
-name: $name
-root: $root
+name = "$name"
+description = ""
+working_dir = "$wd"
 
-windows:
-  - editor:
-      panes:
-        -
+[[tabs]]
+name = "editor"
+command = "nvim"
 EOF
 }
 
 prepare_new() {
-  local name="$1" root="${2:-~}" kind path
-  kind="$(kind_from_root "$root")"
-  path="$(yaml_path_for_kind "$name" "$kind")"
+  local name="$1" wd="$2" kind path
+  [[ -n "$wd" ]] || {
+    printf 'working_dir required\n' >&2
+    return 1
+  }
+  kind="$(kind_from_root "$wd")"
+  path="$(toml_path_for_kind "$name" "$kind")"
   if [[ -e "$(link_path "$name")" || -e "$path" ]]; then
     printf 'Project already exists: %s\n' "$name" >&2
     return 1
   fi
-  write_stub "$name" "$path" "$root"
+  write_stub "$name" "$path" "$wd"
   if [[ "$kind" == work ]]; then
     ensure_work_symlink "$name"
   fi
@@ -227,26 +233,25 @@ ensure_link() {
   local name="$1" kind
   kind="$(kind_for_name "$name")"
   if [[ "$kind" == work ]]; then
-    [[ -f "$(yaml_path_for_kind "$name" work)" ]] || {
-      printf 'Missing work yaml: %s\n' "$(yaml_path_for_kind "$name" work)" >&2
+    [[ -f "$(toml_path_for_kind "$name" work)" ]] || {
+      printf 'Missing work toml: %s\n' "$(toml_path_for_kind "$name" work)" >&2
       return 1
     }
     ensure_work_symlink "$name"
   fi
 }
 
-# Place YAML content for <name> based on its root field. Migrates personal↔work.
-install_yaml() {
-  local name="$1" src="$2" root kind dest link current
+install_toml() {
+  local name="$1" src="$2" wd kind dest link current
   [[ -f "$src" ]] || {
-    printf 'Missing yaml source: %s\n' "$src" >&2
+    printf 'Missing toml source: %s\n' "$src" >&2
     return 1
   }
-  root="$(root_from_yaml "$src")"
-  kind="$(kind_from_root "$root")"
-  dest="$(yaml_path_for_kind "$name" "$kind")"
+  wd="$(working_dir_from_toml "$src")"
+  kind="$(kind_from_root "$wd")"
+  dest="$(toml_path_for_kind "$name" "$kind")"
   link="$(link_path "$name")"
-  mkdir -p "$(dirname "$dest")" "$xdg_tmuxinator"
+  mkdir -p "$(dirname "$dest")" "$plugin_projects"
 
   current="$(resolve_existing "$name" 2>/dev/null || true)"
 
@@ -265,8 +270,8 @@ install_yaml() {
     if [[ -L "$link" ]]; then
       rm -f "$link"
     fi
-    if [[ -f "$work_tmuxinator/$name.yml" && "$(readlink -f "$src" 2>/dev/null || true)" != "$(readlink -f "$work_tmuxinator/$name.yml" 2>/dev/null || true)" ]]; then
-      rm -f "$work_tmuxinator/$name.yml"
+    if [[ -f "$work_projects/$name.toml" && "$(readlink -f "$src" 2>/dev/null || true)" != "$(readlink -f "$work_projects/$name.toml" 2>/dev/null || true)" ]]; then
+      rm -f "$work_projects/$name.toml"
     fi
     if [[ "$(readlink -f "$src" 2>/dev/null || true)" != "$(readlink -f "$dest" 2>/dev/null || true)" ]]; then
       cp -f "$src" "$dest"
@@ -278,12 +283,12 @@ install_yaml() {
 ensure_layout() {
   local name="$1" path tmp
   path="$(resolve_existing "$name")" || {
-    printf 'No yaml for session: %s\n' "$name" >&2
+    printf 'No toml for project: %s\n' "$name" >&2
     return 1
   }
   tmp="$(mktemp)"
   cp -f "$path" "$tmp"
-  install_yaml "$name" "$tmp"
+  install_toml "$name" "$tmp"
   rm -f "$tmp"
 }
 
@@ -307,10 +312,10 @@ source_paths_for() {
   local name="$1" kind="$2"
   if [[ "$kind" == work ]]; then
     printf '%s\n' \
-      "dot_config/work/tmuxinator/${name}.yml" \
-      "dot_config/tmuxinator/symlink_${name}.yml"
+      "dot_config/work/herdr-plus/projects/${name}.toml" \
+      "dot_config/herdr/plugins/config/cloudmanic.herdr-plus/projects/symlink_${name}.toml"
   else
-    printf '%s\n' "dot_config/tmuxinator/${name}.yml"
+    printf '%s\n' "dot_config/herdr/plugins/config/cloudmanic.herdr-plus/projects/${name}.toml"
   fi
 }
 
@@ -349,11 +354,11 @@ track_add() {
   local -a paths=()
   ensure_layout "$name" >/dev/null
   kind="$(kind_for_name "$name")"
-  path="$(yaml_path_for_kind "$name" "$kind")"
+  path="$(toml_path_for_kind "$name" "$kind")"
   link="$(link_path "$name")"
 
   [[ -f "$path" ]] || {
-    printf 'No yaml to track: %s\n' "$path" >&2
+    printf 'No toml to track: %s\n' "$path" >&2
     return 1
   }
 
@@ -364,13 +369,13 @@ track_add() {
     chezmoi_for personal add "$link"
   fi
   mapfile -t paths < <(source_paths_for "$name" "$kind")
-  commit_push "$kind" "Track tmuxinator session $name" "${paths[@]}"
+  commit_push "$kind" "Track herdr-plus project $name" "${paths[@]}"
 }
 
 remove_live() {
-  local name="$1" kind="$2" link yaml target
+  local name="$1" kind="$2" link toml target
   link="$(link_path "$name")"
-  yaml="$(yaml_path_for_kind "$name" "$kind")"
+  toml="$(toml_path_for_kind "$name" "$kind")"
 
   if [[ -L "$link" ]]; then
     target="$(readlink -f "$link" 2>/dev/null || true)"
@@ -380,7 +385,7 @@ remove_live() {
     rm -f "$link"
   fi
   if [[ "$kind" == work ]]; then
-    rm -f "$yaml"
+    rm -f "$toml"
   fi
 }
 
@@ -389,12 +394,12 @@ remove_source_entries() {
   source_dir="$(source_dir_for "$kind")"
   if [[ "$kind" == work ]]; then
     forget_target work "$(link_path "$name")"
-    forget_target work "$(yaml_path_for_kind "$name" work)"
-    rm -f "$source_dir/dot_config/tmuxinator/symlink_${name}.yml"
-    rm -f "$source_dir/dot_config/work/tmuxinator/${name}.yml"
+    forget_target work "$(toml_path_for_kind "$name" work)"
+    rm -f "$source_dir/dot_config/herdr/plugins/config/cloudmanic.herdr-plus/projects/symlink_${name}.toml"
+    rm -f "$source_dir/dot_config/work/herdr-plus/projects/${name}.toml"
   else
     forget_target personal "$(link_path "$name")"
-    rm -f "$source_dir/dot_config/tmuxinator/${name}.yml"
+    rm -f "$source_dir/dot_config/herdr/plugins/config/cloudmanic.herdr-plus/projects/${name}.toml"
   fi
 }
 
@@ -411,13 +416,13 @@ track_delete() {
 
   if [[ "$kind" == work ]]; then
     append_chezmoiremove "$(source_dir_for work)" \
-      ".config/tmuxinator/${name}.yml" \
-      ".config/work/tmuxinator/${name}.yml"
+      ".config/herdr/plugins/config/cloudmanic.herdr-plus/projects/${name}.toml" \
+      ".config/work/herdr-plus/projects/${name}.toml"
   else
     append_chezmoiremove "$(source_dir_for personal)" \
-      ".config/tmuxinator/${name}.yml"
+      ".config/herdr/plugins/config/cloudmanic.herdr-plus/projects/${name}.toml"
   fi
-  commit_push "$kind" "Remove tmuxinator session $name" "${paths[@]}"
+  commit_push "$kind" "Remove herdr-plus project $name" "${paths[@]}"
 }
 
 cmd="${1:-}"
@@ -436,9 +441,9 @@ kind)
   [[ $# -eq 1 ]] || usage
   kind_for_name "$1"
   ;;
-yaml-path)
+toml-path)
   [[ $# -ge 1 && $# -le 2 ]] || usage
-  yaml_path "$@"
+  toml_path "$@"
   ;;
 link-path)
   [[ $# -eq 1 ]] || usage
@@ -449,16 +454,16 @@ resolve)
   resolve_existing "$1"
   ;;
 prepare-new)
-  [[ $# -ge 1 && $# -le 2 ]] || usage
-  prepare_new "$@"
+  [[ $# -eq 2 ]] || usage
+  prepare_new "$1" "$2"
   ;;
 ensure-link)
   [[ $# -eq 1 ]] || usage
   ensure_link "$1"
   ;;
-install-yaml)
+install-toml)
   [[ $# -eq 2 ]] || usage
-  install_yaml "$1" "$2"
+  install_toml "$1" "$2"
   ;;
 ensure-layout)
   [[ $# -eq 1 ]] || usage

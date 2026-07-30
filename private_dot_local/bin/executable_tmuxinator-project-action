@@ -18,7 +18,7 @@ pause() {
 }
 
 require_project() {
-  if [[ -z "$project" || ! -f "$dir/$project.yml" ]]; then
+  if [[ -z "$project" ]] || ! tmuxinator-chezmoi resolve "$project" >/dev/null 2>&1; then
     printf 'Project not found: %s\n' "$project"
     pause
     exit 1
@@ -30,18 +30,24 @@ read_new_name() {
   printf '%s%s' "$prompt" "$new" >&2
   while IFS= read -rsn1 ch; do
     case "$ch" in
-      $'\e') printf '\n' >&2; return 1 ;;
-      $'\177'|$'\b')
-        if [[ -n "$new" ]]; then
-          new="${new%?}"
-          printf '\b \b' >&2
-        fi
-        ;;
-      $'\n'|'') printf '\n' >&2; break ;;
-      *)
-        new+="$ch"
-        printf '%s' "$ch" >&2
-        ;;
+    $'\e')
+      printf '\n' >&2
+      return 1
+      ;;
+    $'\177' | $'\b')
+      if [[ -n "$new" ]]; then
+        new="${new%?}"
+        printf '\b \b' >&2
+      fi
+      ;;
+    $'\n' | '')
+      printf '\n' >&2
+      break
+      ;;
+    *)
+      new+="$ch"
+      printf '%s' "$ch" >&2
+      ;;
     esac
   done
   [[ -n "$new" ]] || return 1
@@ -50,7 +56,7 @@ read_new_name() {
     pause
     exit 1
   fi
-  if [[ -e "$dir/$new.yml" ]]; then
+  if tmuxinator-chezmoi resolve "$new" >/dev/null 2>&1 || [[ -e "$dir/$new.yml" ]]; then
     printf '%s already exists\n' "$new" >&2
     pause
     exit 1
@@ -64,8 +70,11 @@ set_project_name() {
     sed -i "1,/^name:/s/^name:.*/name: $name/" "$file"
   else
     tmp="$(mktemp)"
-    { printf 'name: %s\n' "$name"; cat "$file"; } > "$tmp"
-    cat "$tmp" > "$file"
+    {
+      printf 'name: %s\n' "$name"
+      cat "$file"
+    } >"$tmp"
+    cat "$tmp" >"$file"
     rm -f "$tmp"
   fi
 }
@@ -75,34 +84,54 @@ confirm() {
   printf '%s (y/n) ' "$prompt"
   while IFS= read -rsn1 answer; do
     case "$answer" in
-      [Yy]) printf 'y\n'; return 0 ;;
-      [Nn]) printf 'n\n'; return 1 ;;
-      $'\n'|$'\e'|'') printf 'n\n'; return 1 ;;
+    [Yy])
+      printf 'y\n'
+      return 0
+      ;;
+    [Nn])
+      printf 'n\n'
+      return 1
+      ;;
+    $'\n' | $'\e' | '')
+      printf 'n\n'
+      return 1
+      ;;
     esac
   done
   return 1
 }
 
 case "$action" in
-  copy)
-    require_project
-    new="$(read_new_name "Copy $project to: ")" || exit 0
-    cp "$dir/$project.yml" "$dir/$new.yml"
-    set_project_name "$dir/$new.yml" "$new"
-    ;;
-  rename)
-    require_project
-    new="$(read_new_name "Rename $project to: " "$project")" || exit 0
-    mv "$dir/$project.yml" "$dir/$new.yml"
-    set_project_name "$dir/$new.yml" "$new"
-    ;;
-  delete)
-    require_project
-    confirm "Delete $project?" || exit 0
-    rm -f "$dir/$project.yml"
-    ;;
-  *)
-    printf 'Usage: %s {copy|rename|delete} <project>\n' "$0"
-    exit 2
-    ;;
+copy)
+  require_project
+  new="$(read_new_name "Copy $project to: ")" || exit 0
+  src="$(tmuxinator-chezmoi resolve "$project")"
+  tmp="$(mktemp)"
+  cp "$src" "$tmp"
+  set_project_name "$tmp" "$new"
+  tmuxinator-chezmoi install-yaml "$new" "$tmp" >/dev/null
+  rm -f "$tmp"
+  tmuxinator-chezmoi track-add "$new"
+  ;;
+rename)
+  require_project
+  new="$(read_new_name "Rename $project to: " "$project")" || exit 0
+  src="$(tmuxinator-chezmoi resolve "$project")"
+  tmp="$(mktemp)"
+  cp "$src" "$tmp"
+  set_project_name "$tmp" "$new"
+  tmuxinator-chezmoi install-yaml "$new" "$tmp" >/dev/null
+  rm -f "$tmp"
+  tmuxinator-chezmoi track-add "$new"
+  tmuxinator-chezmoi track-delete "$project"
+  ;;
+delete)
+  require_project
+  confirm "Delete $project?" || exit 0
+  tmuxinator-chezmoi track-delete "$project"
+  ;;
+*)
+  printf 'Usage: %s {copy|rename|delete} <project>\n' "$0"
+  exit 2
+  ;;
 esac

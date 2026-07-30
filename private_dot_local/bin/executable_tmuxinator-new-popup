@@ -4,5 +4,11 @@ set -euo pipefail
 project="${1:-}"
 [[ -n "$project" ]] || exit 0
 
-escaped="$(printf '%q' "$project")"
-tmux run-shell "sleep 0.1; tmux display-popup -x C -y C -w 80% -h 80% -E 'tmuxinator new $escaped'"
+if tmuxinator-chezmoi resolve "$project" >/dev/null 2>&1; then
+  tmux display-message "Project already exists: $project" 2>/dev/null || true
+  exit 0
+fi
+
+path="$(tmuxinator-chezmoi prepare-new "$project")"
+escaped="$(printf '%q' "$path")"
+tmux run-shell "sleep 0.1; tmux display-popup -x C -y C -w 80% -h 80% -E \"nvim $escaped\""

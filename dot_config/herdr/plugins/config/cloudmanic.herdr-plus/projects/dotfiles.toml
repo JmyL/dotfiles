@@ -1,0 +1,10 @@
+# Opens the herdr-plus project definitions directly for editing.
+
+name = "dotfiles"
+description = "Manage and share dotfiles using chezmoi"
+group = "personal"
+working_dir = "~/.config/"
+
+[[tabs]]
+name = "editor"
+command = "nvim"
