@@ -56,7 +56,7 @@ edit_scrollback = ["prefix+e", "alt+e"]
 # last_pane = "alt+p"          # optional, unset by default; bind e.g. "prefix+tab" for global back-and-forth
 split_vertical = ["prefix+v", "alt+x"]
 split_horizontal = ["prefix+minus", "alt+d"]
-close_pane = ["prefix+x", "alt+q"]
+close_pane = ""
 zoom = ["prefix+z", "alt+z"]
 # resize_mode = "prefix+r"
 toggle_sidebar = ["prefix+b", "alt+b"]
@@ -153,6 +153,13 @@ type = "plugin_action"
 command = "rmarganti.herdr-pluck.pluck"
 description = "pluck visible token"
 
+[[keys.command]]
+key = ["prefix+x", "alt+q"]
+type = "plugin_action"
+command = "confirm-close-pane.confirm-close-pane"
+description = "Close pane (with confirmation)"
+
 [ui]
 agent_panel_sort = "spaces"
 hide_tab_bar_when_single_tab = true
+confirm_close = true
