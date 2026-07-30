@@ -85,7 +85,7 @@ echo "$windows_raw" | grep -v '^$' >"$indices_file"
     while IFS="$sep" read -r pi cmd path; do
       case "$cmd" in
       bash | zsh | fish | sh) cmd="" ;;
-      pi) cmd="pi -c" ;;
+      ai | agent | claude | codex | pi) cmd="ai -R" ;;
       nvim | vim) cmd="$cmd" ;;
       *) ;;
       esac
