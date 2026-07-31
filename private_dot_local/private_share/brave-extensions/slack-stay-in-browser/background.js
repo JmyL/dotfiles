@@ -2,7 +2,7 @@
  * Slack stay in browser — background service worker.
  *
  * - Reuse an existing app.slack.com tab when an archives/messages permalink
- *   opens in another tab (navigate that tab, close the new one, focus it).
+ *   opens in another tab, routing in-page so Slack does not reload.
  * - Alt+Shift+S (command focus-slack-tab) focuses an open Slack tab.
  */
 
@@ -44,6 +44,52 @@ function isAppSlackTab(tab) {
   return Boolean(tab.url && tab.url.includes("://app.slack.com/"));
 }
 
+/** Permalink timestamps are p<seconds><microseconds> with no separator. */
+function parsePermalink(url) {
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  const match = u.pathname.match(/^\/(?:archives|messages)\/([^/]+)(?:\/p(\d+))?/);
+  if (!match) {
+    return null;
+  }
+  const digits = match[2];
+  return {
+    channel: match[1],
+    messageTs: digits ? `${digits.slice(0, -6)}.${digits.slice(-6)}` : null,
+    threadTs: u.searchParams.get("thread_ts"),
+  };
+}
+
+function teamIdFromClientUrl(url) {
+  try {
+    const match = new URL(url).pathname.match(/^\/client\/([^/]+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+function clientPath(teamId, target) {
+  const { channel, messageTs, threadTs } = target;
+  if (threadTs && messageTs) {
+    return `/client/${teamId}/${channel}/thread/${channel}-${threadTs}/${messageTs}`;
+  }
+  if (messageTs) {
+    return `/client/${teamId}/${channel}/${messageTs}`;
+  }
+  return `/client/${teamId}/${channel}`;
+}
+
+/** Runs in the page: let Slack's router handle it instead of reloading. */
+function routeInPage(path) {
+  history.pushState(null, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
+}
+
 async function findAppSlackTab(excludeTabId) {
   const tabs = await chrome.tabs.query({ url: "*://app.slack.com/*" });
   return tabs.find((t) => t.id !== excludeTabId && isAppSlackTab(t)) || null;
@@ -52,6 +98,27 @@ async function findAppSlackTab(excludeTabId) {
 async function focusTab(tab) {
   await chrome.tabs.update(tab.id, { active: true });
   await chrome.windows.update(tab.windowId, { focused: true });
+}
+
+async function openInExistingTab(existing, url) {
+  const target = parsePermalink(url);
+  const teamId = target ? teamIdFromClientUrl(existing.url) : null;
+
+  if (teamId) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: existing.id },
+        world: "MAIN",
+        func: routeInPage,
+        args: [clientPath(teamId, target)],
+      });
+      return;
+    } catch {
+      // Fall through to a plain navigation.
+    }
+  }
+
+  await chrome.tabs.update(existing.id, { url });
 }
 
 async function reuseSlackTab(tabId, url) {
@@ -67,8 +134,8 @@ async function reuseSlackTab(tabId, url) {
   suppress(tabId);
   suppress(existing.id);
 
-  await chrome.tabs.update(existing.id, { url, active: true });
-  await chrome.windows.update(existing.windowId, { focused: true });
+  await openInExistingTab(existing, url);
+  await focusTab(existing);
   try {
     await chrome.tabs.remove(tabId);
   } catch {
