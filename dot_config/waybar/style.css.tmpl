@@ -360,3 +360,20 @@ label:focus {
 #privacy-item.audio-out {
     background-color: #0069d4;
 }
+
+/* Flat, solid-black bar: modules never draw their own containers or states. */
+window#waybar,
+window#waybar.hidden,
+window#waybar.termite,
+window#waybar.chromium {
+    background-color: #000000;
+    border: none;
+    border-radius: 0;
+}
+
+window#waybar * {
+    background-color: transparent;
+    background-image: none;
+    border-radius: 0;
+    box-shadow: none;
+}
