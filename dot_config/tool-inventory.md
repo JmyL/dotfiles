@@ -197,6 +197,7 @@ These are useful for reproducing the full environment but may be installed by th
 
 - `pi`
 - `herdr`
+- `bun` (needed by some Herdr plugins, e.g. `danbuhler/herdr-pane-topic-sync`)
 - `uv`, `uvx`
 - `gh`
 - `act`
@@ -239,6 +240,7 @@ May need separate installation depending on Fedora version/repositories:
 - `tmuxinator`
 - `pi`
 - `herdr`
+- `bun` — `curl -fsSL https://bun.sh/install | bash` (symlink `~/.bun/bin/bun` into `~/.local/bin` if Herdr's PATH lacks `~/.bun/bin`)
 - `uv`
 - `JetBrainsMonoNL Nerd Font Mono`
 
@@ -281,6 +283,7 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `tmuxinator`
 - `pi`
 - `herdr`
+- `bun` — `curl -fsSL https://bun.sh/install | bash` (symlink `~/.bun/bin/bun` into `~/.local/bin` if Herdr's PATH lacks `~/.bun/bin`)
 - `uv`
 - `dumptorrent`
 - `tudu`
