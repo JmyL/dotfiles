@@ -113,7 +113,8 @@ Voice dictation:
 
 Notifications/system controls:
 
-- `libnotify` / `notify-send`
+- `libnotify` / `notify-send` (aerc and other callers; herdr-focus-notify uses D-Bus via `python3-gi` instead)
+- `python3-gi` (PyGObject) — required by `herdr-focus-notify`'s `scripts/linux-notify-wait.py`
 - `canberra-gtk-play` for notification sounds
 - `swaync-client`
 - `swayosd-client`
@@ -213,7 +214,7 @@ sudo dnf install \
   aerc atuin bat binutils blueman catdoc chezmoi cliphist curl direnv dnf-plugins-core \
   docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak fuzzel fzf git gnupg2 grim \
   grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
-  mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils \
+  mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils python3-gobject \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
   khal khard vdirsyncer \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
@@ -256,7 +257,7 @@ sudo apt install \
   slurp sox starship swappy sway swayidle swaylock swayosd thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
   wtype xclip xdg-utils xterm zathura zip zoxide grimshot build-essential libreadline-dev unzip \
-  python3-venv imagemagick lazygit luarocks wireplumber pipewire-bin
+  python3-venv python3-gi imagemagick lazygit luarocks wireplumber pipewire-bin
 ```
 
 Ubuntu follow-ups:
