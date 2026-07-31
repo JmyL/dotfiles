@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Toggle the focused pane's parent split between right (side-by-side) and down (stacked).
+# Same-tab pane move does not change orientation; move out to a temp tab then back.
+set -euo pipefail
+
+herdr_json() {
+  herdr "$@"
+}
+
+layout_json=$(herdr_json pane layout --current)
+read -r focused tab direction sibling ratio < <(python3 -c '
+import json, sys
+
+data = json.load(sys.stdin)["result"]["layout"]
+focused = data.get("focused_pane_id")
+tab = data.get("tab_id")
+panes = data.get("panes") or []
+splits = data.get("splits") or []
+if not focused or not tab or len(panes) < 2 or not splits:
+  raise SystemExit(0)
+
+by_id = {p["pane_id"]: p for p in panes}
+if focused not in by_id:
+  raise SystemExit(0)
+
+def contains(outer, inner):
+  return (
+    outer["x"] <= inner["x"]
+    and outer["y"] <= inner["y"]
+    and outer["x"] + outer["width"] >= inner["x"] + inner["width"]
+    and outer["y"] + outer["height"] >= inner["y"] + inner["height"]
+  )
+
+frect = by_id[focused]["rect"]
+candidates = [s for s in splits if contains(s["rect"], frect)]
+if not candidates:
+  raise SystemExit(0)
+parent = min(candidates, key=lambda s: s["rect"]["width"] * s["rect"]["height"])
+direction = parent["direction"]
+if direction not in ("right", "down"):
+  raise SystemExit(0)
+
+others = [
+  pid
+  for pid, p in by_id.items()
+  if pid != focused and contains(parent["rect"], p["rect"])
+]
+inner_splits = [
+  s
+  for s in splits
+  if s["id"] != parent["id"] and contains(parent["rect"], s["rect"])
+]
+
+def in_inner(prect):
+  return any(contains(s["rect"], prect) for s in inner_splits)
+
+direct = [pid for pid in others if not in_inner(by_id[pid]["rect"])]
+if len(direct) != 1:
+  # Only flip simple pane|pane parents; nested subtree siblings are skipped.
+  raise SystemExit(0)
+
+sibling = direct[0]
+ratio = parent.get("ratio", 0.5)
+print(focused, tab, direction, sibling, ratio)
+' <<<"$layout_json") || exit 0
+
+[[ -n "${focused:-}" && -n "${sibling:-}" ]] || exit 0
+
+new_dir=down
+if [[ $direction == down ]]; then
+  new_dir=right
+fi
+
+move_out=$(herdr_json pane move "$focused" --new-tab --no-focus)
+new_id=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["move_result"]["pane"]["pane_id"])' <<<"$move_out")
+
+herdr_json pane move "$new_id" \
+  --tab "$tab" \
+  --split "$new_dir" \
+  --target-pane "$sibling" \
+  --ratio "$ratio" \
+  --focus >/dev/null

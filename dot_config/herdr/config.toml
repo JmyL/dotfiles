@@ -159,6 +159,36 @@ type = "plugin_action"
 command = "rmarganti.herdr-pluck.pluck"
 description = "pluck visible token"
 
+[[keys.command]]
+key = "prefix+space"
+type = "shell"
+command = "herdr-rotate-split"
+description = "toggle split orientation"
+
+[[keys.command]]
+key = "prefix+shift+h"
+type = "shell"
+command = "herdr pane swap --current --direction left"
+description = "swap pane left"
+
+[[keys.command]]
+key = "prefix+shift+j"
+type = "shell"
+command = "herdr pane swap --current --direction down"
+description = "swap pane down"
+
+[[keys.command]]
+key = "prefix+shift+k"
+type = "shell"
+command = "herdr pane swap --current --direction up"
+description = "swap pane up"
+
+[[keys.command]]
+key = "prefix+shift+l"
+type = "shell"
+command = "herdr pane swap --current --direction right"
+description = "swap pane right"
+
 [ui]
 agent_panel_sort = "spaces"
 hide_tab_bar_when_single_tab = true
