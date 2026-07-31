@@ -17,8 +17,8 @@ When an agent is launched from this home directory, assume the task is to modify
 
 - Personal chezmoi source: `~/.local/share/chezmoi` (repo `JmyL/dotfiles`).
 - Work chezmoi source: `~/.local/share/chezmoi-work` (private repo `sungsik-nam-vay/dotfiles-work`), config `~/.config/chezmoi/chezmoi-work.toml`. Apply after personal: `chezmoi --config ~/.config/chezmoi/chezmoi-work.toml apply`. Work paths live under `~/.config/work/` and `~/.local/bin/work/`.
-- **Cursor is work-only.** Do not track Cursor config under personal chezmoi. Manage `~/.cursor/` (e.g. `mcp.json`, `rules/`, `plans/`) with work chezmoi (`chezmoi --config ~/.config/chezmoi/chezmoi-work.toml add …`). Leave secrets and local state untracked (`~/.config/cursor/auth.json`, `chats/`, `projects/`, `mcp-auth.json`, caches). Cursor Agent CLI (`agent`) is company-machine only; personal machines should keep using `claude` / `codex` / `pi` via `ai` fallback.
-- **Deferred agent plans:** Save temporary / later-execution implementation plans under `~/.cursor/plans/` only (not Obsidian, not `~/.config/plans/`). After adding or changing a plan file there, manage it with work chezmoi. Cursor’s plan UI already writes here; keep using that path when asked to “저장해 두고 나중에” or similar.
+- **Cursor is work-only.** Do not track Cursor config under personal chezmoi. Manage `~/.cursor/` (e.g. `mcp.json`, `rules/`) with work chezmoi (`chezmoi --config ~/.config/chezmoi/chezmoi-work.toml add …`). Leave secrets and local state untracked (`~/.config/cursor/auth.json`, `chats/`, `projects/`, `mcp-auth.json`, caches). Cursor Agent CLI (`agent`) is company-machine only; personal machines should keep using `claude` / `codex` / `pi` via `ai` fallback. Exception: personal chezmoi tracks `~/.cursor/plans` as a symlink to `~/.config/plans` so Cursor’s plan UI keeps working.
+- **Deferred agent plans:** Save temporary / later-execution implementation plans under `~/.config/plans/` only (not Obsidian). Manage with personal chezmoi (`chezmoi add ~/.config/plans/…`). Prefer that path when editing; `~/.cursor/plans` is only the Cursor UI symlink.
 - Tmuxinator: if the YAML `root` is under `$HOME/projects`, the session goes to `~/.config/work/tmuxinator/` plus a symlink under `~/.config/tmuxinator/` (via `tmuxinator-chezmoi` and the new/save/delete wrappers). Otherwise it stays in personal chezmoi. Deletes update that repo's `.chezmoiremove` for cross-machine cleanup. Name prefixes like `ree-*` are not used for routing.
 - Herdr-plus projects: if `working_dir` is under `$HOME/projects`, the TOML goes to `~/.config/work/herdr-plus/projects/` plus a symlink under `~/.config/herdr/plugins/config/cloudmanic.herdr-plus/projects/` (via `herdr-plus-chezmoi`). Otherwise the file lives directly in the herdr-plus projects dir under personal chezmoi.
 - Prefer editing the live dotfile in `$HOME` first, then run `chezmoi add <path>` (or `chezmoi --config ~/.config/chezmoi/chezmoi-work.toml add <path>` for work files) to update the matching chezmoi source from the live file.
@@ -68,7 +68,7 @@ When adding or modifying dotfiles that introduce a dependency on an external com
 
 - Vault rules live in `~/Documents/Obsidian/AGENTS.md`. Follow that file when working in the vault.
 - **Do not modify daily notes** (`YYYY-MM-DD.md`) unless the user explicitly asks to put something on the daily note. Reading today’s note for context is fine; writing is not the default.
-- Do not put agent/infra implementation plans in Obsidian; use `~/.cursor/plans/`.
+- Do not put agent/infra implementation plans in Obsidian; use `~/.config/plans/`.
 
 ## Project boundaries
 
