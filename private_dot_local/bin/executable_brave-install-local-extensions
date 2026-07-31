@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pack local Brave extensions as .crx and register them via External Extensions
+# so they load without --load-extension (any Brave launch path).
+
+src_root="${HOME}/.local/share/brave-extensions"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/brave-extensions"
+external_dir="${HOME}/.config/BraveSoftware/Brave-Browser/External Extensions"
+brave_bin=/usr/bin/brave-browser-stable
+
+extension_id_from_pem() {
+  local pem=$1
+  python3 - "$pem" <<'PY'
+import hashlib
+import subprocess
+import sys
+from pathlib import Path
+
+pem = Path(sys.argv[1])
+der = subprocess.check_output(
+  ["openssl", "rsa", "-in", str(pem), "-pubout", "-outform", "DER"],
+  stderr=subprocess.DEVNULL,
+)
+digest = hashlib.sha256(der).hexdigest()[:32]
+print("".join(chr(ord("a") + int(c, 16)) for c in digest))
+PY
+}
+
+manifest_version() {
+  local manifest=$1
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$manifest"
+}
+
+pack_one() {
+  local name=$1
+  local src="${src_root}/${name}"
+  local pem="${state_dir}/${name}.pem"
+  local crx="${state_dir}/${name}.crx"
+  local staging
+
+  if [[ ! -d "$src" ]]; then
+    printf 'Extension source not found: %s\n' "$src" >&2
+    return 1
+  fi
+  if [[ ! -f "${src}/manifest.json" ]]; then
+    printf 'Missing manifest.json in %s\n' "$src" >&2
+    return 1
+  fi
+
+  mkdir -p "$state_dir" "$external_dir"
+
+  staging=$(mktemp -d "${TMPDIR:-/tmp}/brave-ext-pack.XXXXXX")
+  # shellcheck disable=SC2064
+  trap "rm -rf '${staging}'" RETURN
+
+  # Pack a clean tree (exclude Brave-generated _metadata).
+  mkdir -p "${staging}/${name}"
+  find "$src" -mindepth 1 -maxdepth 1 ! -name _metadata -exec cp -a {} "${staging}/${name}/" \;
+
+  local pack_args=(--pack-extension="${staging}/${name}")
+  if [[ -f "$pem" ]]; then
+    pack_args+=(--pack-extension-key="$pem")
+  fi
+
+  # Brave exits after packing; ignore its non-zero exit if the .crx appears.
+  set +e
+  "$brave_bin" "${pack_args[@]}" >/dev/null 2>&1
+  local pack_status=$?
+  set -e
+
+  local packed_crx="${staging}/${name}.crx"
+  local packed_pem="${staging}/${name}.pem"
+
+  if [[ ! -f "$packed_crx" ]]; then
+    printf 'Packing failed for %s (exit %s)\n' "$name" "$pack_status" >&2
+    return 1
+  fi
+
+  mv -f "$packed_crx" "$crx"
+  if [[ -f "$packed_pem" && ! -f "$pem" ]]; then
+    mv -f "$packed_pem" "$pem"
+  fi
+  chmod 600 "$pem" "$crx" 2>/dev/null || true
+
+  local ext_id version
+  ext_id=$(extension_id_from_pem "$pem")
+  version=$(manifest_version "${src}/manifest.json")
+
+  python3 - "$external_dir/${ext_id}.json" "$crx" "$version" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+out, crx, version = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+out.write_text(
+  json.dumps(
+    {"external_crx": str(crx.resolve()), "external_version": version},
+    indent=2,
+  )
+  + "\n"
+)
+PY
+
+  printf 'Installed %s\n' "$name"
+  printf '  id:       %s\n' "$ext_id"
+  printf '  version:  %s\n' "$version"
+  printf '  crx:      %s\n' "$crx"
+  printf '  external: %s/%s.json\n' "$external_dir" "$ext_id"
+}
+
+if [[ ! -x "$brave_bin" ]]; then
+  printf 'Brave not found at %s\n' "$brave_bin" >&2
+  exit 1
+fi
+
+pack_one slack-stay-in-browser

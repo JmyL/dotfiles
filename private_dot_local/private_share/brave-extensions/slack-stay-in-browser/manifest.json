@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Slack stay in browser",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Rewrite Slack archives permalinks to messages so they open in the web client.",
   "permissions": ["declarativeNetRequest"],
   "host_permissions": ["*://*.slack.com/*"],

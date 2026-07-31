@@ -1,5 +1,19 @@
 [
   {
+    "id": 2,
+    "priority": 2,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "regexSubstitution": "https://\\1.slack.com/messages/\\2/\\3?thread_ts=\\4"
+      }
+    },
+    "condition": {
+      "regexFilter": "^https://([^/]+)\\.slack\\.com/archives/([^/?]+)/(p\\d+)\\?(?:.*&)?thread_ts=([\\d.]+).*$",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
     "id": 1,
     "priority": 1,
     "action": {
@@ -9,7 +23,7 @@
       }
     },
     "condition": {
-      "regexFilter": "^https://([^/]+)\\.slack.com/archives/(.*)$",
+      "regexFilter": "^https://([^/]+)\\.slack\\.com/archives/(.*)$",
       "resourceTypes": ["main_frame"]
     }
   }

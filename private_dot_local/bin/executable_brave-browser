@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Always load the local Slack stay-in-browser extension (archives → messages).
-ext="${HOME}/.local/share/brave-extensions/slack-stay-in-browser"
-exec /usr/bin/brave-browser-stable --load-extension="${ext}" "$@"
+# Passthrough: Slack stay-in-browser is installed via External Extensions
+# (see brave-install-local-extensions). Keep this shim so .desktop / sway
+# keep calling a stable path under ~/.local/bin.
+exec /usr/bin/brave-browser-stable "$@"

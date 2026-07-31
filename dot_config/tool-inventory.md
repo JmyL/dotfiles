@@ -91,7 +91,7 @@ Core desktop tools:
 - `thunar`
 - `flatpak`
 - Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup
-- Local Brave extension `~/.local/share/brave-extensions/slack-stay-in-browser` (loaded via `~/.local/bin/brave-browser`) — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt. Restart Brave fully after installing on a new machine.
+- Local Brave extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt. Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON). Restart Brave fully after installing on a new machine.
 - `wireplumber` (`wpctl`) and `pipewire-bin`/`pipewire-utils` (`pw-dump`) — used by `sway-audio-switch` to list/switch default audio devices
 
 Screenshot/recording/clipboard:
