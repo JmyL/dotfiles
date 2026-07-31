@@ -192,3 +192,4 @@ description = "swap pane right"
 [ui]
 agent_panel_sort = "spaces"
 hide_tab_bar_when_single_tab = true
+show_agent_labels_on_pane_borders = true
