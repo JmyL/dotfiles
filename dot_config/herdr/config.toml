@@ -156,8 +156,8 @@ delivery = "off"
 [[keys.command]]
 key = ["alt+shift+y"]
 type = "plugin_action"
-command = "rmarganti.herdr-pluck.pluck"
-description = "pluck visible token"
+command = "hotchpotch.herdr-tiny-fingers.open"
+description = "fingers mode"
 
 [[keys.command]]
 key = "prefix+space"
