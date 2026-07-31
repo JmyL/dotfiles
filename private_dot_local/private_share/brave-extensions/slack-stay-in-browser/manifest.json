@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Slack stay in browser",
-  "version": "1.4.0",
-  "description": "Rewrite Slack archives permalinks to messages so they open in the web client, reuse an existing Slack tab, and focus it via shortcut.",
-  "permissions": ["declarativeNetRequest", "tabs", "scripting"],
+  "version": "1.5.0",
+  "description": "Rewrite Slack archives permalinks to messages so they open in the web client, and focus an open Slack tab via shortcut.",
+  "permissions": ["declarativeNetRequest", "tabs"],
   "host_permissions": ["*://*.slack.com/*", "*://app.slack.com/*"],
   "background": {
     "service_worker": "background.js"
