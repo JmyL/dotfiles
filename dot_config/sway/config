@@ -311,7 +311,7 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     # Activate (click) the latest notification's default action
     bindsym $mod+Return exec swaync-client -a 0 -sw
     # Show clipboard history and paste into the focused window
-    bindsym $mod+v exec sh -c 'item=$(cliphist list | fuzzel --dmenu --width 85 --prompt "Clipboard> ") && printf %s "$item" | cliphist decode | wl-copy && sleep 0.05 && wtype -M ctrl -M shift -k v'
+    bindsym $mod+v exec sh -c 'item=$(cliphist list | fuzzel --dmenu --with-nth 2 --width 85 --prompt "Clipboard> ") && printf %s "$item" | cliphist decode | wl-copy && sleep 0.05 && wtype -M ctrl -M shift -k v'
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/toggle-idle-inhibit
     # Cycle available power profiles
