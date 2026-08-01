@@ -5,7 +5,7 @@ todos:
     content: Install ~/.local/bin/suspend-diag + /etc/systemd/system-sleep/zz-suspend-diag
     status: completed
   - id: next-incident
-    content: On next black screen after resume, fill checklist below and inspect latest dump dirs
+    content: On next black screen after resume, follow suspend-resume-blackscreen-analysis.md
     status: pending
 isProject: false
 ---
@@ -13,6 +13,10 @@ isProject: false
 # Suspend/resume black-screen diagnostics
 
 Automatic dumps for the next HDMI/NVIDIA/Sway resume black screen. No SSH required.
+
+**When it fails again:** use the analysis runbook
+[`suspend-resume-blackscreen-analysis.md`](./suspend-resume-blackscreen-analysis.md)
+(checklist → dumps → decision tree → next experiment). This file is only the collector setup.
 
 ## What is installed
 
