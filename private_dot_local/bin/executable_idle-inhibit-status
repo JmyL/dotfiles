@@ -11,8 +11,10 @@ if [[ -f "$pidfile" ]]; then
   fi
 fi
 
+# FA coffee (); on/off distinguished by CSS class color
+coffee=$'\uf0f4'
 if [[ "$active" == true ]]; then
-  printf '{"text":"", "tooltip":"Idle inhibitor: on", "class":"activated"}\n'
+  printf '{"text":"%s", "tooltip":"Idle inhibitor: on", "class":"activated"}\n' "$coffee"
 else
-  printf '{"text":"", "tooltip":"Idle inhibitor: off", "class":"deactivated"}\n'
+  printf '{"text":"%s", "tooltip":"Idle inhibitor: off", "class":"deactivated"}\n' "$coffee"
 fi
