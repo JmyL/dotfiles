@@ -137,11 +137,17 @@ button:hover {
 }
 
 #interactive #tray,
-#interactive #custom-recording,
+#interactive #custom-recording {
+    background-color: transparent;
+    padding: 0 4px;
+}
+
+/* Nerd Font (non-Mono) icons are wider; give icon-only modules room so glyphs aren't clipped. */
 #interactive #power-profiles-daemon,
 #interactive #custom-idle_inhibitor {
     background-color: transparent;
-    padding: 0 4px;
+    padding: 0 8px;
+    min-width: 1.75em;
 }
 
 #sound #pulseaudio,
@@ -152,7 +158,7 @@ button:hover {
 #system-status #memory,
 #system-status #battery {
     background-color: transparent;
-    padding: 0 4px;
+    padding: 0 6px;
 }
 
 #custom-forager-battery {
