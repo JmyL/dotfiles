@@ -2,7 +2,7 @@
 # Format: <github-repo> [ref]
 # Run: herdr-install-plugins
 cloudmanic/herdr-plus
-hotchpotch/herdr-tiny-fingers
+JmyL/herdr-pluck osc52-clipboard
 lmilojevicc/herdr-splits.nvim
 JmyL/herdr-focus-notify cb9cf5f32e864ce7bfb4e08db42df1d240f4daae
 JmyL/herdr-navigator jump-back-agent-workspace
