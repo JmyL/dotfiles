@@ -129,11 +129,10 @@ button:hover {
 #sound,
 #connectivity,
 #system-status {
-    margin: 0 1px;
+    margin: 0;
     padding: 0 3px;
     background-color: rgba(24, 27, 34, 0.5);
     border-radius: 8px;
-    margin-right: 3px;
 }
 
 #interactive #tray,
@@ -142,23 +141,26 @@ button:hover {
     padding: 0 4px;
 }
 
-/* Nerd Font (non-Mono) icons are wider; give icon-only modules room so glyphs aren't clipped. */
+/* NF icons clip on the right in icon-only modules */
 #interactive #power-profiles-daemon,
 #interactive #custom-idle_inhibitor {
     background-color: transparent;
-    padding: 0 8px;
-    min-width: 1.75em;
+    padding: 0 8px 0 4px;
 }
 
 #sound #pulseaudio,
-#connectivity #network,
 #connectivity #bluetooth,
 #connectivity #custom-forager-battery,
 #system-status #cpu,
 #system-status #memory,
 #system-status #battery {
     background-color: transparent;
-    padding: 0 6px;
+    padding: 0 4px;
+}
+
+#connectivity #network {
+    background-color: transparent;
+    padding: 0 10px 0 4px;
 }
 
 #custom-forager-battery {

@@ -58,7 +58,8 @@ def main() -> None:
         is_low = percent <= LOW_BATTERY_PERCENT
         icon_color = LOW_COLOR if is_low else ICON_COLOR
         print(json.dumps({
-            "text": f"<span foreground=\"{icon_color}\"> {battery_icon(percent)}</span> {percent}%",
+            # letter_spacing 1536 = 1.5pt ≈ 2px at 96dpi (gap between battery icon and %)
+            "text": f"<span foreground=\"{icon_color}\"> {battery_icon(percent)}</span><span letter_spacing=\"1536\"> </span>{percent}%",
             "tooltip": f"{DEVICE_NAME} battery: {percent}%",
             "class": "low" if is_low else "normal",
         }, ensure_ascii=False))
