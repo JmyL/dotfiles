@@ -15,8 +15,12 @@ def notify(title, body=""):
 
 
 def pick(prompt, labels):
+    menu = shutil.which("fzf-menu")
+    if menu is None:
+        notify("Audio switch failed", "fzf-menu not found")
+        return None
     result = subprocess.run(
-        ["fuzzel", "--dmenu", "--prompt", f"{prompt}> "],
+        [menu, "--prompt", f"{prompt}> "],
         input="\n".join(labels),
         text=True,
         capture_output=True,

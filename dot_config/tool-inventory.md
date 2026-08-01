@@ -214,8 +214,8 @@ This is the broad workstation-oriented install set. Some packages may vary by Fe
 
 ```sh
 sudo dnf install \
-  aerc atuin bat binutils blueman catdoc chezmoi cliphist curl direnv dnf-plugins-core \
-  docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak fuzzel fzf git gnupg2 grim \
+  aerc atuin bat binutils blueman catdoc chezmoi curl direnv dnf-plugins-core \
+  docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak fzf git gnupg2 grim \
   grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils python3-gobject \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
@@ -246,6 +246,8 @@ May need separate installation depending on Fedora version/repositories:
 - `uv`
 - `JetBrainsMonoNL Nerd Font Mono`
 - `fonts-3270` / `IBM 3270` — Waybar CRT-style monospace
+- `clipse` (Wayland release tarball → `~/.local/bin/clipse`):
+  `curl -fsSL https://github.com/savedra1/clipse/releases/download/v1.2.1/clipse_v1.2.1_linux_wayland_amd64.tar.gz | tar -xz -C /tmp && install -m 755 /tmp/clipse-linux-wayland-amd64 ~/.local/bin/clipse`
 
 ## Ubuntu install command
 
@@ -254,8 +256,8 @@ Test/package names may vary by Ubuntu release. This is aimed at recent Ubuntu ve
 ```sh
 sudo apt update
 sudo apt install \
-  aerc atuin bat binutils blueman catdoc cliphist curl direnv docx2txt eza fcitx5 fcitx5-hangul \
-  fd-find ffmpeg flatpak fuzzel fzf git gnupg grim isync jq kanshi kitty less \
+  aerc atuin bat binutils blueman catdoc curl direnv docx2txt eza fcitx5 fcitx5-hangul \
+  fd-find ffmpeg flatpak fzf git gnupg grim isync jq kanshi kitty less \
   libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
   khal khard vdirsyncer \
@@ -294,6 +296,8 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - fonts-font-awesome
 - fonts-3270
 - `ShureTechMono Nerd Font Mono` — from Nerd Fonts `ShareTechMono.zip` into `~/.local/share/fonts`
+- `clipse` (Wayland release tarball → `~/.local/bin/clipse`):
+  `curl -fsSL https://github.com/savedra1/clipse/releases/download/v1.2.1/clipse_v1.2.1_linux_wayland_amd64.tar.gz | tar -xz -C /tmp && install -m 755 /tmp/clipse-linux-wayland-amd64 ~/.local/bin/clipse`
 
 ## Minimal non-desktop/server install
 

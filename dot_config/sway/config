@@ -15,11 +15,15 @@ set $up k
 set $right l
 # Your preferred terminal emulator
 set $term kitty
-# Your preferred application launcher
-set $menu fuzzel
+# Your preferred application launcher (floating kitty + fzf)
+set $menu ~/.local/bin/fzf-drun
 # Shared desktop and lock-screen wallpaper
 set $wallpaper ~/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg
 set $lock swaylock -f -i $wallpaper -s fill
+
+# Floating pickers / clipboard TUI (kitty --class …)
+for_window [app_id="fzf-menu"] floating enable, sticky enable, border pixel 3, resize set 720 420, move position center
+for_window [app_id="clipse"] floating enable, sticky enable, border pixel 3, resize set 900 640, move position center
 
 ### Window appearance
 #
@@ -112,7 +116,7 @@ seat * hide_cursor 3000
     bindsym $mod+slash exec $menu
 
     # Show upcoming calendar agenda
-    bindsym $mod+a exec sh -c '~/.local/bin/calendar-date-waybar --plain | fuzzel --dmenu --width 80 --prompt "Agenda> " >/dev/null'
+    bindsym $mod+a exec sh -c '~/.local/bin/calendar-date-waybar --plain | ~/.local/bin/fzf-menu --prompt "Agenda> " --width 80 >/dev/null'
 
     # Drag floating windows by holding down $mod and left mouse button.
     # Resize them with right mouse button + $mod.
@@ -125,16 +129,16 @@ seat * hide_cursor 3000
     bindsym $mod+shift+r reload
 
     # Reboot the system
-    bindsym $mod+Shift+b exec sh -c 'choice=$(printf "Reboot\nCancel\n" | fuzzel --dmenu --prompt "Reboot the system? "); [ "$choice" = "Reboot" ] && systemctl reboot'
+    bindsym $mod+Shift+b exec sh -c 'choice=$(printf "Reboot\nCancel\n" | ~/.local/bin/fzf-menu --prompt "Reboot the system? "); [ "$choice" = "Reboot" ] && systemctl reboot'
 
     # Suspend the system
-    bindsym $mod+Shift+s exec sh -c 'choice=$(printf "Suspend\nCancel\n" | fuzzel --dmenu --prompt "Suspend the system? "); [ "$choice" = "Suspend" ] && systemctl suspend'
+    bindsym $mod+Shift+s exec sh -c 'choice=$(printf "Suspend\nCancel\n" | ~/.local/bin/fzf-menu --prompt "Suspend the system? "); [ "$choice" = "Suspend" ] && systemctl suspend'
 
     # Power down the system
-    bindsym $mod+Shift+p exec sh -c 'choice=$(printf "Power off\nCancel\n" | fuzzel --dmenu --prompt "Power off the system? "); [ "$choice" = "Power off" ] && systemctl poweroff'
+    bindsym $mod+Shift+p exec sh -c 'choice=$(printf "Power off\nCancel\n" | ~/.local/bin/fzf-menu --prompt "Power off the system? "); [ "$choice" = "Power off" ] && systemctl poweroff'
 
     # Exit sway (logs you out of your Wayland session)
-    bindsym $mod+Shift+e exec sh -c 'choice=$(printf "Exit sway\nCancel\n" | fuzzel --dmenu --prompt "Exit sway? This will end your Wayland session. "); [ "$choice" = "Exit sway" ] && swaymsg exit'
+    bindsym $mod+Shift+e exec sh -c 'choice=$(printf "Exit sway\nCancel\n" | ~/.local/bin/fzf-menu --prompt "Exit sway? This will end your Wayland session. "); [ "$choice" = "Exit sway" ] && swaymsg exit'
 #
 # Moving around:
 #
@@ -310,8 +314,8 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     bindsym $mod+Shift+n exec swaync-client -C
     # Activate (click) the latest notification's default action
     bindsym $mod+Return exec swaync-client -a 0 -sw
-    # Show clipboard history and paste into the focused window
-    bindsym $mod+v exec sh -c 'item=$(cliphist list | fuzzel --dmenu --with-nth 2 --width 85 --prompt "Clipboard> ") && printf %s "$item" | cliphist decode | wl-copy && sleep 0.05 && wtype -M ctrl -M shift -k v'
+    # Clipboard history (clipse TUI in floating kitty; auto-pastes on choose)
+    bindsym $mod+v exec kitty --class clipse -o remember_window_size=no -o initial_window_width=100c -o initial_window_height=32c -e clipse
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/toggle-idle-inhibit
     # Cycle available power profiles

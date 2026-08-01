@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Desktop application launcher via floating kitty + fzf
+set -euo pipefail
+
+if ! command -v fzf-menu >/dev/null 2>&1; then
+  echo "fzf-drun: fzf-menu not found" >&2
+  exit 127
+fi
+
+mapfile -t desktop_files < <(
+  {
+    find /usr/share/applications /usr/local/share/applications \
+      "${XDG_DATA_HOME:-$HOME/.local/share}/applications" \
+      -type f -name '*.desktop' 2>/dev/null || true
+  } | sort -u
+)
+
+labels=()
+ids=()
+
+for file in "${desktop_files[@]}"; do
+  # Skip hidden / non-app entries.
+  if grep -qE '^(NoDisplay|Hidden)=true' "$file" 2>/dev/null; then
+    continue
+  fi
+  if grep -qE '^Type=' "$file" 2>/dev/null && ! grep -qE '^Type=Application$' "$file" 2>/dev/null; then
+    continue
+  fi
+
+  name=$(
+    awk -F= '
+      /^\[Desktop Entry\]/ { in_entry=1; next }
+      /^\[/ { in_entry=0 }
+      in_entry && $1 == "Name" && name == "" { name=$2 }
+      END { print name }
+    ' "$file"
+  )
+  [[ -n $name ]] || continue
+
+  id=${file##*/}
+  id=${id%.desktop}
+
+  labels+=("$name")
+  ids+=("$id")
+done
+
+if ((${#labels[@]} == 0)); then
+  exit 1
+fi
+
+choice=$(printf '%s\n' "${labels[@]}" | fzf-menu --prompt 'Apps> ' --width 90 --height 28) || exit 1
+choice=${choice%$'\n'}
+[[ -n $choice ]] || exit 1
+
+selected_id=
+for i in "${!labels[@]}"; do
+  if [[ ${labels[$i]} == "$choice" ]]; then
+    selected_id=${ids[$i]}
+    break
+  fi
+done
+
+[[ -n $selected_id ]] || exit 1
+
+if command -v gtk-launch >/dev/null 2>&1; then
+  exec gtk-launch "$selected_id"
+fi
+
+# Fallback: resolve Exec= from the matching desktop file.
+for file in "${desktop_files[@]}"; do
+  base=${file##*/}
+  if [[ $base == "${selected_id}.desktop" ]]; then
+    exec_line=$(
+      awk -F= '
+        /^\[Desktop Entry\]/ { in_entry=1; next }
+        /^\[/ { in_entry=0 }
+        in_entry && $1 == "Exec" { print substr($0, index($0, "=") + 1); exit }
+      ' "$file"
+    )
+    # Strip field codes (%f, %u, ...)
+    exec_line=${exec_line%% %*}
+    exec_line=${exec_line//%%/%}
+    [[ -n $exec_line ]] || exit 1
+    # shellcheck disable=SC2086
+    exec $exec_line
+  fi
+done
+
+exit 1

@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# dmenu-like picker: floating kitty + fzf (stdin -> stdout)
+set -euo pipefail
+
+prompt='Select> '
+height=24
+width=80
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --prompt | -p)
+    prompt=${2:-Select> }
+    shift 2
+    ;;
+  --height)
+    height=${2:-24}
+    shift 2
+    ;;
+  --width)
+    width=${2:-80}
+    shift 2
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    echo "fzf-menu: unknown option: $1" >&2
+    exit 2
+    ;;
+  *)
+    break
+    ;;
+  esac
+done
+
+if ! command -v kitty >/dev/null 2>&1; then
+  echo "fzf-menu: kitty not found" >&2
+  exit 127
+fi
+if ! command -v fzf >/dev/null 2>&1; then
+  echo "fzf-menu: fzf not found" >&2
+  exit 127
+fi
+
+input=$(mktemp)
+output=$(mktemp)
+status_file=$(mktemp)
+trap 'rm -f "$input" "$output" "$status_file"' EXIT
+
+cat >"$input"
+
+# No stdin items -> nothing to pick.
+if [[ ! -s $input ]]; then
+  exit 1
+fi
+
+kitty --class fzf-menu \
+  --title "${prompt%%>*}" \
+  -o remember_window_size=no \
+  -o "initial_window_width=${width}c" \
+  -o "initial_window_height=${height}c" \
+  -e bash -c '
+    set +e
+    fzf --prompt="$1" --height=100% --layout=reverse --border --info=inline <"$2" >"$3"
+    echo $? >"$4"
+  ' bash "$prompt" "$input" "$output" "$status_file"
+
+status=1
+if [[ -s $status_file ]]; then
+  status=$(cat "$status_file")
+fi
+
+if [[ $status -eq 0 && -s $output ]]; then
+  # Keep a single trailing newline like dmenu/fuzzel.
+  cat "$output"
+  [[ $(tail -c1 "$output" | wc -l) -eq 0 ]] && printf '\n'
+  exit 0
+fi
+
+exit 1
