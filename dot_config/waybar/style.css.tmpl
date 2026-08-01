@@ -85,6 +85,7 @@ button:hover {
 #custom-media,
 #custom-calendar-alert,
 #custom-forager-battery,
+#custom-swaync,
 #tray,
 #mode,
 #idle_inhibitor,
@@ -129,10 +130,18 @@ button:hover {
 #sound,
 #connectivity,
 #system-status {
+    /* Item padding (4px each side) already sets in-group gaps; don't add extra
+       group padding. Negative margin cancels bar "spacing" between group pills. */
     margin: 0;
-    padding: 0 3px;
+    margin-right: -4px;
+    padding: 0;
     background-color: rgba(24, 27, 34, 0.5);
     border-radius: 8px;
+}
+
+/* Keep the last icon clear of the next group pulled in by margin-right: -4px */
+#interactive {
+    padding-right: 4px;
 }
 
 #interactive #tray,
@@ -142,10 +151,15 @@ button:hover {
 }
 
 /* NF icons clip on the right in icon-only modules */
-#interactive #power-profiles-daemon,
-#interactive #custom-idle_inhibitor {
+#interactive #power-profiles-daemon {
     background-color: transparent;
     padding: 0 8px 0 4px;
+}
+
+#interactive #custom-idle_inhibitor {
+    background-color: transparent;
+    /* coffee glyphs sit optically high — nudge down to match neighbors */
+    padding: 2px 10px 0 4px;
 }
 
 #sound #pulseaudio,
@@ -153,9 +167,17 @@ button:hover {
 #connectivity #custom-forager-battery,
 #system-status #cpu,
 #system-status #memory,
-#system-status #battery {
+#system-status #battery,
+#system-status #custom-swaync {
     background-color: transparent;
     padding: 0 4px;
+}
+
+#custom-swaync.notification,
+#custom-swaync.dnd-notification,
+#custom-swaync.inhibited-notification,
+#custom-swaync.dnd-inhibited-notification {
+    color: #ffd166;
 }
 
 #connectivity #network {
