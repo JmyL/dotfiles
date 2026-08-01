@@ -132,8 +132,8 @@ Display/input extras:
 
 Fonts/integrations:
 
-- `JetBrainsMonoNL Nerd Font Mono`
-- `IBM 3270` — Waybar (`fonts-3270` on Ubuntu; install equivalently on Fedora)
+- `JetBrainsMonoNL Nerd Font Mono` — Kitty / terminals
+- `JetBrainsMonoNL Nerd Font Propo` — Waybar (from Nerd Fonts `JetBrainsMono.tar.xz` into `~/.local/share/fonts`)
 - `ShureTechMono Nerd Font Mono` — Nerd Fonts packaging of Share Tech Mono (install under `~/.local/share/fonts`)
 - `kitty_scrollback_nvim` is handled by Neovim/Kitty plugin setup, not by system package install.
 
@@ -246,7 +246,7 @@ May need separate installation depending on Fedora version/repositories:
 - `bun` — `curl -fsSL https://bun.sh/install | bash` (symlink `~/.bun/bin/bun` into `~/.local/bin` if Herdr's PATH lacks `~/.bun/bin`)
 - `uv`
 - `JetBrainsMonoNL Nerd Font Mono`
-- `fonts-3270` / `IBM 3270` — Waybar CRT-style monospace
+- `JetBrainsMonoNL Nerd Font Propo` — Waybar (`curl -fsSL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz | tar -xJ -C ~/.local/share/fonts --wildcards 'JetBrainsMonoNLNerdFontPropo-*.ttf' && fc-cache -f ~/.local/share/fonts`)
 - `clipse` (Wayland release tarball → `~/.local/bin/clipse`):
   `curl -fsSL https://github.com/savedra1/clipse/releases/download/v1.2.1/clipse_v1.2.1_linux_wayland_amd64.tar.gz | tar -xz -C /tmp && install -m 755 /tmp/clipse-linux-wayland-amd64 ~/.local/bin/clipse`
 - `clipse-setup-uinput` (chezmoi-managed under `~/.local/bin`) after installing clipse:
@@ -296,8 +296,8 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `dumptorrent`
 - `tudu`
 - `JetBrainsMonoNL Nerd Font Mono`
+- `JetBrainsMonoNL Nerd Font Propo` — Waybar (`curl -fsSL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz | tar -xJ -C ~/.local/share/fonts --wildcards 'JetBrainsMonoNLNerdFontPropo-*.ttf' && fc-cache -f ~/.local/share/fonts`)
 - fonts-font-awesome
-- fonts-3270
 - `ShureTechMono Nerd Font Mono` — from Nerd Fonts `ShareTechMono.zip` into `~/.local/share/fonts`
 - `clipse` (Wayland release tarball → `~/.local/bin/clipse`):
   `curl -fsSL https://github.com/savedra1/clipse/releases/download/v1.2.1/clipse_v1.2.1_linux_wayland_amd64.tar.gz | tar -xz -C /tmp && install -m 755 /tmp/clipse-linux-wayland-amd64 ~/.local/bin/clipse`
