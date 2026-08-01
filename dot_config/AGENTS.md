@@ -30,6 +30,13 @@ When an agent is launched from this home directory, assume the task is to modify
 - Keep secrets out of tracked files. Use chezmoi private/encrypted/ignored mechanisms for sensitive data.
 - For tmux status-bar confirmations, prefer tmux-native `confirm-before` with `y/n` prompts unless an explicit default-on-Enter behavior is required.
 
+## Sway / Waybar
+
+Waybar is started only by Sway's `bar { swaybar_command waybar }` block (`waybar -b bar-0`). Do not also `swaymsg exec waybar` (or equivalent): that leaves an unmanaged second instance that survives `swaymsg reload` and stacks with the bar-managed one.
+
+- CSS/config-only changes: `swaymsg reload` is enough.
+- If Waybar must be restarted: `killall waybar; swaymsg reload` — never `swaymsg exec waybar`.
+
 ## Herdr plugins
 
 When changing Herdr plugin behavior, keybindings, or local plugin repos, check the cross-machine install path before finishing.
