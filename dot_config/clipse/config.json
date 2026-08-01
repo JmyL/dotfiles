@@ -50,6 +50,6 @@
         "keybind": "ctrl+shift+v",
         "buffer": 50
     },
-    "enableMouse": true,
+    "enableMouse": false,
     "enableDescription": false
 }
