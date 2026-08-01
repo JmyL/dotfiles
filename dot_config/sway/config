@@ -195,8 +195,8 @@ seat * hide_cursor 3000
     # You can "split" the current object of your focus with
     # $mod+b or $mod+v, for horizontal and vertical splits
     # respectively.
-    bindsym $mod+b splith
-    bindsym $mod+v splitv
+    bindsym $mod+x splith
+    bindsym $mod+d splitv
 
     # Switch the current container between different layout styles
     # bindsym $mod+s layout stacking
@@ -278,13 +278,13 @@ mode "$recording_start_mode" {
 }
 bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
 
-# Dictation mode: records through dev-launcher, transcribes, and pastes into focus.
-set $dictation_mode Dictation: speak, [q] finish
-mode "$dictation_mode" {
+# Transcription mode: records through dev-launcher, transcribes, and pastes into focus.
+set $transcription_mode Transcription: speak, [q] finish
+mode "$transcription_mode" {
     bindsym q mode "default", exec sh -c '"$HOME/.local/bin/dev-launcher" "$HOME/.local/bin/sway-dictate-worker" stop'
     bindsym Escape mode "default", exec sh -c '"$HOME/.local/bin/dev-launcher" "$HOME/.local/bin/sway-dictate-worker" cancel'
 }
-bindsym $mod+d mode "$dictation_mode", exec sh -c '"$HOME/.local/bin/dev-launcher" "$HOME/.local/bin/sway-dictate-worker" start'
+bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-launcher" "$HOME/.local/bin/sway-dictate-worker" start'
 #
 # Utilities:
 #
@@ -311,7 +311,7 @@ bindsym $mod+d mode "$dictation_mode", exec sh -c '"$HOME/.local/bin/dev-launche
     # Activate (click) the latest notification's default action
     bindsym $mod+Return exec swaync-client -a 0 -sw
     # Show clipboard history
-    bindsym $mod+Shift+v exec cliphist list | fuzzel --dmenu --width 85 --prompt 'Clipboard> ' | cliphist decode | wl-copy
+    bindsym $mod+v exec cliphist list | fuzzel --dmenu --width 85 --prompt 'Clipboard> ' | cliphist decode | wl-copy
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/toggle-idle-inhibit
     # Cycle available power profiles
