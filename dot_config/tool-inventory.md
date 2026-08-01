@@ -102,7 +102,7 @@ Screenshot/recording/clipboard:
 - `slurp`
 - `swappy`
 - `wl-clipboard` (`wl-copy`, `wl-paste`)
-- `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`. **autoPaste** on Wayland needs `/dev/uinput`: add user to group `input` (`sudo usermod -aG input $USER`), udev rule `/etc/udev/rules.d/99-uinput.rules` with `KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"`, then `sudo udevadm control --reload-rules && sudo udevadm trigger`; **log out and back in** (or new login session) for group membership.
+- `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`. **autoPaste** on Wayland needs `/dev/uinput` access: run `~/.local/bin/clipse-setup-uinput` on each machine (idempotent; uses sudo). Check with `clipse-setup-uinput --check`. On Fedora Silverblue/toolbox, run it on the **host**. Then **log out and back in** so group `input` is active in the session.
 - `wf-recorder`
 - `wtype` — types dictation text into the focused Wayland window
 - `pipewire-utils` (`pw-record`) — microphone capture for dictation
@@ -249,6 +249,8 @@ May need separate installation depending on Fedora version/repositories:
 - `fonts-3270` / `IBM 3270` — Waybar CRT-style monospace
 - `clipse` (Wayland release tarball → `~/.local/bin/clipse`):
   `curl -fsSL https://github.com/savedra1/clipse/releases/download/v1.2.1/clipse_v1.2.1_linux_wayland_amd64.tar.gz | tar -xz -C /tmp && install -m 755 /tmp/clipse-linux-wayland-amd64 ~/.local/bin/clipse`
+- `clipse-setup-uinput` (chezmoi-managed under `~/.local/bin`) after installing clipse:
+  `clipse-setup-uinput` then re-login; verify with `clipse-setup-uinput --check`
 
 ## Ubuntu install command
 
@@ -299,6 +301,8 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `ShureTechMono Nerd Font Mono` — from Nerd Fonts `ShareTechMono.zip` into `~/.local/share/fonts`
 - `clipse` (Wayland release tarball → `~/.local/bin/clipse`):
   `curl -fsSL https://github.com/savedra1/clipse/releases/download/v1.2.1/clipse_v1.2.1_linux_wayland_amd64.tar.gz | tar -xz -C /tmp && install -m 755 /tmp/clipse-linux-wayland-amd64 ~/.local/bin/clipse`
+- `clipse-setup-uinput` (chezmoi-managed under `~/.local/bin`) after installing clipse:
+  `clipse-setup-uinput` then re-login; verify with `clipse-setup-uinput --check`
 
 ## Minimal non-desktop/server install
 

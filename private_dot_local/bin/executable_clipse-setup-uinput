@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+# Idempotent host setup for clipse Wayland autoPaste (/dev/uinput + input group).
+# Safe to re-run on Ubuntu and Fedora; on Silverblue/toolbox run it on the host.
+set -euo pipefail
+
+rule_path=/etc/udev/rules.d/99-uinput.rules
+rule_body='KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"'
+user_name=${SUDO_USER:-${USER:-$(id -un)}}
+
+usage() {
+  cat <<'EOF'
+Usage: clipse-setup-uinput [--check]
+
+  (default)  Ensure group input, add $USER, install udev rule, reload udev.
+  --check    Report current status without changing anything (no sudo).
+
+Requires sudo for apply. After apply, log out and back in so group input
+is active in the graphical session.
+EOF
+}
+
+in_toolbox() {
+  [[ -f /run/.containerenv ]]
+}
+
+have_group() {
+  getent group input >/dev/null 2>&1
+}
+
+user_in_input() {
+  id -nG "$user_name" 2>/dev/null | tr ' ' '\n' | grep -qx input
+}
+
+rule_ok() {
+  [[ -f $rule_path ]] && grep -Fxq "$rule_body" "$rule_path"
+}
+
+uinput_access_ok() {
+  # After udev: group input, mode allows group rw (typically 0660).
+  [[ -e /dev/uinput ]] || return 1
+  local perms group
+  perms=$(stat -c '%a' /dev/uinput 2>/dev/null || true)
+  group=$(stat -c '%G' /dev/uinput 2>/dev/null || true)
+  [[ $group == input ]] || return 1
+  case $perms in
+  660 | 664 | 666) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+session_has_input() {
+  # Current process groups (may lag usermod until re-login).
+  id -nG | tr ' ' '\n' | grep -qx input
+}
+
+cmd_check() {
+  local ok=1
+
+  if in_toolbox; then
+    printf 'env: toolbox container — udev/group changes must run on the host\n'
+  else
+    printf 'env: host\n'
+  fi
+
+  printf 'user: %s\n' "$user_name"
+
+  if have_group; then
+    printf 'group input: present\n'
+  else
+    printf 'group input: missing\n'
+    ok=0
+  fi
+
+  if user_in_input; then
+    printf 'user in input (passwd): yes\n'
+  else
+    printf 'user in input (passwd): no\n'
+    ok=0
+  fi
+
+  if session_has_input; then
+    printf 'user in input (this session): yes\n'
+  else
+    printf 'user in input (this session): no (re-login required after usermod)\n'
+    # Not a hard failure for --check if passwd already has the group.
+  fi
+
+  if rule_ok; then
+    printf 'udev rule: ok (%s)\n' "$rule_path"
+  else
+    printf 'udev rule: missing or differs (%s)\n' "$rule_path"
+    ok=0
+  fi
+
+  if [[ -e /dev/uinput ]]; then
+    printf '/dev/uinput: %s\n' "$(ls -l /dev/uinput)"
+  else
+    printf '/dev/uinput: missing\n'
+    ok=0
+  fi
+
+  if uinput_access_ok; then
+    printf '/dev/uinput perms: ok for group input\n'
+  else
+    printf '/dev/uinput perms: not ready for group input\n'
+    ok=0
+  fi
+
+  if ((ok)) && session_has_input; then
+    printf 'status: ready for clipse autoPaste\n'
+    return 0
+  fi
+  if ((ok)); then
+    printf 'status: configured; re-login to activate group input in this session\n'
+    return 0
+  fi
+  printf 'status: not ready (run: clipse-setup-uinput)\n'
+  return 1
+}
+
+run_as_root() {
+  if [[ $(id -u) -eq 0 ]]; then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+ensure_group() {
+  if have_group; then
+    return 0
+  fi
+  if command -v groupadd >/dev/null 2>&1; then
+    run_as_root groupadd --system input
+  else
+    printf 'error: cannot create group input (groupadd missing)\n' >&2
+    exit 1
+  fi
+}
+
+ensure_membership() {
+  if user_in_input; then
+    return 0
+  fi
+  run_as_root usermod -aG input "$user_name"
+}
+
+ensure_rule() {
+  if rule_ok; then
+    return 0
+  fi
+  run_as_root tee "$rule_path" >/dev/null <<EOF
+$rule_body
+EOF
+}
+
+reload_udev() {
+  run_as_root udevadm control --reload-rules
+  run_as_root udevadm trigger --subsystem-match=misc --attr-match=name=uinput 2>/dev/null \
+    || run_as_root udevadm trigger
+}
+
+cmd_apply() {
+  if in_toolbox; then
+    cat <<'EOF' >&2
+error: running inside a toolbox/container.
+
+Apply on the host instead, for example:
+  host-spawn clipse-setup-uinput
+  # or open a host shell and run:
+  ~/.local/bin/clipse-setup-uinput
+EOF
+    exit 1
+  fi
+
+  ensure_group
+  ensure_membership
+  ensure_rule
+  reload_udev
+
+  printf 'Applied uinput rule and input group membership for %s.\n' "$user_name"
+  cmd_check || true
+  if ! session_has_input; then
+    printf '\nLog out and back in (or reboot) so this session gains group input.\n'
+  fi
+}
+
+case "${1:-}" in
+-h | --help)
+  usage
+  ;;
+--check)
+  cmd_check
+  ;;
+"")
+  cmd_apply
+  ;;
+*)
+  usage >&2
+  exit 2
+  ;;
+esac
