@@ -51,5 +51,5 @@
         "buffer": 50
     },
     "enableMouse": true,
-    "enableDescription": true
+    "enableDescription": false
 }
