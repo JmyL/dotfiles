@@ -102,7 +102,7 @@ Screenshot/recording/clipboard:
 - `slurp`
 - `swappy`
 - `wl-clipboard` (`wl-copy`, `wl-paste`)
-- `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`
+- `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`. **autoPaste** on Wayland needs `/dev/uinput`: add user to group `input` (`sudo usermod -aG input $USER`), udev rule `/etc/udev/rules.d/99-uinput.rules` with `KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"`, then `sudo udevadm control --reload-rules && sudo udevadm trigger`; **log out and back in** (or new login session) for group membership.
 - `wf-recorder`
 - `wtype` — types dictation text into the focused Wayland window
 - `pipewire-utils` (`pw-record`) — microphone capture for dictation
