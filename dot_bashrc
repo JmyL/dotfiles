@@ -73,3 +73,7 @@ alias tmp='tmuxinator $(tmuxinator list -n | tail -n +2 | fzf)'
 
 eval "$(starship init bash)"
 eval "$(zoxide init bash)"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
