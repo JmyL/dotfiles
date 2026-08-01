@@ -280,14 +280,15 @@
 		"tooltip": true,
 		"format": "{icon}",
 		"format-icons": {
-			"notification": "",
-			"none": "",
-			"dnd-notification": "",
-			"dnd-none": "",
-			"inhibited-notification": "",
-			"inhibited-none": "",
-			"dnd-inhibited-notification": "",
-			"dnd-inhibited-none": ""
+			// Outline when clear; filled when unread (same advance width in JetBrainsMonoNL NF)
+			"none": "󰂜",
+			"notification": "󰂚",
+			"dnd-none": "󰪓",
+			"dnd-notification": "󰂠",
+			"inhibited-none": "󰪑",
+			"inhibited-notification": "󰂛",
+			"dnd-inhibited-none": "󰪑",
+			"dnd-inhibited-notification": "󰂛"
 		},
 		"return-type": "json",
 		"exec-if": "which swaync-client",
