@@ -167,10 +167,15 @@ button:hover {
 #connectivity #custom-forager-battery,
 #system-status #cpu,
 #system-status #memory,
-#system-status #battery,
-#system-status #custom-swaync {
+#system-status #battery {
     background-color: transparent;
     padding: 0 4px;
+}
+
+/* NF bell clips on the trailing edge when it is the bar's last icon */
+#system-status #custom-swaync {
+    background-color: transparent;
+    padding: 0 8px 0 4px;
 }
 
 #custom-swaync.notification,
@@ -218,7 +223,12 @@ button:hover {
     margin-left: 0;
 }
 
-/* If the rightmost module has an outer margin, omit it at the screen edge. */
+/* If the rightmost module has an outer margin, omit it at the screen edge.
+   ID groups set margin-right: -4px above; beat that specificity here. */
+.modules-right > widget:last-child > #system-status,
+.modules-right > widget:last-child > #connectivity,
+.modules-right > widget:last-child > #sound,
+.modules-right > widget:last-child > #interactive,
 .modules-right > widget:last-child > * {
     margin-right: 0;
 }
