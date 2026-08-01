@@ -315,7 +315,7 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     # Activate (click) the latest notification's default action
     bindsym $mod+Return exec swaync-client -a 0 -sw
     # Clipboard history (clipse TUI in floating foot; auto-pastes on choose)
-    bindsym $mod+v exec foot --app-id=clipse --window-size-chars=100x32 clipse
+    bindsym $mod+v exec foot --app-id=clipse --window-size-chars=100x32 ~/.local/bin/clipse
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/toggle-idle-inhibit
     # Cycle available power profiles
