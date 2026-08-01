@@ -22,8 +22,8 @@ set $wallpaper ~/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg
 set $lock swaylock -f -i $wallpaper -s fill
 
 # Floating pickers / clipboard TUI (foot --app-id …)
-for_window [app_id="fzf-menu"] floating enable, sticky enable, border pixel 3, resize set 720 420, move position center
-for_window [app_id="clipse"] floating enable, sticky enable, border pixel 3, resize set 900 640, move position center
+for_window [app_id="fzf-menu"] floating enable, sticky enable, border none, resize set 720 420, move position center
+for_window [app_id="clipse"] floating enable, sticky enable, border none, resize set 900 640, move position center
 
 ### Window appearance
 #
