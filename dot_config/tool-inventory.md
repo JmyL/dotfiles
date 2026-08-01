@@ -84,7 +84,7 @@ Core desktop tools:
 - `sway`
 - `waybar`
 - `kitty`
-- `fuzzel`
+- `fzf` — used by floating `fzf-menu` / `fzf-drun` pickers (replaces fuzzel)
 - `swayidle`
 - `swayosd`
 - `swaylock`
@@ -101,7 +101,7 @@ Screenshot/recording/clipboard:
 - `slurp`
 - `swappy`
 - `wl-clipboard` (`wl-copy`, `wl-paste`)
-- `cliphist`
+- `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`
 - `wf-recorder`
 - `wtype` — types dictation text into the focused Wayland window
 - `pipewire-utils` (`pw-record`) — microphone capture for dictation
@@ -133,6 +133,7 @@ Fonts/integrations:
 
 - `JetBrainsMonoNL Nerd Font Mono`
 - `IBM 3270` — Waybar (`fonts-3270` on Ubuntu; install equivalently on Fedora)
+- `ShureTechMono Nerd Font Mono` — Nerd Fonts packaging of Share Tech Mono (install under `~/.local/share/fonts`)
 - `kitty_scrollback_nvim` is handled by Neovim/Kitty plugin setup, not by system package install.
 
 ## aerc/mail stack
@@ -292,6 +293,7 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `JetBrainsMonoNL Nerd Font Mono`
 - fonts-font-awesome
 - fonts-3270
+- `ShureTechMono Nerd Font Mono` — from Nerd Fonts `ShareTechMono.zip` into `~/.local/share/fonts`
 
 ## Minimal non-desktop/server install
 
