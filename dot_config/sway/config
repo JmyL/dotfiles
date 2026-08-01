@@ -309,11 +309,11 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     # (--locked so it still works under swaylock after resume)
     bindsym --locked $mod+Shift+m exec ~/.local/bin/sway-recover-display
     # Toggle notification center
-    bindsym $mod+n exec swaync-client -t -sw
+    bindsym $mod+n exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -t -sw'
     # Clear all notifications
-    bindsym $mod+Shift+n exec swaync-client -C
+    bindsym $mod+Shift+n exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -C'
     # Activate (click) the latest notification's default action
-    bindsym $mod+Return exec swaync-client -a 0 -sw
+    bindsym $mod+Return exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -ad -sw'
     # Clipboard history (clipse TUI in floating foot; auto-pastes on choose)
     bindsym $mod+v exec foot --app-id=clipse --window-size-chars=100x32 ~/.local/bin/clipse
     # Toggle idle/sleep inhibitor
