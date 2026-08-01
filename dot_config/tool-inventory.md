@@ -132,6 +132,7 @@ Display/input extras:
 Fonts/integrations:
 
 - `JetBrainsMonoNL Nerd Font Mono`
+- `IBM 3270` — Waybar (`fonts-3270` on Ubuntu; install equivalently on Fedora)
 - `kitty_scrollback_nvim` is handled by Neovim/Kitty plugin setup, not by system package install.
 
 ## aerc/mail stack
@@ -243,6 +244,7 @@ May need separate installation depending on Fedora version/repositories:
 - `bun` — `curl -fsSL https://bun.sh/install | bash` (symlink `~/.bun/bin/bun` into `~/.local/bin` if Herdr's PATH lacks `~/.bun/bin`)
 - `uv`
 - `JetBrainsMonoNL Nerd Font Mono`
+- `fonts-3270` / `IBM 3270` — Waybar CRT-style monospace
 
 ## Ubuntu install command
 
@@ -289,6 +291,7 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `tudu`
 - `JetBrainsMonoNL Nerd Font Mono`
 - fonts-font-awesome
+- fonts-3270
 
 ## Minimal non-desktop/server install
 
