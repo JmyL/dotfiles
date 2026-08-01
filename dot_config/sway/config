@@ -21,7 +21,7 @@ set $menu ~/.local/bin/fzf-drun
 set $wallpaper ~/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg
 set $lock swaylock -f -i $wallpaper -s fill
 
-# Floating pickers / clipboard TUI (kitty --class …)
+# Floating pickers / clipboard TUI (foot --app-id …)
 for_window [app_id="fzf-menu"] floating enable, sticky enable, border pixel 3, resize set 720 420, move position center
 for_window [app_id="clipse"] floating enable, sticky enable, border pixel 3, resize set 900 640, move position center
 
@@ -314,8 +314,8 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     bindsym $mod+Shift+n exec swaync-client -C
     # Activate (click) the latest notification's default action
     bindsym $mod+Return exec swaync-client -a 0 -sw
-    # Clipboard history (clipse TUI in floating kitty; auto-pastes on choose)
-    bindsym $mod+v exec kitty --class clipse -o remember_window_size=no -o initial_window_width=100c -o initial_window_height=32c -e clipse
+    # Clipboard history (clipse TUI in floating foot; auto-pastes on choose)
+    bindsym $mod+v exec foot --app-id=clipse --window-size-chars=100x32 clipse
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/toggle-idle-inhibit
     # Cycle available power profiles
