@@ -1,3 +1,4 @@
 {
-    "notification-grouping": false
+    "notification-grouping": false,
+    "timeout": 20
 }
