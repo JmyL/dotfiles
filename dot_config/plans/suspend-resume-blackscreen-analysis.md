@@ -1,20 +1,17 @@
 <!-- suspend-resume-blackscreen-analysis -->
 ---
 todos:
-  - id: capture-context
-    content: Fill incident checklist (wake/HDMI/lid/symptom) right after the event
+  - id: harden-hook
+    content: Fix suspend-diag for empty PATH + journal logging + sync + fast user0 snapshot
+    status: completed
+  - id: hook-smoke
+    content: Brief suspend with HDMI; confirm pre/post/user0 dumps + journalctl -t suspend-diag
     status: pending
-  - id: locate-dumps
-    content: Find matching pre/post/user stamps under ~/.local/share/suspend-diag
+  - id: laptop-only-repro
+    content: One suspend/resume with HDMI unplugged; note whether blank screen still happens
     status: pending
-  - id: classify-failure
-    content: Classify into DRM / kanshi-sway / NVIDIA / hybrid-race using the decision tree
-    status: pending
-  - id: compare-baseline
-    content: Diff against a known-good resume dump (or 2026-08-01 journal facts below)
-    status: pending
-  - id: decide-fix
-    content: Pick the smallest next experiment or fix; do not shotgun-change NVIDIA+kanshi together
+  - id: next-incident-classify
+    content: On next blank resume, run decision tree with new dumps and fill section 6
     status: pending
 isProject: false
 ---
