@@ -1,15 +1,23 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # Capture suspend/resume diagnostics for black-screen debugging.
 #
 # Invoked as:
 #   suspend-diag system-sleep <pre|post> <suspend|hibernate|...>
-#   suspend-diag user-resume [stamp-dir]
+#   suspend-diag user-resume [stamp]
 #   suspend-diag prune
 #
 # Dumps land in ~/.local/share/suspend-diag/<stamp>-<phase>/
+#
+# Important: systemd-sleep runs with a minimal/empty PATH. Do not rely on
+# `#!/usr/bin/env bash` or unqualified tool names without setting PATH.
 set -euo pipefail
 
+# systemd-sleep environment is sparse; make tool lookup reliable.
+export PATH="/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
+
 readonly KEEP=20
+readonly DESKTOP_USER=sungsik
+readonly DESKTOP_HOME=/home/sungsik
 
 diag_base() {
   printf '%s\n' "${SUSPEND_DIAG_DIR:-${HOME}/.local/share/suspend-diag}"
@@ -17,6 +25,9 @@ diag_base() {
 
 log() {
   printf '%s\n' "$*" >&2
+  if command -v logger >/dev/null 2>&1; then
+    logger -t suspend-diag -- "$*" || true
+  fi
 }
 
 stamp_now() {
@@ -39,13 +50,42 @@ dump_dir_for() {
 write_file() {
   local path="$1"
   shift
-  # shellcheck disable=SC2068
   "$@" >"$path" 2>&1 || true
 }
 
-collect_common() {
-  local dir="$1"
+run_timeout() {
+  local secs="$1"
+  shift
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --signal=KILL "$secs" "$@"
+  else
+    "$@"
+  fi
+}
 
+collect_drm() {
+  local dir="$1"
+  write_file "${dir}/drm.txt" bash -c '
+    shopt -s nullglob
+    for d in /sys/class/drm/card*-*; do
+      echo "== $(basename "$d")"
+      for f in status enabled dpms power/runtime_status modes; do
+        if [[ -e "$d/$f" ]]; then
+          if [[ "$f" == modes ]]; then
+            echo "-- modes --"
+            head -n 20 "$d/$f" 2>/dev/null || true
+          else
+            echo "$f: $(cat "$d/$f" 2>/dev/null)"
+          fi
+        fi
+      done
+      echo
+    done
+  '
+}
+
+collect_meta() {
+  local dir="$1"
   {
     echo "date: $(date -Is)"
     echo "hostname: $(hostname)"
@@ -53,7 +93,16 @@ collect_common() {
     echo "user: $(id -un) uid=$(id -u)"
     echo "kernel: $(uname -r)"
     echo "cmdline: $(tr '\0' ' ' </proc/cmdline)"
+    echo "path: $PATH"
   } >"${dir}/meta.txt" 2>&1 || true
+}
+
+collect_common() {
+  local dir="$1"
+  local light="${2:-0}"
+
+  collect_meta "$dir"
+  collect_drm "$dir"
 
   write_file "${dir}/lid.txt" bash -c '
     shopt -s nullglob
@@ -73,39 +122,34 @@ collect_common() {
     done
   '
 
-  write_file "${dir}/drm.txt" bash -c '
-    shopt -s nullglob
-    for d in /sys/class/drm/card*-*; do
-      echo "== $(basename "$d")"
-      for f in status enabled dpms power/runtime_status modes; do
-        if [[ -e "$d/$f" ]]; then
-          if [[ "$f" == modes ]]; then
-            echo "-- modes --"
-            head -n 20 "$d/$f" 2>/dev/null || true
-          else
-            echo "$f: $(cat "$d/$f" 2>/dev/null)"
-          fi
-        fi
-      done
-      echo
-    done
-  '
+  # Flush the critical DRM snapshot before heavier collectors.
+  sync -f "$dir" 2>/dev/null || sync || true
+
+  if [[ "$light" == 1 ]]; then
+    return 0
+  fi
 
   # dmesg often needs CAP_SYSLOG / root (kernel.dmesg_restrict=1).
   if dmesg -T >/dev/null 2>&1; then
     write_file "${dir}/dmesg-err.txt" dmesg -T --level=err,warn
     write_file "${dir}/dmesg-recent.txt" bash -c 'dmesg -T | tail -n 250'
   else
-    write_file "${dir}/dmesg-err.txt" journalctl -k -b -p warning..alert --no-pager -n 100
-    write_file "${dir}/dmesg-recent.txt" journalctl -k -b --no-pager -n 250
+    write_file "${dir}/dmesg-err.txt" run_timeout 5 journalctl -k -b -p warning..alert --no-pager -n 100
+    write_file "${dir}/dmesg-recent.txt" run_timeout 5 journalctl -k -b --no-pager -n 250
   fi
 
   if command -v nvidia-smi >/dev/null 2>&1; then
-    write_file "${dir}/nvidia-smi.txt" nvidia-smi
+    # nvidia-smi can stall around suspend transitions.
+    write_file "${dir}/nvidia-smi.txt" run_timeout 5 nvidia-smi
   fi
 
-  write_file "${dir}/journal-pm.txt" journalctl -b --no-pager -n 200 \
-    -g 'suspend|resume|PM:|nvidia|Atomic|CRTC|Page-flip|kanshi|backend configuration|Failed to disable'
+  # Avoid journalctl -g here: on long boots it can be slow/fragile in sleep hooks.
+  # Grab a recent window and filter offline.
+  write_file "${dir}/journal-recent.txt" run_timeout 8 journalctl -b --no-pager -n 400 -o short-iso
+  if [[ -f "${dir}/journal-recent.txt" ]]; then
+    grep -E 'suspend|resume|PM:|nvidia|Atomic|CRTC|Page-flip|kanshi|backend configuration|Failed to disable|Power key|Powering off' \
+      "${dir}/journal-recent.txt" >"${dir}/journal-pm.txt" 2>/dev/null || true
+  fi
 }
 
 collect_user() {
@@ -124,19 +168,22 @@ collect_user() {
   fi
 
   if [[ -n "${SWAYSOCK:-}" ]] && command -v swaymsg >/dev/null 2>&1; then
-    write_file "${dir}/sway-outputs.txt" swaymsg -t get_outputs
-    write_file "${dir}/sway-outputs.json" swaymsg -t get_outputs -r
-    write_file "${dir}/sway-version.txt" swaymsg -t get_version
+    write_file "${dir}/sway-outputs.txt" run_timeout 3 swaymsg -t get_outputs
+    write_file "${dir}/sway-outputs.json" run_timeout 3 swaymsg -t get_outputs -r
+    write_file "${dir}/sway-version.txt" run_timeout 3 swaymsg -t get_version
   else
     echo "swaymsg unavailable (SWAYSOCK=${SWAYSOCK:-unset})" >"${dir}/sway-outputs.txt"
   fi
 
-  if journalctl --user -b --no-pager -n 1 >/dev/null 2>&1; then
-    write_file "${dir}/journal-kanshi.txt" journalctl --user -b --no-pager -n 80 \
-      -g 'kanshi|profile|Atomic|CRTC|backend configuration|Page-flip'
-  else
-    write_file "${dir}/journal-kanshi.txt" journalctl -b --no-pager -n 80 \
-      -g 'kanshi|profile|Atomic|CRTC|backend configuration|Page-flip'
+  write_file "${dir}/journal-kanshi.txt" bash -c '
+    if journalctl --user -b --no-pager -n 1 >/dev/null 2>&1; then
+      timeout 5 journalctl --user -b --no-pager -n 200 -o short-iso
+    else
+      timeout 5 journalctl -b --no-pager -n 200 -o short-iso
+    fi' || true
+  if [[ -f "${dir}/journal-kanshi.txt" ]]; then
+    grep -E 'kanshi|profile|Atomic|CRTC|backend configuration|Page-flip|Failed to disable' \
+      "${dir}/journal-kanshi.txt" >"${dir}/journal-kanshi-filtered.txt" 2>/dev/null || true
   fi
 }
 
@@ -144,8 +191,7 @@ prune_old() {
   local base
   ensure_base
   base="$(diag_base)"
-  # Keep newest KEEP directories; ignore non-dirs.
-  mapfile -t dirs < <(find "$base" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | awk '{print $2}')
+  mapfile -t dirs < <(find "$base" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' 2>/dev/null | sort -nr | awk '{print $2}')
   local i=0
   local d
   for d in "${dirs[@]}"; do
@@ -156,38 +202,72 @@ prune_old() {
   done
 }
 
+try_user_sway_snapshot() {
+  local stamp="$1"
+  local label="$2"
+  local uid
+  local runtime
+  local dir
+
+  uid="$(id -u "$DESKTOP_USER" 2>/dev/null || echo 1000)"
+  runtime="/run/user/${uid}"
+  [[ -d "$runtime" ]] || return 0
+
+  dir="$(dump_dir_for "$label" "$stamp")"
+  runuser -u "$DESKTOP_USER" -- env \
+    HOME="$DESKTOP_HOME" \
+    XDG_RUNTIME_DIR="$runtime" \
+    PATH="$PATH" \
+    SUSPEND_DIAG_DIR="${DESKTOP_HOME}/.local/share/suspend-diag" \
+    bash -c "
+      set +e
+      export SWAYSOCK=\$(ls -1 \"\$XDG_RUNTIME_DIR\"/sway-ipc.*.sock 2>/dev/null | head -n 1)
+      {
+        echo \"SWAYSOCK=\$SWAYSOCK\"
+        echo \"XDG_RUNTIME_DIR=\$XDG_RUNTIME_DIR\"
+        date -Is
+      } >'${dir}/session-env.txt'
+      if [[ -n \"\$SWAYSOCK\" ]]; then
+        timeout 3 swaymsg -t get_outputs >'${dir}/sway-outputs.txt' 2>&1
+        timeout 3 swaymsg -t get_outputs -r >'${dir}/sway-outputs.json' 2>&1
+      else
+        echo 'swaymsg unavailable' >'${dir}/sway-outputs.txt'
+      fi
+    " || true
+
+  chown -R "${DESKTOP_USER}:${DESKTOP_USER}" "$dir" 2>/dev/null || true
+  sync -f "$dir" 2>/dev/null || sync || true
+  log "suspend-diag: wrote ${dir}"
+}
+
 run_as_user_resume() {
   local stamp="$1"
   local uid
   local runtime
-  local user_home
-  uid="$(id -u sungsik 2>/dev/null || echo 1000)"
-  user_home="$(getent passwd sungsik | cut -d: -f6)"
+
+  uid="$(id -u "$DESKTOP_USER" 2>/dev/null || echo 1000)"
   runtime="/run/user/${uid}"
 
   if [[ ! -d "$runtime" ]]; then
-    log "user runtime dir missing; skip user-resume dump"
+    log "user runtime dir missing; skip delayed user-resume dump"
     return 0
   fi
 
-  # Delay so DRM/kanshi settle after resume.
-  sleep 3
+  # Immediate snapshot (poweroff may come within ~30s).
+  try_user_sway_snapshot "$stamp" "user0"
 
-  systemd-run --quiet --collect \
-    --machine="sungsik@.host" --user \
-    --setenv="HOME=${user_home}" \
-    --setenv="XDG_RUNTIME_DIR=${runtime}" \
-    --setenv="SUSPEND_DIAG_DIR=${user_home}/.local/share/suspend-diag" \
-    --unit="suspend-diag-user-${stamp}" \
-    "${user_home}/.local/bin/suspend-diag" user-resume "${stamp}" \
-    || {
-      # Fallback if systemd --user machine bus is unavailable.
-      runuser -u sungsik -- env \
-        HOME="$user_home" \
-        XDG_RUNTIME_DIR="$runtime" \
-        SUSPEND_DIAG_DIR="${user_home}/.local/share/suspend-diag" \
-        "${user_home}/.local/bin/suspend-diag" user-resume "$stamp" || true
-    }
+  # Second snapshot after kanshi/DRM settle.
+  sleep 3
+  try_user_sway_snapshot "$stamp" "user"
+
+  # Full user dump (includes journal filter) if session still alive.
+  runuser -u "$DESKTOP_USER" -- env \
+    HOME="$DESKTOP_HOME" \
+    XDG_RUNTIME_DIR="$runtime" \
+    PATH="$PATH" \
+    SUSPEND_DIAG_DIR="${DESKTOP_HOME}/.local/share/suspend-diag" \
+    "${DESKTOP_HOME}/.local/bin/suspend-diag" user-resume "${stamp}-full" \
+    || true
 }
 
 cmd_system_sleep() {
@@ -195,31 +275,38 @@ cmd_system_sleep() {
   local sleep_op="${2:-unknown}"
   local stamp
   local dir
-  local marker
 
-  # Root hook always writes into the desktop account's share.
+  log "system-sleep ${phase} op=${sleep_op} uid=$(id -u) path=${PATH}"
+
   if [[ "$(id -u)" -eq 0 ]]; then
-    export HOME=/home/sungsik
-    export SUSPEND_DIAG_DIR=/home/sungsik/.local/share/suspend-diag
+    export HOME="$DESKTOP_HOME"
+    export SUSPEND_DIAG_DIR="${DESKTOP_HOME}/.local/share/suspend-diag"
   fi
 
   ensure_base
   stamp="$(stamp_now)"
   dir="$(dump_dir_for "$phase" "$stamp")"
-  marker="${dir}/sleep-op.txt"
-  printf '%s\n' "$sleep_op" >"$marker"
+  printf '%s\n' "$sleep_op" >"${dir}/sleep-op.txt"
+  # Marker first so we can tell the hook started even if later steps die.
+  printf 'started %s\n' "$(date -Is)" >"${dir}/hook-started.txt"
+  sync -f "$dir" 2>/dev/null || sync || true
 
-  collect_common "$dir"
+  # Critical bits first (drm/meta), then the rest.
+  collect_common "$dir" 0
+
+  printf 'finished %s\n' "$(date -Is)" >"${dir}/hook-finished.txt"
 
   if [[ "$(id -u)" -eq 0 ]]; then
-    chown -R sungsik:sungsik "$dir" 2>/dev/null || true
+    chown -R "${DESKTOP_USER}:${DESKTOP_USER}" "$dir" 2>/dev/null || true
   fi
 
+  sync -f "$dir" 2>/dev/null || sync || true
   prune_old
 
   if [[ "$phase" == post && "$(id -u)" -eq 0 ]]; then
-    # Do not block systemd-sleep; user dump runs a few seconds later.
-    (run_as_user_resume "$stamp") >/dev/null 2>&1 &
+    # Detach fully so systemd-sleep is not blocked; log to journal.
+    (run_as_user_resume "$stamp") >>"${dir}/user-resume-launcher.log" 2>&1 &
+    disown || true
   fi
 
   log "suspend-diag: wrote ${dir}"
@@ -231,8 +318,10 @@ cmd_user_resume() {
 
   ensure_base
   dir="$(dump_dir_for user "$stamp")"
-  collect_common "$dir"
+  collect_common "$dir" 0
   collect_user "$dir"
+  printf 'finished %s\n' "$(date -Is)" >"${dir}/hook-finished.txt"
+  sync -f "$dir" 2>/dev/null || sync || true
   prune_old
   log "suspend-diag: wrote ${dir}"
 }

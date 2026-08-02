@@ -20,11 +20,26 @@ Automatic dumps for the next HDMI/NVIDIA/Sway resume black screen. No SSH requir
 
 ## What is installed
 
-- `~/.local/bin/suspend-diag` — dump collector
-- `/etc/systemd/system-sleep/zz-suspend-diag` — runs on every suspend `pre`/`post`
-- Output: `~/.local/share/suspend-diag/<stamp>-{pre,post,user}/` (keeps last 20)
+- `~/.local/bin/suspend-diag` — dump collector (`#!/usr/bin/bash` + explicit `PATH`; sleep hooks often have empty PATH so `env bash` used to fail silently)
+- `/etc/systemd/system-sleep/zz-suspend-diag` — sets `PATH`, `logger -t suspend-diag`, then runs the script
+- Output: `~/.local/share/suspend-diag/<stamp>-{pre,post,user0,user}/` (keeps last 20)
 
-On resume (`post`), a delayed **user** dump also tries `swaymsg -t get_outputs`.
+On resume (`post`):
+
+1. root dump (`drm`/`dmesg`/journal) + `sync`
+2. immediate `user0` swaymsg snapshot
+3. ~3s later `user` snapshot (+ fuller user dump if session still alive)
+
+Hook progress markers: `hook-started.txt` / `hook-finished.txt`. Journal tag: `suspend-diag`.
+
+### Verify after next suspend (even if screen is fine)
+
+```bash
+journalctl -t suspend-diag --since '10 min ago' --no-pager
+ls -lt ~/.local/share/suspend-diag | head
+```
+
+Expect `hook invoked`, `system-sleep pre/post`, and matching `*-pre` / `*-post` dirs.
 
 ## When it happens again — fill this in
 
@@ -70,7 +85,9 @@ To exercise the sleep hook end-to-end, suspend once briefly and check for new `*
 ```bash
 sudo tee /etc/systemd/system-sleep/zz-suspend-diag >/dev/null <<'EOF'
 #!/bin/sh
-# Thin wrapper; logic lives in the chezmoi-managed script.
+# systemd-sleep often has an empty PATH; keep this wrapper dumb and logged.
+export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+logger -t suspend-diag "hook invoked args=$*"
 exec /home/sungsik/.local/bin/suspend-diag system-sleep "$@"
 EOF
 sudo chmod 755 /etc/systemd/system-sleep/zz-suspend-diag

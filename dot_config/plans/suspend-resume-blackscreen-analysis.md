@@ -133,7 +133,22 @@ Map class → next move (still analysis / smallest experiment, not a fix dump):
 | Sway desync | wlroots output state | Compare `sway-outputs` vs `drm.txt`; note if IPC dead. |
 | backlight/DPMS | panel power | drm `dpms` On/Off vs symptom “backlight only”. |
 
-## 4. Baseline: 2026-08-01 incident (known bad)
+## 4. Baselines (known bad)
+
+### 2026-08-02 (journal only; dumps missing)
+
+| Item | Fact |
+|------|------|
+| Suspend | 10:07 `s2idle`; nvidia-suspend OK |
+| Resume | 20:46:37 kernel + nvidia-resume OK |
+| +1s | `Atomic commit failed: Invalid argument`; `Backend commit failed` |
+| Interaction | touchpad events at 20:47:02 (machine alive, display dead) |
+| End | 20:47:05 `Power key pressed short` → orderly poweroff (not hard cut) |
+| Dumps | none — sleep hook likely failed under empty PATH (`env bash`) |
+
+Same class as 2026-08-01. Next data need: `pre`/`post` `drm.txt` + `user0`/`user` `sway-outputs`.
+
+### 2026-08-01
 
 Use as comparison target, not as proof of sameness.
 
@@ -170,15 +185,31 @@ diff -u ~/.local/share/suspend-diag/${GOOD}-user/sway-outputs.txt \
 
 Also compare human checklist: HDMI/lid/wake method must match or the diff is apples/oranges.
 
-## 6. Analysis notes (fill after classifying)
+## 6. Analysis notes
+
+### 2026-08-02
+
+- Primary class: compositor/DRM atomic commit fail after successful resume (same as 2026-08-01)
+- Evidence: journal `Atomic commit failed` / `Backend commit failed` at 20:46:38; power key short → poweroff
+- Same as 2026-08-01?: yes (partial — fewer kanshi lines; shorter window before poweroff)
+- Smallest next step: confirm hardened `suspend-diag` writes dumps on a short suspend, then **laptop-only** (HDMI unplugged) suspend/resume once
+- Explicitly **not** doing yet: NVIDIA driver bump, kanshi rewrite, s2idle→deep
+
+### Next incident (fill)
 
 - Primary class:
 - Evidence files (paths):
-- Same as 2026-08-01?: yes / no / partial — why:
+- Same as 2026-08-01/02?: yes / no / partial — why:
 - Smallest next step (one change or one repro only):
 - Explicitly **not** doing yet:
 
-## 7. Out of scope until classified
+## 7. Next experiments (one variable each)
+
+1. **Hook smoke (no failure needed)** — brief suspend with HDMI as usual; confirm `*-pre`/`*-post`/`*-user0` appear and `journalctl -t suspend-diag` logged the hook.
+2. **Laptop-only** — unplug HDMI, suspend, resume. If blank screen disappears → external/NVIDIA path. If still blank → eDP/Intel/Sway path.
+3. Only after (1)+(2): consider kanshi delay/retry **or** NVIDIA sleep param — not both at once.
+
+## 8. Out of scope until classified
 
 Do not mix these until the class is chosen:
 
