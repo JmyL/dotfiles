@@ -83,7 +83,7 @@ defaults:
     refetchIntervalMinutes: 30
 keybindings:
     prs:
-        - key: R
+        - key: i
           name: review (gh-review)
           command: >
             gh-review {{.RepoName}} {{.PrNumber}}
