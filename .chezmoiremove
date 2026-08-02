@@ -3,3 +3,4 @@
 .config/sway/config.d/20-mako.conf
 .local/bin/mako-invoke-or-dismiss
 .config/sway/config.d/20-cliphist.conf
+.config/gh-dash
