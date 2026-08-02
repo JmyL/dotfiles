@@ -3,8 +3,10 @@ working_dir = "~/Downloads"
 
 [[tabs]]
 name = "aerc"
+
+[[tabs.panes]]
 command = "aerc"
 
-[[tabs]]
-name = "Files"
-command = "vifm ~/Downloads ~/Dropbox"
+[[tabs.panes]]
+command = "ai"
+split = "right"
