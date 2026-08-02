@@ -12,3 +12,14 @@
 	helper = !/usr/bin/gh auth git-credential
 [includeIf "gitdir:~/projects/ree-*/"]
 	path = ~/.config/work/gitconfig
+[core]
+	pager = delta
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	line-numbers = true
+[merge]
+	conflictstyle = zdiff3
+[diff]
+	colorMoved = default

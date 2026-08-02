@@ -24,6 +24,7 @@ These are expected by shell, tmux, vifm, aerc, or general workflows:
 - `fd`
 - `rg` / ripgrep
 - `bat`
+- `delta` (`git-delta` package; configured as git pager in `~/.gitconfig`)
 - `eza`
 - `jq`
 - `less`, `man`, `col`
@@ -40,6 +41,7 @@ These are expected by shell, tmux, vifm, aerc, or general workflows:
 Config: `~/.bashrc`, `~/.bashrc.d/browser`
 
 - `nvim` is exported as `VISUAL` and `EDITOR`.
+- `git` uses `delta` as pager (`core.pager` in `~/.gitconfig`).
 - `starship` is initialized with `starship init bash`.
 - `zoxide` is initialized with `zoxide init bash`.
 - `direnv` hook exists but is currently commented out.
@@ -216,7 +218,7 @@ This is the broad workstation-oriented install set. Some packages may vary by Fe
 ```sh
 sudo dnf install \
   aerc atuin bat binutils blueman catdoc chezmoi curl direnv dnf-plugins-core \
-  docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak foot fzf git gnupg2 grim \
+  docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak foot fzf git git-delta gnupg2 grim \
   grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils python3-gobject \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
@@ -260,7 +262,7 @@ Test/package names may vary by Ubuntu release. This is aimed at recent Ubuntu ve
 sudo apt update
 sudo apt install \
   aerc atuin bat binutils blueman catdoc curl direnv docx2txt eza fcitx5 fcitx5-hangul \
-  fd-find ffmpeg flatpak foot fzf git gnupg grim isync jq kanshi kitty less \
+  fd-find ffmpeg flatpak foot fzf git git-delta gnupg grim isync jq kanshi kitty less \
   libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
   khal khard vdirsyncer \
@@ -311,7 +313,7 @@ For a terminal-only setup without Sway/Waybar desktop pieces:
 ```sh
 # Fedora
 sudo dnf install \
-  aerc bat binutils chezmoi curl direnv eza fd-find fzf git gnupg2 isync \
+  aerc bat binutils chezmoi curl direnv eza fd-find fzf git git-delta gnupg2 isync \
   jq kitty less man-db neovim notmuch pandoc pass p7zip p7zip-plugins \
   poppler-utils ripgrep starship tmux vifm wl-clipboard xdg-utils zathura \
   khal khard vdirsyncer \
@@ -320,7 +322,7 @@ sudo dnf install \
 # Ubuntu
 sudo apt update
 sudo apt install \
-  aerc bat binutils curl direnv eza fd-find fzf git gnupg isync jq kitty \
+  aerc bat binutils curl direnv eza fd-find fzf git git-delta gnupg isync jq kitty \
   less man-db neovim notmuch p7zip-full pandoc pass poppler-utils ripgrep \
   starship tmux vifm wl-clipboard xdg-utils zathura khal khard vdirsyncer \
   zip zoxide go
