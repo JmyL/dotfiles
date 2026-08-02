@@ -312,6 +312,8 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     bindsym $mod+n exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -t -sw'
     # Clear all notifications
     bindsym $mod+Shift+n exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -C'
+    # Close the latest notification
+    bindsym $mod+BackSpace exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" --close-latest -sw'
     # Activate (click) the latest notification's default action
     bindsym $mod+Return exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -ad -sw'
     # Clipboard history (clipse TUI in floating foot; auto-pastes on choose)
