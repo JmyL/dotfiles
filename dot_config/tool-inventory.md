@@ -205,6 +205,8 @@ These are useful for reproducing the full environment but may be installed by th
 - `bun` (needed by some Herdr plugins, e.g. `danbuhler/herdr-pane-topic-sync`)
 - `uv`, `uvx`
 - `gh`
+- `gh` extension `dlvhdr/gh-dash` (`gh extension install dlvhdr/gh-dash`)
+- `gh-review` — line-level PR review TUI used from gh-dash (`R`); `cargo install gh-review`
 - `act`
 - `k6`
 - `zellij`
@@ -247,6 +249,8 @@ May need separate installation depending on Fedora version/repositories:
 - `herdr`
 - `bun` — `curl -fsSL https://bun.sh/install | bash` (symlink `~/.bun/bin/bun` into `~/.local/bin` if Herdr's PATH lacks `~/.bun/bin`)
 - `uv`
+- `gh` extension `dlvhdr/gh-dash`: `gh extension install dlvhdr/gh-dash`
+- `gh-review`: `cargo install gh-review`
 - `JetBrainsMonoNL Nerd Font Mono`
 - `JetBrainsMonoNL Nerd Font` — Waybar (`curl -fsSL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz | tar -xJ -C ~/.local/share/fonts --wildcards 'JetBrainsMonoNLNerdFont-*.ttf' && fc-cache -f ~/.local/share/fonts`)
 - `clipse` (Wayland release tarball → `~/.local/bin/clipse`):
@@ -295,6 +299,8 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `herdr`
 - `bun` — `curl -fsSL https://bun.sh/install | bash` (symlink `~/.bun/bin/bun` into `~/.local/bin` if Herdr's PATH lacks `~/.bun/bin`)
 - `uv`
+- `gh` extension `dlvhdr/gh-dash`: `gh extension install dlvhdr/gh-dash`
+- `gh-review`: `cargo install gh-review`
 - `dumptorrent`
 - `tudu`
 - `JetBrainsMonoNL Nerd Font Mono`
