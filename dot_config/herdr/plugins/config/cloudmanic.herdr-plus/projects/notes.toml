@@ -8,5 +8,5 @@ name = "editor"
 command = "nvim"
 
 [[tabs.panes]]
-command = "tuxedo"
+command = "ai"
 split = "right"
