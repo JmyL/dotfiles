@@ -145,7 +145,7 @@ command = "herdr-navigator.walk-back"
 description = "walk back through workspace history"
 
 [[keys.command]]
-key = "alt+space"
+key = "ctrl+alt+space"
 type = "plugin_action"
 command = "cloudmanic.herdr-plus.quick-actions"
 description = "herdr-plus: quick actions"
