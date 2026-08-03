@@ -43,7 +43,6 @@
 		"orientation": "horizontal",
 		"modules": [
 			"network",
-			"bluetooth",
 			"custom/forager-battery"
 		]
 	},
