@@ -62,6 +62,7 @@ output * bg $wallpaper fill
 # or Mod+Shift+a. Inhibit blocks idle timeouts, but still allows an explicit
 # suspend via keybinding or systemctl.
 exec ~/.local/bin/idle-inhibit on
+exec ~/.local/bin/cycle-power-profile balanced
 exec swayidle -w \
          timeout 300 '~/.local/bin/idle-inhibited || $lock' \
          timeout 600 '~/.local/bin/idle-inhibited || swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
