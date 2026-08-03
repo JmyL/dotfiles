@@ -4,6 +4,9 @@ todos:
   - id: harden-hook
     content: Fix suspend-diag for empty PATH + journal logging + sync + fast user0 snapshot
     status: completed
+  - id: relocate-hook-usr-lib
+    content: Move zz-suspend-diag to /usr/lib/systemd/system-sleep (systemd 259 ignores /etc)
+    status: pending
   - id: hook-smoke
     content: Brief suspend with HDMI; confirm pre/post/user0 dumps + journalctl -t suspend-diag
     status: pending
@@ -25,6 +28,21 @@ Goal: classify the failure class before changing config.
 ## 0. Incident checklist (human context)
 
 Fill immediately (memory fades fast):
+
+### 2026-08-03
+
+| Field | Value |
+|-------|--------|
+| Approx wake time | 18:09:15 |
+| Wake method | unknown (likely lid/keyboard; power used to exit) |
+| HDMI at wake | unknown (docked-hdmi setup earlier that day) |
+| Lid at wake | unknown |
+| Symptom | visible frame / session input dead (not full black); power key worked |
+| Ctrl+Alt+F3 | not tried |
+| Forced power off | yes — power key short → orderly poweroff at 18:10:09 |
+| Notes before suspend | Day-long `Atomic commit failed: Device or resource busy` (~30×); at 16:50:10 suspend path failed to disable eDP-1 CRTC 150 and HDMI-A-1 CRTC 269 |
+
+### Template (next)
 
 | Field | Value |
 |-------|--------|
@@ -51,7 +69,8 @@ Expect a matched stamp triad around wake time:
 
 If `post` exists but `user` is missing → session/user bus likely dead or dump raced a hard power-off. Still analyze `post`.
 
-If **no** new `pre`/`post` at all → sleep hook broken; reinstall steps in `suspend-resume-diag.md`.
+If **no** new `pre`/`post` at all → sleep hook broken; reinstall steps in `suspend-resume-diag.md`
+(must be under `/usr/lib/systemd/system-sleep/`, not `/etc`).
 
 Also pull journal for the previous boot if dumps are thin:
 
@@ -132,6 +151,20 @@ Map class → next move (still analysis / smallest experiment, not a fix dump):
 
 ## 4. Baselines (known bad)
 
+### 2026-08-03 (journal only; dumps missing)
+
+| Item | Fact |
+|------|------|
+| Suspend | 16:50:12 `s2idle`; nvidia-suspend OK |
+| Pre-suspend | Sway `Failed to disable CRTC` on eDP-1 (150) and HDMI-A-1 (269); day had ~30× `Device or resource busy` |
+| Resume | 18:09:15 kernel + nvidia-resume OK |
+| Immediate | `no output to auto-assign … swaync`; then `Atomic commit failed: Invalid argument`; `Backend commit failed` |
+| Interaction | no touchpad/libinput lines between resume and poweroff; Forager BT reconnected; power key via logind worked |
+| End | 18:10:09 `Power key pressed short` → orderly poweroff |
+| Dumps | none — hook was under `/etc/systemd/system-sleep/` which systemd 259 ignores |
+
+Same class as 2026-08-01/02. Symptom variant: visible frame + dead session input (vs earlier “black screen”).
+
 ### 2026-08-02 (journal only; dumps missing)
 
 | Item | Fact |
@@ -141,7 +174,7 @@ Map class → next move (still analysis / smallest experiment, not a fix dump):
 | +1s | `Atomic commit failed: Invalid argument`; `Backend commit failed` |
 | Interaction | touchpad events at 20:47:02 (machine alive, display dead) |
 | End | 20:47:05 `Power key pressed short` → orderly poweroff (not hard cut) |
-| Dumps | none — sleep hook likely failed under empty PATH (`env bash`) |
+| Dumps | none — sleep hook not invoked (wrong dir and/or earlier empty-PATH failures) |
 
 Same class as 2026-08-01. Next data need: `pre`/`post` `drm.txt` + `user0`/`user` `sway-outputs`.
 
@@ -184,6 +217,14 @@ Also compare human checklist: HDMI/lid/wake method must match or the diff is app
 
 ## 6. Analysis notes
 
+### 2026-08-03
+
+- Primary class: compositor/DRM atomic commit fail after successful resume (same as 2026-08-01/02)
+- Evidence: `journalctl -b -1` around 18:09:15–18:10:09 — `Atomic commit failed` / `Backend commit failed`; prior CRTC disable failures at suspend entry; dump dirs absent
+- Same as 2026-08-01/02?: yes — signature match; symptom presentation differed (visible frame + no session input vs black screen + touchpad noise on 08-02)
+- Smallest next step: relocate hook to `/usr/lib/systemd/system-sleep/`, smoke short suspend for dumps, then **laptop-only** once
+- Explicitly **not** doing yet: NVIDIA driver bump, kanshi rewrite, s2idle→deep
+
 ### 2026-08-02
 
 - Primary class: compositor/DRM atomic commit fail after successful resume (same as 2026-08-01)
@@ -196,14 +237,14 @@ Also compare human checklist: HDMI/lid/wake method must match or the diff is app
 
 - Primary class:
 - Evidence files (paths):
-- Same as 2026-08-01/02?: yes / no / partial — why:
+- Same as 2026-08-01/02/03?: yes / no / partial — why:
 - Smallest next step (one change or one repro only):
 - Explicitly **not** doing yet:
 
 ## 7. Next experiments (one variable each)
 
-1. **Hook smoke (no failure needed)** — brief suspend with HDMI as usual; confirm `*-pre`/`*-post`/`*-user0` appear and `journalctl -t suspend-diag` logged the hook.
-2. **Laptop-only** — unplug HDMI, suspend, resume. If blank screen disappears → external/NVIDIA path. If still blank → eDP/Intel/Sway path.
+1. **Hook relocate + smoke (no failure needed)** — install under `/usr/lib/systemd/system-sleep/`; brief suspend with HDMI as usual; confirm `*-pre`/`*-post`/`*-user0` appear and `journalctl -t suspend-diag` logged the hook.
+2. **Laptop-only** — unplug HDMI, suspend, resume. If blank/input-dead disappears → external/NVIDIA path. If still fails → eDP/Intel/Sway path.
 3. Only after (1)+(2): consider kanshi delay/retry **or** NVIDIA sleep param — not both at once.
 
 ## 8. Out of scope until classified

@@ -2,8 +2,8 @@
 ---
 todos:
   - id: auto-dump
-    content: Install ~/.local/bin/suspend-diag + /etc/systemd/system-sleep/zz-suspend-diag
-    status: completed
+    content: Install ~/.local/bin/suspend-diag + /usr/lib/systemd/system-sleep/zz-suspend-diag
+    status: pending
   - id: next-incident
     content: On next black screen after resume, follow suspend-resume-blackscreen-analysis.md
     status: pending
@@ -21,8 +21,12 @@ Automatic dumps for the next HDMI/NVIDIA/Sway resume black screen. No SSH requir
 ## What is installed
 
 - `~/.local/bin/suspend-diag` — dump collector (`#!/usr/bin/bash` + explicit `PATH`; sleep hooks often have empty PATH so `env bash` used to fail silently)
-- `/etc/systemd/system-sleep/zz-suspend-diag` — sets `PATH`, `logger -t suspend-diag`, then runs the script
+- `/usr/lib/systemd/system-sleep/zz-suspend-diag` — sets `PATH`, `logger -t suspend-diag`, then runs the script
 - Output: `~/.local/share/suspend-diag/<stamp>-{pre,post,user0,user}/` (keeps last 20)
+
+**Path note (Ubuntu 26.04 / systemd 259):** `systemd-sleep` only executes hooks under
+`/usr/lib/systemd/system-sleep/`. A wrapper under `/etc/systemd/system-sleep/` is **ignored**
+(confirmed 2026-08-03: no `suspend-diag` journal on real suspend). Do not reinstall to `/etc`.
 
 On resume (`post`):
 
@@ -40,6 +44,7 @@ ls -lt ~/.local/share/suspend-diag | head
 ```
 
 Expect `hook invoked`, `system-sleep pre/post`, and matching `*-pre` / `*-post` dirs.
+Mark `auto-dump` completed only after a real suspend produces `*-post`.
 
 ## When it happens again — fill this in
 
@@ -83,12 +88,15 @@ To exercise the sleep hook end-to-end, suspend once briefly and check for new `*
 ## Reinstall system hook (if missing after OS reset)
 
 ```bash
-sudo tee /etc/systemd/system-sleep/zz-suspend-diag >/dev/null <<'EOF'
+sudo tee /usr/lib/systemd/system-sleep/zz-suspend-diag >/dev/null <<'EOF'
 #!/bin/sh
 # systemd-sleep often has an empty PATH; keep this wrapper dumb and logged.
+# Ubuntu 26.04 / systemd 259 only runs hooks from /usr/lib/systemd/system-sleep
+# (not /etc/systemd/system-sleep).
 export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 logger -t suspend-diag "hook invoked args=$*"
 exec /home/sungsik/.local/bin/suspend-diag system-sleep "$@"
 EOF
-sudo chmod 755 /etc/systemd/system-sleep/zz-suspend-diag
+sudo chmod 755 /usr/lib/systemd/system-sleep/zz-suspend-diag
+sudo rm -f /etc/systemd/system-sleep/zz-suspend-diag
 ```
