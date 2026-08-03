@@ -6,10 +6,13 @@ todos:
     status: completed
   - id: relocate-hook-usr-lib
     content: Move zz-suspend-diag to /usr/lib/systemd/system-sleep (systemd 259 ignores /etc)
-    status: pending
+    status: completed
   - id: hook-smoke
     content: Brief suspend with HDMI; confirm pre/post/user0 dumps + journalctl -t suspend-diag
-    status: pending
+    status: completed
+  - id: user0-survive-cgroup
+    content: Fix user0/user dumps surviving systemd-sleep cgroup teardown
+    status: completed
   - id: laptop-only-repro
     content: One suspend/resume with HDMI unplugged; note whether blank screen still happens
     status: pending

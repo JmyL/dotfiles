@@ -304,12 +304,53 @@ cmd_system_sleep() {
   prune_old
 
   if [[ "$phase" == post && "$(id -u)" -eq 0 ]]; then
-    # Detach fully so systemd-sleep is not blocked; log to journal.
-    (run_as_user_resume "$stamp") >>"${dir}/user-resume-launcher.log" 2>&1 &
-    disown || true
+    # Immediate user0 inside the hook — bare &/disown is killed with the
+    # systemd-sleep cgroup when this oneshot returns (smoke 2026-08-03).
+    try_user_sway_snapshot "$stamp" "user0" >>"${dir}/user-resume-launcher.log" 2>&1 || true
+
+    # Delayed user + full dump outside the sleep cgroup.
+    if command -v systemd-run >/dev/null 2>&1; then
+      systemd-run --collect --quiet \
+        --unit="suspend-diag-user-${stamp}" \
+        --description="suspend-diag delayed user dumps" \
+        --setenv=PATH="$PATH" \
+        --setenv=HOME="$DESKTOP_HOME" \
+        --setenv=SUSPEND_DIAG_DIR="${DESKTOP_HOME}/.local/share/suspend-diag" \
+        "${DESKTOP_HOME}/.local/bin/suspend-diag" post-user "$stamp" \
+        >>"${dir}/user-resume-launcher.log" 2>&1 \
+        || log "systemd-run post-user failed for stamp=${stamp}"
+    else
+      log "systemd-run missing; skip delayed user dumps"
+    fi
   fi
 
   log "suspend-diag: wrote ${dir}"
+}
+
+cmd_post_user() {
+  local stamp="${1:-}"
+  if [[ -z "$stamp" ]]; then
+    log "post-user requires stamp"
+    exit 2
+  fi
+  # Skip the immediate user0 already taken in system-sleep post.
+  local uid
+  local runtime
+  uid="$(id -u "$DESKTOP_USER" 2>/dev/null || echo 1000)"
+  runtime="/run/user/${uid}"
+  if [[ ! -d "$runtime" ]]; then
+    log "user runtime dir missing; skip post-user dump"
+    return 0
+  fi
+  sleep 3
+  try_user_sway_snapshot "$stamp" "user"
+  runuser -u "$DESKTOP_USER" -- env \
+    HOME="$DESKTOP_HOME" \
+    XDG_RUNTIME_DIR="$runtime" \
+    PATH="$PATH" \
+    SUSPEND_DIAG_DIR="${DESKTOP_HOME}/.local/share/suspend-diag" \
+    "${DESKTOP_HOME}/.local/bin/suspend-diag" user-resume "${stamp}-full" \
+    || true
 }
 
 cmd_user_resume() {
@@ -330,6 +371,7 @@ usage() {
   cat <<'EOF'
 Usage:
   suspend-diag system-sleep <pre|post> [sleep-op]
+  suspend-diag post-user <stamp>
   suspend-diag user-resume [stamp]
   suspend-diag prune
 EOF
@@ -345,6 +387,13 @@ main() {
       exit 2
     }
     cmd_system_sleep "$@"
+    ;;
+  post-user)
+    [[ $# -ge 1 ]] || {
+      usage
+      exit 2
+    }
+    cmd_post_user "$@"
     ;;
   user-resume)
     cmd_user_resume "${1:-}"

@@ -3,7 +3,10 @@
 todos:
   - id: auto-dump
     content: Install ~/.local/bin/suspend-diag + /usr/lib/systemd/system-sleep/zz-suspend-diag
-    status: pending
+    status: completed
+  - id: user0-survive-cgroup
+    content: Take user0 in-hook + systemd-run post-user (bare &/disown dies with systemd-sleep)
+    status: completed
   - id: next-incident
     content: On next black screen after resume, follow suspend-resume-blackscreen-analysis.md
     status: pending
@@ -31,10 +34,13 @@ Automatic dumps for the next HDMI/NVIDIA/Sway resume black screen. No SSH requir
 On resume (`post`):
 
 1. root dump (`drm`/`dmesg`/journal) + `sync`
-2. immediate `user0` swaymsg snapshot
-3. ~3s later `user` snapshot (+ fuller user dump if session still alive)
+2. immediate `user0` swaymsg snapshot **inside** the hook (must finish before return)
+3. `systemd-run` → `suspend-diag post-user <stamp>` for delayed `user` + full dump  
+   (bare `&`/`disown` is killed with the systemd-sleep cgroup — seen in 2026-08-03 smoke)
 
 Hook progress markers: `hook-started.txt` / `hook-finished.txt`. Journal tag: `suspend-diag`.
+
+Smoke 2026-08-03 18:36: `pre`/`post` OK under `/usr/lib`; `user0` missing until cgroup fix above.
 
 ### Verify after next suspend (even if screen is fine)
 
@@ -43,8 +49,7 @@ journalctl -t suspend-diag --since '10 min ago' --no-pager
 ls -lt ~/.local/share/suspend-diag | head
 ```
 
-Expect `hook invoked`, `system-sleep pre/post`, and matching `*-pre` / `*-post` dirs.
-Mark `auto-dump` completed only after a real suspend produces `*-post`.
+Expect `hook invoked`, `system-sleep pre/post`, and matching `*-pre` / `*-post` / `*-user0` dirs.
 
 ## When it happens again — fill this in
 
