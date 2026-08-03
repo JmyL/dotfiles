@@ -11,6 +11,10 @@ play_sound() {
     fi
 
     if command -v canberra-gtk-play >/dev/null 2>&1; then
+        # Volume/brightness keys can repeat faster than the click sample.
+        # Replace any in-flight sway-osd play so streams don't pile up in
+        # PipeWire and then flush as one sudden burst.
+        pkill -f 'canberra-gtk-play .* -d sway-osd' >/dev/null 2>&1 || true
         canberra-gtk-play -i "$sound" -d "sway-osd" >/dev/null 2>&1 &
     fi
 }
