@@ -2,9 +2,13 @@
 # Desktop application launcher via floating kitty + fzf
 set -euo pipefail
 
-if ! command -v fzf-menu >/dev/null 2>&1; then
-  echo "fzf-drun: fzf-menu not found" >&2
-  exit 127
+# Sway's PATH has no ~/.local/bin, so prefer the sibling script.
+menu=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/fzf-menu
+if [[ ! -x $menu ]]; then
+  if ! menu=$(command -v fzf-menu); then
+    echo "fzf-drun: fzf-menu not found" >&2
+    exit 127
+  fi
 fi
 
 mapfile -t desktop_files < <(
@@ -48,7 +52,7 @@ if ((${#labels[@]} == 0)); then
   exit 1
 fi
 
-choice=$(printf '%s\n' "${labels[@]}" | fzf-menu --prompt 'Apps> ' --width 90 --height 28) || exit 1
+choice=$(printf '%s\n' "${labels[@]}" | "$menu" --prompt 'Apps> ' --width 90 --height 28) || exit 1
 choice=${choice%$'\n'}
 [[ -n $choice ]] || exit 1
 

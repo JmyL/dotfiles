@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import json
+import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 
 def run(*args):
@@ -14,8 +16,16 @@ def notify(title, body=""):
         subprocess.run(["notify-send", title, body], check=False)
 
 
+def find_menu():
+    # Sway's PATH has no ~/.local/bin, so prefer the sibling script.
+    sibling = Path(__file__).resolve().parent / "fzf-menu"
+    if os.access(sibling, os.X_OK):
+        return str(sibling)
+    return shutil.which("fzf-menu")
+
+
 def pick(prompt, labels):
-    menu = shutil.which("fzf-menu")
+    menu = find_menu()
     if menu is None:
         notify("Audio switch failed", "fzf-menu not found")
         return None
