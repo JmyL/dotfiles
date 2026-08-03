@@ -207,6 +207,8 @@
 		]
 	},
 	"battery": {
+		"bat": "BAT0",
+		"adapter": "AC",
 		"markup": true,
 		"states": {
 			// "good": 95,
