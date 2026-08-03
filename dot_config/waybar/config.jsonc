@@ -139,7 +139,7 @@
 		"return-type": "json",
 		"interval": "once",
 		"signal": 8,
-		"on-click": "~/.local/bin/toggle-idle-inhibit"
+		"on-click": "~/.local/bin/idle-inhibit toggle"
 	},
 	"custom/recording": {
 		"exec": "~/.local/bin/sway-recording status",

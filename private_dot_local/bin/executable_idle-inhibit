@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pidfile="${XDG_RUNTIME_DIR:-/tmp}/manual-idle-inhibit.pid"
+
+refresh_waybar() {
+  pkill -RTMIN+8 waybar 2>/dev/null || true
+}
+
+active_pid() {
+  [[ -f "$pidfile" ]] || return 1
+  local pid
+  pid="$(cat "$pidfile" 2>/dev/null || true)"
+  [[ -n "${pid:-}" ]] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  printf '%s\n' "$pid"
+}
+
+clear_stale_pidfile() {
+  rm -f "$pidfile"
+}
+
+inhibit_on() {
+  if active_pid >/dev/null; then
+    refresh_waybar
+    return 0
+  fi
+  clear_stale_pidfile
+  systemd-inhibit --what=idle --why="Manual idle inhibitor" sleep infinity &
+  echo "$!" >"$pidfile"
+  refresh_waybar
+}
+
+inhibit_off() {
+  local pid
+  if pid="$(active_pid)"; then
+    kill "$pid"
+  fi
+  clear_stale_pidfile
+  refresh_waybar
+}
+
+inhibit_toggle() {
+  if active_pid >/dev/null; then
+    inhibit_off
+  else
+    inhibit_on
+  fi
+}
+
+usage() {
+  printf 'usage: %s on|off|toggle\n' "${0##*/}" >&2
+  exit 2
+}
+
+cmd="${1:-}"
+case "$cmd" in
+on)
+  inhibit_on
+  ;;
+off)
+  inhibit_off
+  ;;
+toggle)
+  inhibit_toggle
+  ;;
+*)
+  usage
+  ;;
+esac

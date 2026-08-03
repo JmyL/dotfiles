@@ -58,8 +58,10 @@ output * bg $wallpaper fill
 ### Idle configuration
 #
 # Lock after 5 minutes, turn displays off after 10 minutes, and suspend after
-# 30 minutes. Manual idle inhibit blocks idle timeouts, but still allows an
-# explicit suspend via keybinding or systemctl.
+# 30 minutes. Sessions start with idle inhibit on (Awake); toggle via Waybar
+# or Mod+Shift+a. Inhibit blocks idle timeouts, but still allows an explicit
+# suspend via keybinding or systemctl.
+exec ~/.local/bin/idle-inhibit on
 exec swayidle -w \
          timeout 300 '~/.local/bin/idle-inhibited || $lock' \
          timeout 600 '~/.local/bin/idle-inhibited || swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
@@ -319,7 +321,7 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     # Clipboard history (clipse TUI in floating foot; auto-pastes on choose)
     bindsym $mod+v exec foot --app-id=clipse --window-size-chars=100x32 ~/.local/bin/clipse
     # Toggle idle/sleep inhibitor
-    bindsym $mod+Shift+a exec ~/.local/bin/toggle-idle-inhibit
+    bindsym $mod+Shift+a exec ~/.local/bin/idle-inhibit toggle
     # Cycle available power profiles
     bindsym $mod+p exec ~/.local/bin/cycle-power-profile
     # Lock screen
