@@ -77,6 +77,7 @@ When adding or modifying dotfiles that introduce a dependency on an external com
 
 - Vault rules live in `~/Documents/Obsidian/AGENTS.md`. Follow that file when working in the vault.
 - **Do not modify daily notes** (`YYYY-MM-DD.md`) unless the user explicitly asks to put something on the daily note. Reading today’s note for context is fine; writing is not the default.
+- New notes: create via Neovim `ObsidianNew` (see vault `AGENTS.md` / Cursor rule `obsidian-notes.mdc`); never hand-write zettel ids.
 - Do not put agent/infra implementation plans in Obsidian; use `~/.config/plans/` (personal) or `~/.config/work/plans/` (company).
 
 ## Project boundaries
