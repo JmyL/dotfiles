@@ -2,7 +2,7 @@ name = "forager-keymap"
 working_dir = "~/Projects/forager-zmk-config"
 
 [[tabs]]
-name = "editor"
+name = "forager-keymap"
 
 [[tabs.panes]]
 command = "v config/forager.keymap"

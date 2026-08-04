@@ -2,7 +2,7 @@ name = "nvim"
 working_dir = "~/.config/nvim"
 
 [[tabs]]
-name = "config"
+name = "nvim"
 
 [[tabs.panes]]
 command = "nvim"

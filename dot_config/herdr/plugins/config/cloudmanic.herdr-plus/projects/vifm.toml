@@ -2,5 +2,5 @@ name = "vifm"
 working_dir = "~"
 
 [[tabs]]
-name = "config"
+name = "vifm"
 command = "vifm"

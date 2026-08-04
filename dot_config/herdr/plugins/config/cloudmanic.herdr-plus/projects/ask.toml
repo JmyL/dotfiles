@@ -2,5 +2,5 @@ name = "ask"
 working_dir = "/tmp"
 
 [[tabs]]
-name = "config"
+name = "ask"
 command = "agent --mode=ask"

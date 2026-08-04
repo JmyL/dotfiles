@@ -2,7 +2,7 @@ name = "EMail"
 working_dir = "~/Downloads"
 
 [[tabs]]
-name = "aerc"
+name = "EMail"
 
 [[tabs.panes]]
 command = "aerc"

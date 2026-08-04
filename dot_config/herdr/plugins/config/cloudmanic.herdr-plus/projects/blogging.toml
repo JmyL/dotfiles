@@ -2,7 +2,7 @@ name = "blogging"
 working_dir = "~/Projects/jmyl.github.io/"
 
 [[tabs]]
-name = "editor"
+name = "blogging"
 
 [[tabs.panes]]
 command = "v"

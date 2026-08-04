@@ -2,7 +2,7 @@ name = "notes"
 working_dir = "~/Documents/Obsidian"
 
 [[tabs]]
-name = "editor"
+name = "notes"
 
 [[tabs.panes]]
 command = "nvim"
