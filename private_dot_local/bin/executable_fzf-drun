@@ -11,11 +11,20 @@ if [[ ! -x $menu ]]; then
   fi
 fi
 
+# Honor XDG data dirs so snap/flatpak desktop files are included
+# (e.g. Ubuntu Firefox snap under /var/lib/snapd/desktop/applications).
 mapfile -t desktop_files < <(
   {
-    find /usr/share/applications /usr/local/share/applications \
-      "${XDG_DATA_HOME:-$HOME/.local/share}/applications" \
-      -type f -name '*.desktop' 2>/dev/null || true
+    data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+    data_dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    app_dirs=("$data_home/applications")
+    IFS=:
+    for dir in $data_dirs; do
+      [[ -n $dir ]] || continue
+      app_dirs+=("$dir/applications")
+    done
+    unset IFS
+    find "${app_dirs[@]}" -type f -name '*.desktop' 2>/dev/null || true
   } | sort -u
 )
 
