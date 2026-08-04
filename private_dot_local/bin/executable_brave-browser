@@ -4,6 +4,25 @@ set -euo pipefail
 # Passthrough: Slack stay-in-browser is installed via External Extensions
 # (see brave-install-local-extensions). Keep this shim so .desktop / sway
 # keep calling a stable path under ~/.local/bin across native and Flatpak installs.
+profile_dir="${XDG_CONFIG_HOME:-$HOME/.config}/BraveSoftware/Brave-Browser"
+lock_target=""
+if [ -L "$profile_dir/SingletonLock" ]; then
+  lock_target="$(readlink "$profile_dir/SingletonLock" || true)"
+fi
+
+if [[ "$lock_target" =~ ^([^[:space:]-]+)-([0-9]+)$ ]]; then
+  lock_host="${BASH_REMATCH[1]}"
+  lock_pid="${BASH_REMATCH[2]}"
+  current_host="$(hostname -s)"
+
+  if [ "$lock_host" = "$current_host" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+    rm -f \
+      "$profile_dir/SingletonLock" \
+      "$profile_dir/SingletonSocket" \
+      "$profile_dir/SingletonCookie"
+  fi
+fi
+
 for candidate in \
   /usr/bin/brave-browser-stable \
   /usr/bin/brave-browser \
