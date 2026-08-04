@@ -3,5 +3,19 @@ set -euo pipefail
 
 # Passthrough: Slack stay-in-browser is installed via External Extensions
 # (see brave-install-local-extensions). Keep this shim so .desktop / sway
-# keep calling a stable path under ~/.local/bin.
-exec /usr/bin/brave-browser-stable "$@"
+# keep calling a stable path under ~/.local/bin across native and Flatpak installs.
+for candidate in \
+  /usr/bin/brave-browser-stable \
+  /usr/bin/brave-browser \
+  /var/lib/flatpak/exports/bin/com.brave.Browser; do
+  if [ -x "$candidate" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+if command -v flatpak >/dev/null 2>&1; then
+  exec flatpak run com.brave.Browser "$@"
+fi
+
+printf "brave-browser: Brave executable not found\n" >&2
+exit 127
