@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Desktop application launcher via floating kitty + fzf
+# Desktop application launcher via floating foot + fzf
 set -euo pipefail
 
 # Sway's PATH has no ~/.local/bin, so prefer the sibling script.
@@ -13,52 +13,91 @@ fi
 
 # Honor XDG data dirs so snap/flatpak desktop files are included
 # (e.g. Ubuntu Firefox snap under /var/lib/snapd/desktop/applications).
-mapfile -t desktop_files < <(
+data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+data_dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+app_dirs=("$data_home/applications")
+IFS=:
+for dir in $data_dirs; do
+  [[ -n $dir ]] || continue
+  app_dirs+=("$dir/applications")
+done
+unset IFS
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/fzf-drun"
+cache_file=$cache_dir/apps.tsv
+
+fingerprint=$(
   {
-    data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
-    data_dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
-    app_dirs=("$data_home/applications")
-    IFS=:
-    for dir in $data_dirs; do
-      [[ -n $dir ]] || continue
-      app_dirs+=("$dir/applications")
-    done
-    unset IFS
-    find "${app_dirs[@]}" -type f -name '*.desktop' 2>/dev/null || true
-  } | sort -u
+    printf '%s\n' "${app_dirs[@]}"
+    find "${app_dirs[@]}" -type f -name '*.desktop' -printf '%p\t%T@\n' 2>/dev/null || true
+  } | sort | md5sum | awk '{print $1}'
 )
 
 labels=()
 ids=()
 
-for file in "${desktop_files[@]}"; do
-  # Skip hidden / non-app entries.
-  if grep -qE '^(NoDisplay|Hidden)=true' "$file" 2>/dev/null; then
-    continue
-  fi
-  if grep -qE '^Type=' "$file" 2>/dev/null && ! grep -qE '^Type=Application$' "$file" 2>/dev/null; then
-    continue
-  fi
+load_cache() {
+  local fp line name id
+  {
+    read -r fp || return 1
+    [[ $fp == "$fingerprint" ]] || return 1
+    while IFS=$'\t' read -r name id; do
+      [[ -n $name && -n $id ]] || continue
+      labels+=("$name")
+      ids+=("$id")
+    done
+  } <"$cache_file"
+  ((${#labels[@]} > 0))
+}
 
-  name=$(
-    awk -F= '
-      /^\[Desktop Entry\]/ { in_entry=1; next }
-      /^\[/ { in_entry=0 }
-      in_entry && $1 == "Name" && name == "" { name=$2 }
-      END { print name }
-    ' "$file"
-  )
-  [[ -n $name ]] || continue
+rebuild_cache() {
+  local file name id tmp i
+  labels=()
+  ids=()
 
-  id=${file##*/}
-  id=${id%.desktop}
+  while IFS= read -r file; do
+    [[ -n $file ]] || continue
+    # Single awk pass: skip Hidden/NoDisplay and non-Application; emit Name.
+    name=$(
+      awk -F= '
+        /^\[Desktop Entry\]/ { in_entry=1; next }
+        /^\[/ { in_entry=0 }
+        !in_entry { next }
+        $1 == "Hidden" || $1 == "NoDisplay" {
+          if ($2 == "true") { skip=1; exit }
+        }
+        $1 == "Type" { typ=$2 }
+        $1 == "Name" && name == "" { name=$2 }
+        END {
+          if (skip) exit
+          if (typ != "" && typ != "Application") exit
+          if (name != "") print name
+        }
+      ' "$file"
+    )
+    [[ -n $name ]] || continue
 
-  labels+=("$name")
-  ids+=("$id")
-done
+    id=${file##*/}
+    id=${id%.desktop}
+    labels+=("$name")
+    ids+=("$id")
+  done < <(find "${app_dirs[@]}" -type f -name '*.desktop' 2>/dev/null | sort -u || true)
 
-if ((${#labels[@]} == 0)); then
-  exit 1
+  ((${#labels[@]} > 0)) || return 1
+
+  mkdir -p "$cache_dir"
+  tmp=$(mktemp "$cache_dir/apps.tsv.XXXXXX")
+  {
+    printf '%s\n' "$fingerprint"
+    for i in "${!labels[@]}"; do
+      printf '%s\t%s\n' "${labels[$i]}" "${ids[$i]}"
+    done
+  } >"$tmp"
+  mv -f "$tmp" "$cache_file"
+}
+
+if [[ ! -f $cache_file ]] || ! load_cache; then
+  rebuild_cache || exit 1
 fi
 
 choice=$(printf '%s\n' "${labels[@]}" | "$menu" --prompt 'Apps> ' --width 90 --height 28) || exit 1
@@ -80,7 +119,7 @@ if command -v gtk-launch >/dev/null 2>&1; then
 fi
 
 # Fallback: resolve Exec= from the matching desktop file.
-for file in "${desktop_files[@]}"; do
+while IFS= read -r file; do
   base=${file##*/}
   if [[ $base == "${selected_id}.desktop" ]]; then
     exec_line=$(
@@ -97,6 +136,6 @@ for file in "${desktop_files[@]}"; do
     # shellcheck disable=SC2086
     exec $exec_line
   fi
-done
+done < <(find "${app_dirs[@]}" -type f -name "${selected_id}.desktop" 2>/dev/null || true)
 
 exit 1
