@@ -86,7 +86,7 @@ Core desktop tools:
 - `sway`
 - `waybar`
 - `kitty`
-- `foot` — fast floating terminal for `fzf-menu` / `fzf-drun` / `clipse` (font matched to kitty)
+- `foot` — fast floating terminal for `fzf-menu` / `fzf-drun` / `clipse` (font matched to kitty). Ubuntu 26.04 apt is 1.25 (no `[colors-dark]`); build ≥1.26 to `~/.local` from https://codeberg.org/dnkl/foot/releases
 - `fzf` — used by floating `fzf-menu` / `fzf-drun` pickers (replaces fuzzel)
 - `swayidle`
 - `swayosd`
@@ -288,6 +288,7 @@ git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 Ubuntu packages that may be missing, renamed, too old, or better installed another way:
 
+- `foot` ≥1.26 (Ubuntu 26.04 apt is 1.25): build to `~/.local` — `sudo apt install meson ninja-build libwayland-dev wayland-protocols libxkbcommon-dev libfontconfig-dev libfreetype-dev libpixman-1-dev libfcft-dev libtllist-dev libutf8proc-dev libutempter-dev scdoc` then from the [release tarball](https://codeberg.org/dnkl/foot/releases): `meson setup build --buildtype=release --prefix="$HOME/.local" && ninja -C build install`
 - npm install -g @mermaid-js/mermaid-cli
 - brave-browser
 - `grimshot` may come from `sway-contrib` or need a manual install depending on release.
