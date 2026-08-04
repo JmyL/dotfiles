@@ -6,5 +6,13 @@ group = "default"
 working_dir = "~/.config/herdr/plugins/config/cloudmanic.herdr-plus/projects"
 
 [[tabs]]
-name = "editor"
+name = "herdr-plus-projects"
+
+[[tabs.panes]]
 command = "nvim"
+
+[[tabs.panes]]
+command = "ai"
+split = "right"
+
+
