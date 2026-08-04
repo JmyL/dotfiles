@@ -1,0 +1,2 @@
+# Keep pane labels on topics; leave tabs at herdr's default names.
+sync_tabs = false
