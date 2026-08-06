@@ -47,10 +47,11 @@ switch_workspace = ["prefix+shift+1..9"]
 copy_mode = ["prefix+[", "alt+y"]
 # rename_pane = "prefix+shift+p"
 edit_scrollback = ["prefix+e", "alt+e"]
-# focus_pane_left = "prefix+h"
-# focus_pane_down = "prefix+j"
-# focus_pane_up = "prefix+k"
-# focus_pane_right = "prefix+l"
+# Built-in focus (works in copy mode via prefix). Direct alt+h/j/k/l stays herdr-splits.
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
 # cycle_pane_next = "prefix+tab"
 # cycle_pane_previous = "prefix+shift+tab"
 # last_pane = "alt+p"          # optional, unset by default; bind e.g. "prefix+tab" for global back-and-forth
