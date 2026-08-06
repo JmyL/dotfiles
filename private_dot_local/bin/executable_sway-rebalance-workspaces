@@ -5,6 +5,10 @@ Main (external): 1-5, 10
 Secondary (laptop): 6-9
 
 No-op when only one output is active.
+
+Important: enabling eDP makes Sway create some empty workspace on it. Moving
+that empty "main" workspace away just makes Sway create another. Seed a
+secondary workspace onto eDP first, then move misplaced main workspaces off.
 """
 from __future__ import annotations
 
@@ -14,43 +18,67 @@ import sys
 
 MAIN_WORKSPACES = (1, 2, 3, 4, 5, 10)
 SECONDARY_WORKSPACES = (6, 7, 8, 9)
+SEED_SECONDARY = 6
 
 
 def run(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, check=True, text=True, capture_output=True)
 
 
-def move_workspace(num: int, output: str, restore: str | None) -> str | None:
-    workspaces = json.loads(run("swaymsg", "-t", "get_workspaces").stdout)
-    ws = next((item for item in workspaces if item.get("num") == num), None)
+def sway(cmd: str) -> subprocess.CompletedProcess[str]:
+    # Pass the whole command as one argument so flags like
+    # --no-auto-back-and-forth are parsed by sway, not swaymsg.
+    return subprocess.run(["swaymsg", cmd], capture_output=True, text=True)
+
+
+def workspaces() -> list[dict]:
+    return json.loads(run("swaymsg", "-t", "get_workspaces").stdout)
+
+
+def focused_name(items: list[dict] | None = None) -> str:
+    items = items if items is not None else workspaces()
+    return next(item["name"] for item in items if item.get("focused"))
+
+
+def ensure_secondary_on_internal(internal: str, restore: str) -> None:
+    items = workspaces()
+    on_internal = [item for item in items if item.get("output") == internal]
+    if any(item.get("num") in SECONDARY_WORKSPACES for item in on_internal):
+        return
+
+    # Prefer renaming an empty non-secondary workspace already on eDP to 6.
+    empty = next(
+        (
+            item
+            for item in on_internal
+            if not item.get("representation") and item.get("num") not in SECONDARY_WORKSPACES
+        ),
+        None,
+    )
+    if empty is not None and not any(item.get("num") == SEED_SECONDARY for item in items):
+        sway(f'rename workspace "{empty["name"]}" to {SEED_SECONDARY}')
+        return
+
+    sway(f"workspace --no-auto-back-and-forth number {SEED_SECONDARY}")
+    sway(f"move workspace to output {internal}")
+    sway(f"workspace --no-auto-back-and-forth {restore}")
+
+
+def move_existing(num: int, output: str, restore: str | None) -> str | None:
+    items = workspaces()
+    ws = next((item for item in items if item.get("num") == num), None)
     if ws is None or ws.get("output") == output:
         return restore
 
     name = ws["name"]
-    criteria = subprocess.run(
-        ["swaymsg", f'[workspace="{name}"]', "move", "workspace", "to", "output", output],
-        capture_output=True,
-        text=True,
-    )
-    if criteria.returncode == 0:
+    if ws.get("representation"):
+        sway(f'[workspace="{name}"] move workspace to output {output}')
         return restore
 
-    # Empty workspaces cannot use criteria; switch, move, then restore focus.
     if restore is None:
-        focused = next(item for item in workspaces if item.get("focused"))
-        restore = focused["name"]
-    subprocess.run(
-        ["swaymsg", "workspace", "--no-auto-back-and-forth", "number", str(num)],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
-        ["swaymsg", "move", "workspace", "to", "output", output],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+        restore = focused_name(items)
+    sway(f"workspace --no-auto-back-and-forth number {num}")
+    sway(f"move workspace to output {output}")
     return restore
 
 
@@ -62,19 +90,16 @@ def main() -> int:
     if internal is None or external is None:
         return 0
 
-    restore: str | None = None
+    restore = focused_name()
+    ensure_secondary_on_internal(internal["name"], restore)
+
     for num in MAIN_WORKSPACES:
-        restore = move_workspace(num, external["name"], restore)
+        restore = move_existing(num, external["name"], restore) or restore
     for num in SECONDARY_WORKSPACES:
-        restore = move_workspace(num, internal["name"], restore)
+        restore = move_existing(num, internal["name"], restore) or restore
 
     if restore is not None:
-        subprocess.run(
-            ["swaymsg", "workspace", "--no-auto-back-and-forth", restore],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        sway(f"workspace --no-auto-back-and-forth {restore}")
     return 0
 
 

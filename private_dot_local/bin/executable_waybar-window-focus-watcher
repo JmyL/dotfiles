@@ -6,40 +6,36 @@ flickers) the icon every tick even when nothing changed.
 
 Listens to window focus/close and workspace focus so empty workspaces clear
 the previous icon (workspace switches alone do not emit window focus events).
+
+Debounces bursts (common on cross-output workspace switches) so dual-monitor
+bars do not each re-run the heavy icon lookup back-to-back.
 """
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
-PIDFILE = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "waybar-window-focus-watcher.pid"
+LOCKFILE = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "waybar-window-focus-watcher.lock"
 WAYBAR_SIGNAL = "RTMIN+9"
 # window focus/close + workspace focus (empty ws has no window focus event)
 REFRESH_CHANGES = frozenset({"focus", "close"})
-
-
-def already_running() -> bool:
-    if not PIDFILE.exists():
-        return False
-    try:
-        pid = int(PIDFILE.read_text().strip())
-    except ValueError:
-        return False
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-    return True
+DEBOUNCE_SEC = 0.05
 
 
 def main() -> None:
-    if already_running():
+    LOCKFILE.parent.mkdir(parents=True, exist_ok=True)
+    lock_fd = os.open(LOCKFILE, os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(lock_fd)
         return
-    PIDFILE.write_text(str(os.getpid()))
 
     proc = subprocess.Popen(
         ["swaymsg", "-t", "subscribe", "-m", '["window","workspace"]'],
@@ -47,6 +43,25 @@ def main() -> None:
         stdout=subprocess.PIPE,
     )
     assert proc.stdout is not None
+
+    lock = threading.Lock()
+    timer: threading.Timer | None = None
+
+    def flush() -> None:
+        nonlocal timer
+        with lock:
+            timer = None
+        subprocess.run(["/usr/bin/pkill", "-" + WAYBAR_SIGNAL, "waybar"], check=False)
+
+    def schedule() -> None:
+        nonlocal timer
+        with lock:
+            if timer is not None:
+                timer.cancel()
+            timer = threading.Timer(DEBOUNCE_SEC, flush)
+            timer.daemon = True
+            timer.start()
+
     for line in proc.stdout:
         line = line.strip()
         if not line:
@@ -56,7 +71,7 @@ def main() -> None:
         except json.JSONDecodeError:
             continue
         if event.get("change") in REFRESH_CHANGES:
-            subprocess.run(["/usr/bin/pkill", "-" + WAYBAR_SIGNAL, "waybar"], check=False)
+            schedule()
 
 
 if __name__ == "__main__":
