@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Assign workspaces to main (external) vs secondary (eDP) when both are active.
+
+Main (external): 1-5, 10
+Secondary (laptop): 6-9
+
+No-op when only one output is active.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+
+MAIN_WORKSPACES = (1, 2, 3, 4, 5, 10)
+SECONDARY_WORKSPACES = (6, 7, 8, 9)
+
+
+def run(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(args, check=True, text=True, capture_output=True)
+
+
+def move_workspace(num: int, output: str, restore: str | None) -> str | None:
+    workspaces = json.loads(run("swaymsg", "-t", "get_workspaces").stdout)
+    ws = next((item for item in workspaces if item.get("num") == num), None)
+    if ws is None or ws.get("output") == output:
+        return restore
+
+    name = ws["name"]
+    criteria = subprocess.run(
+        ["swaymsg", f'[workspace="{name}"]', "move", "workspace", "to", "output", output],
+        capture_output=True,
+        text=True,
+    )
+    if criteria.returncode == 0:
+        return restore
+
+    # Empty workspaces cannot use criteria; switch, move, then restore focus.
+    if restore is None:
+        focused = next(item for item in workspaces if item.get("focused"))
+        restore = focused["name"]
+    subprocess.run(
+        ["swaymsg", "workspace", "--no-auto-back-and-forth", "number", str(num)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["swaymsg", "move", "workspace", "to", "output", output],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return restore
+
+
+def main() -> int:
+    outputs = json.loads(run("swaymsg", "-t", "get_outputs").stdout)
+    active = [output for output in outputs if output.get("active")]
+    internal = next((output for output in active if output["name"].startswith("eDP-")), None)
+    external = next((output for output in active if not output["name"].startswith("eDP-")), None)
+    if internal is None or external is None:
+        return 0
+
+    restore: str | None = None
+    for num in MAIN_WORKSPACES:
+        restore = move_workspace(num, external["name"], restore)
+    for num in SECONDARY_WORKSPACES:
+        restore = move_workspace(num, internal["name"], restore)
+
+    if restore is not None:
+        subprocess.run(
+            ["swaymsg", "workspace", "--no-auto-back-and-forth", restore],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
