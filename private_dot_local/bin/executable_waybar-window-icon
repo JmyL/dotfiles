@@ -1,27 +1,44 @@
 #!/usr/bin/env python3
-"""Print the icon file path for the currently focused sway window."""
+"""Resolve the focused window icon for Waybar.
+
+Default: print the source icon path (debug / compatibility).
+
+With --write: rasterize into ~/.cache/waybar/focused-window-icon.png so Waybar's
+image module can use a static path. Waybar 0.15 runs image `exec` on the GTK
+main thread; keeping heavy lookup out of Waybar avoids delaying workspace
+highlight updates (especially with two bars).
+"""
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
+import shutil
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gio, Gtk  # noqa: E402
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import GdkPixbuf, Gio, Gtk  # noqa: E402
 
 ICON_LOOKUP_SIZE = 32
 FALLBACK_ICON_NAMES = ["application-x-executable", "application-default-icon"]
 BLANK_ICON_PATH = Path.home() / ".config" / "waybar" / "blank.png"
+CACHE_ICON_PATH = Path.home() / ".cache" / "waybar" / "focused-window-icon.png"
 
 
 def focused_identity() -> tuple[str | None, str | None]:
     try:
-        tree = json.loads(subprocess.run(
-            ["swaymsg", "-t", "get_tree"], check=True, text=True, capture_output=True
-        ).stdout)
+        tree = json.loads(
+            subprocess.run(
+                ["swaymsg", "-t", "get_tree"], check=True, text=True, capture_output=True
+            ).stdout
+        )
     except (subprocess.CalledProcessError, OSError, json.JSONDecodeError):
         return None, None
 
@@ -73,16 +90,12 @@ def icon_path(icon: Gio.Icon | None, theme: Gtk.IconTheme) -> str | None:
     return icon_info.get_filename() if icon_info else None
 
 
-def main() -> None:
+def resolve_icon_file() -> Path:
     theme = Gtk.IconTheme.get_default()
     app_id, wm_class = focused_identity()
 
     if not app_id and not wm_class:
-        # Focused workspace has no window. Waybar's image module keeps
-        # showing the last icon if exec prints nothing, so we must point
-        # it at an actually-blank image rather than staying silent.
-        print(BLANK_ICON_PATH)
-        return
+        return BLANK_ICON_PATH
 
     info = find_app_info([app_id, wm_class])
     path = icon_path(info.get_icon(), theme) if info else None
@@ -94,9 +107,51 @@ def main() -> None:
                 path = icon_info.get_filename()
                 break
 
-    if path:
-        print(path)
+    return Path(path) if path else BLANK_ICON_PATH
+
+
+def write_cache_icon(source: Path) -> Path:
+    CACHE_ICON_PATH.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix="focused-window-icon.",
+        suffix=".png",
+        dir=CACHE_ICON_PATH.parent,
+    )
+    os.close(fd)
+    tmp_path = Path(tmp_name)
+    try:
+        if source.resolve() == BLANK_ICON_PATH.resolve() or source.suffix.lower() == ".png":
+            shutil.copyfile(source, tmp_path)
+        else:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                str(source), ICON_LOOKUP_SIZE, ICON_LOOKUP_SIZE
+            )
+            pixbuf.savev(str(tmp_path), "png", [], [])
+        os.replace(tmp_path, CACHE_ICON_PATH)
+    except Exception:
+        if tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
+        shutil.copyfile(BLANK_ICON_PATH, CACHE_ICON_PATH)
+    return CACHE_ICON_PATH
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help=f"write rasterized icon to {CACHE_ICON_PATH}",
+    )
+    args = parser.parse_args()
+
+    source = resolve_icon_file()
+    if args.write:
+        write_cache_icon(source)
+        return 0
+
+    print(source)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -76,8 +76,11 @@
 	"sway/mode": {
 		"format": "<span style=\"italic\">{}</span>"
 	},
+	// Tiny exec only: Waybar 0.15 runs image `exec` on the GTK main thread.
+	// Heavy icon lookup/rasterize happens in waybar-window-focus-watcher; this
+	// just prints the cached PNG path so workspace highlights stay snappy.
 	"image#window-icon": {
-		"exec": "$HOME/.local/bin/waybar-window-icon",
+		"exec": "printf '%s\\n' \"$HOME/.cache/waybar/focused-window-icon.png\"",
 		"size": 18,
 		"interval": "once",
 		"signal": 9
