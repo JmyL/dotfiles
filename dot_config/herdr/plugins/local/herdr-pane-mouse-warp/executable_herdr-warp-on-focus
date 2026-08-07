@@ -28,6 +28,82 @@ run_host() {
   fi
 }
 
+host_socket_exists() {
+  local path="$1"
+  if [[ -S "$path" ]]; then
+    return 0
+  fi
+  if [[ -f /run/.containerenv ]] && command -v flatpak-spawn >/dev/null 2>&1; then
+    flatpak-spawn --host test -S "$path"
+  else
+    return 1
+  fi
+}
+
+# Herdr server can keep a stale KITTY_LISTEN_ON after Kitty is restarted and the
+# client re-attaches. Prefer a live socket (env → focused pid → /tmp/kitty-*).
+kitty_listen_to() {
+  local listen path pid candidate
+  listen="${KITTY_LISTEN_ON-}"
+  if [[ -n "$listen" ]]; then
+    path="${listen#unix:}"
+    if host_socket_exists "$path"; then
+      printf '%s\n' "$listen"
+      return 0
+    fi
+    debug "stale KITTY_LISTEN_ON ($listen)"
+  fi
+
+  pid=$(TREE_JSON="$tree_json" python3 - <<'PY'
+import json
+import os
+
+def walk(node):
+  if node.get("focused"):
+    return node
+  for child in node.get("nodes", []) + node.get("floating_nodes", []):
+    found = walk(child)
+    if found is not None:
+      return found
+  return None
+
+try:
+  tree = json.loads(os.environ.get("TREE_JSON", ""))
+except Exception:
+  raise SystemExit(0)
+focused = walk(tree)
+if not focused:
+  raise SystemExit(0)
+if (focused.get("app_id") or "").lower() != "kitty":
+  raise SystemExit(0)
+pid = focused.get("pid")
+if pid is None:
+  raise SystemExit(0)
+print(int(pid))
+PY
+  ) || true
+  if [[ -n "${pid:-}" ]] && host_socket_exists "/tmp/kitty-${pid}"; then
+    printf 'unix:/tmp/kitty-%s\n' "$pid"
+    return 0
+  fi
+
+  for candidate in /tmp/kitty-*; do
+    if host_socket_exists "$candidate"; then
+      printf 'unix:%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+kitty_ls_json() {
+  local to
+  to=$(kitty_listen_to) || return 1
+  debug "kitty --to ${to}"
+  # Drop inherited KITTY_LISTEN_ON so a stale value cannot override --to.
+  run_host env -u KITTY_LISTEN_ON kitty @ --to "$to" ls
+}
+
 if ! run_host command -v swaymsg >/dev/null 2>&1; then
   debug "swaymsg unavailable"
   exit 0
@@ -47,7 +123,7 @@ outputs_json=$(run_host swaymsg -t get_outputs 2>/dev/null || true)
 
 kitty_json=""
 if run_host command -v kitty >/dev/null 2>&1; then
-  kitty_json=$(run_host kitty @ ls 2>/dev/null || true)
+  kitty_json=$(kitty_ls_json 2>/dev/null || true)
 fi
 
 kitty_conf="${KITTY_CONFIG_DIRECTORY:-${XDG_CONFIG_HOME:-$HOME/.config}/kitty}/kitty.conf"
@@ -55,7 +131,6 @@ kitty_conf="${KITTY_CONFIG_DIRECTORY:-${XDG_CONFIG_HOME:-$HOME/.config}/kitty}/k
 read -r target_x target_y status < <(LAYOUT_JSON="$layout_json" TREE_JSON="$tree_json" OUTPUTS_JSON="$outputs_json" KITTY_JSON="$kitty_json" KITTY_CONF="$kitty_conf" python3 - <<'PY'
 import json
 import os
-import re
 
 def die(msg: str) -> None:
   print(f"0 0 {msg}", flush=True)
