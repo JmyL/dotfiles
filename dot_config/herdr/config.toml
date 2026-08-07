@@ -151,6 +151,12 @@ type = "plugin_action"
 command = "cloudmanic.herdr-plus.quick-actions"
 description = "herdr-plus: quick actions"
 
+[[keys.command]]
+key = "alt+space"
+type = "plugin_action"
+command = "herdr-pane-mouse-warp.warp"
+description = "warp pointer into focused pane"
+
 [ui.toast]
 delivery = "off"
 
