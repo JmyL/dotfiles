@@ -54,6 +54,19 @@ machine unless it is stored in a secure backup location:
 shred -u sungsik-private.asc 2>/dev/null || rm -f sungsik-private.asc
 ```
 
+## Vimium C key mappings
+
+Paste into Vimium C Options → Custom key mappings (not tracked by chezmoi;
+copy across machines via Export/Import or browser sync if enabled):
+
+```text
+map <a-p> visitPreviousTab
+map <a-f> togglePinTab
+```
+
+- `Alt+P`: last-tab focus (same as default `^`)
+- `Alt+F`: toggle pin (replaces default multi-link hints on `<a-f>`)
+
 ## Atuin shell history
 
 Atuin is the managed shell-history upgrade for interactive shells. It provides a
