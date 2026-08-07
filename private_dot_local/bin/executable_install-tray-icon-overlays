@@ -38,7 +38,8 @@ link_sizes() {
   for sz in "${sizes[@]}"; do
     dest="$icons_root/$theme/$sz/$rel"
     mkdir -p "$(dirname "$dest")"
-    ln -sfn "../../../scalable/$rel" "$dest"
+    # From <theme>/<size>/<context>/file → ../../scalable/<context>/file
+    ln -sfn "../../scalable/$rel" "$dest"
   done
 }
 
