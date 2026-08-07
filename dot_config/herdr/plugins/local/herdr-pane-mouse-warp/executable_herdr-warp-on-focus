@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+# Warp the Sway pointer into the focused Herdr pane (right edge, vertical center)
+# so the mouse wheel scrolls that pane after keyboard focus moves.
+set -euo pipefail
+
+case "${HERDR_WARP_ON_FOCUS:-1}" in
+0 | false | no | off | FALSE | NO | OFF)
+  exit 0
+  ;;
+esac
+
+debug() {
+  case "${HERDR_WARP_ON_FOCUS_DEBUG:-0}" in
+  1 | true | yes | on | TRUE | YES | ON)
+    printf 'herdr-warp-on-focus: %s\n' "$*" >&2
+    ;;
+  esac
+}
+
+# Run compositor/terminal tools on the host when this script is inside a toolbox.
+run_host() {
+  if command -v "$1" >/dev/null 2>&1; then
+    "$@"
+  elif [[ -f /run/.containerenv ]] && command -v flatpak-spawn >/dev/null 2>&1; then
+    flatpak-spawn --host "$@"
+  else
+    return 127
+  fi
+}
+
+if ! run_host command -v swaymsg >/dev/null 2>&1; then
+  debug "swaymsg unavailable"
+  exit 0
+fi
+
+layout_json=$(herdr pane layout --current 2>/dev/null) || {
+  debug "herdr pane layout failed"
+  exit 0
+}
+
+tree_json=$(run_host swaymsg -t get_tree 2>/dev/null) || {
+  debug "swaymsg get_tree failed"
+  exit 0
+}
+
+kitty_json=""
+if run_host command -v kitty >/dev/null 2>&1; then
+  kitty_json=$(run_host kitty @ ls 2>/dev/null || true)
+fi
+
+read -r target_x target_y status < <(LAYOUT_JSON="$layout_json" TREE_JSON="$tree_json" KITTY_JSON="$kitty_json" python3 - <<'PY'
+import json
+import os
+import sys
+
+def die(msg: str) -> None:
+  print(f"0 0 {msg}", flush=True)
+  raise SystemExit(0)
+
+layout_raw = os.environ.get("LAYOUT_JSON", "")
+tree_raw = os.environ.get("TREE_JSON", "")
+kitty_raw = os.environ.get("KITTY_JSON", "")
+
+try:
+  layout = json.loads(layout_raw)["result"]["layout"]
+except Exception:
+  die("bad-layout")
+
+try:
+  tree = json.loads(tree_raw)
+except Exception:
+  die("bad-tree")
+
+panes = layout.get("panes") or []
+pane = next((p for p in panes if p.get("focused")), None)
+if pane is None:
+  focused_id = layout.get("focused_pane_id")
+  pane = next((p for p in panes if p.get("pane_id") == focused_id), None)
+if not pane:
+  die("no-pane")
+
+rect = pane.get("rect") or {}
+try:
+  px = int(rect["x"])
+  py = int(rect["y"])
+  pw = int(rect["width"])
+  ph = int(rect["height"])
+except (KeyError, TypeError, ValueError):
+  die("bad-pane-rect")
+if pw <= 0 or ph <= 0:
+  die("empty-pane")
+
+def walk(node):
+  if node.get("focused"):
+    return node
+  for child in node.get("nodes", []) + node.get("floating_nodes", []):
+    found = walk(child)
+    if found is not None:
+      return found
+  return None
+
+focused = walk(tree)
+if focused is None:
+  die("no-focused-window")
+
+app_id = (focused.get("app_id") or "").lower()
+if app_id != "kitty":
+  die(f"not-kitty:{app_id or 'unknown'}")
+
+win = focused.get("rect") or {}
+try:
+  wx = int(win["x"])
+  wy = int(win["y"])
+  ww = int(win["width"])
+  wh = int(win["height"])
+except (KeyError, TypeError, ValueError):
+  die("bad-window-rect")
+if ww <= 0 or wh <= 0:
+  die("empty-window")
+
+cols = lines = None
+if kitty_raw:
+  try:
+    data = json.loads(kitty_raw)
+  except Exception:
+    data = None
+  windows = []
+  if isinstance(data, list):
+    for ow in data:
+      for tab in ow.get("tabs", []) or []:
+        windows.extend(tab.get("windows", []) or [])
+  for candidate in windows:
+    if candidate.get("is_focused"):
+      cols = candidate.get("columns")
+      lines = candidate.get("lines")
+      break
+  if cols is None and windows:
+    # Fall back to the only window, or the first with a herdr-ish title.
+    for candidate in windows:
+      title = (candidate.get("title") or "").lower()
+      if "herdr" in title:
+        cols = candidate.get("columns")
+        lines = candidate.get("lines")
+        break
+    if cols is None:
+      cols = windows[0].get("columns")
+      lines = windows[0].get("lines")
+
+try:
+  cols = int(cols)
+  lines = int(lines)
+except (TypeError, ValueError):
+  die("no-cell-metrics")
+if cols <= 0 or lines <= 0:
+  die("bad-cell-metrics")
+
+cell_w = ww / cols
+cell_h = wh / lines
+# Right edge, vertical center of the focused pane.
+x = int(wx + (px + pw - 0.5) * cell_w)
+y = int(wy + (py + ph / 2.0) * cell_h)
+print(f"{x} {y} ok")
+PY
+) || {
+  debug "coordinate calc failed"
+  exit 0
+}
+
+if [[ "$status" != "ok" ]]; then
+  debug "skip ($status)"
+  exit 0
+fi
+
+if ! run_host swaymsg "seat seat0 cursor set ${target_x} ${target_y}" >/dev/null 2>&1; then
+  debug "cursor set failed (${target_x},${target_y})"
+  exit 0
+fi
+
+debug "warped to ${target_x},${target_y}"
+exit 0

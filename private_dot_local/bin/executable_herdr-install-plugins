@@ -26,3 +26,13 @@ while read -r repo ref extra; do
     herdr plugin install "$repo" --yes
   fi
 done <"$list"
+
+# Chezmoi-managed local plugins (not in plugins.list GitHub format).
+local_root="${XDG_CONFIG_HOME:-$HOME/.config}/herdr/plugins/local"
+if [[ -d "$local_root" ]]; then
+  for plugin_dir in "$local_root"/*; do
+    [[ -d "$plugin_dir" ]] || continue
+    [[ -f "$plugin_dir/herdr-plugin.toml" ]] || continue
+    herdr plugin link "$plugin_dir" --enabled
+  done
+fi

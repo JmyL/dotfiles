@@ -1,0 +1,10 @@
+id = "herdr-pane-mouse-warp"
+name = "Herdr Pane Mouse Warp"
+version = "0.1.0"
+min_herdr_version = "0.7.3"
+description = "Warp the Sway pointer into the focused Herdr pane so wheel scroll follows keyboard focus."
+platforms = ["linux"]
+
+[[events]]
+on = "pane.focused"
+command = ["./herdr-warp-on-focus"]
