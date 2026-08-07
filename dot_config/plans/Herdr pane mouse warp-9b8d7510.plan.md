@@ -3,13 +3,13 @@
 todos:
   - id: "script"
     content: "Add ~/.local/bin/herdr-warp-on-focus (layout+kitty+sway → seat cursor set; host spawn; disable env)"
-    status: pending
+    status: completed
   - id: "plugin"
     content: "Add local herdr-plugin.toml on pane.focused; link via herdr-install-plugins"
-    status: pending
+    status: completed
   - id: "chezmoi"
     content: "chezmoi add, reload/link plugin, commit+push personal dotfiles"
-    status: pending
+    status: completed
 isProject: false
 ---
 # Herdr pane mouse warp-on-focus
