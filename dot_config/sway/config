@@ -183,6 +183,8 @@ seat * hide_cursor 3000
     bindsym $mod+8 workspace number 8
     bindsym $mod+9 workspace number 9
     bindsym $mod+0 workspace number 10
+    # Switch to previously focused workspace
+    bindsym $mod+p workspace back_and_forth
     # Move focused container to workspace
     bindsym $mod+Shift+1 move container to workspace number 1, workspace number 1
     bindsym $mod+Shift+2 move container to workspace number 2, workspace number 2
@@ -310,7 +312,7 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     bindsym $mod+m exec ~/.local/bin/sway-toggle-external-extend
     # Black-screen recovery: stop kanshi, disable externals, force eDP on
     # (--locked so it still works under swaylock after resume)
-    bindsym --locked $mod+Shift+m exec ~/.local/bin/sway-recover-display
+    bindsym --locked $mod+Ctrl+m exec ~/.local/bin/sway-recover-display
     # Toggle notification center
     bindsym $mod+n exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -t -sw'
     # Clear all notifications
@@ -324,7 +326,7 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/idle-inhibit toggle
     # Cycle available power profiles
-    bindsym $mod+p exec ~/.local/bin/cycle-power-profile
+    bindsym $mod+Shift+m exec ~/.local/bin/cycle-power-profile
     # Lock screen
     bindsym $mod+Shift+x exec $lock
 
