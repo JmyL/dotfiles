@@ -40,20 +40,11 @@ host_socket_exists() {
   fi
 }
 
-# Herdr server can keep a stale KITTY_LISTEN_ON after Kitty is restarted and the
-# client re-attaches. Prefer a live socket (env → focused pid → /tmp/kitty-*).
+# Resolve the focused Kitty's listen socket. Herdr server may keep a stale
+# KITTY_LISTEN_ON after Kitty relaunch/reattach, and with multiple Kitties the
+# env socket can point at a different live instance — always prefer focused pid.
 kitty_listen_to() {
-  local listen path pid candidate
-  listen="${KITTY_LISTEN_ON-}"
-  if [[ -n "$listen" ]]; then
-    path="${listen#unix:}"
-    if host_socket_exists "$path"; then
-      printf '%s\n' "$listen"
-      return 0
-    fi
-    debug "stale KITTY_LISTEN_ON ($listen)"
-  fi
-
+  local listen path pid
   pid=$(TREE_JSON="$tree_json" python3 - <<'PY'
 import json
 import os
@@ -87,12 +78,17 @@ PY
     return 0
   fi
 
-  for candidate in /tmp/kitty-*; do
-    if host_socket_exists "$candidate"; then
-      printf 'unix:%s\n' "$candidate"
+  listen="${KITTY_LISTEN_ON-}"
+  if [[ -n "$listen" ]]; then
+    path="${listen#unix:}"
+    if host_socket_exists "$path"; then
+      debug "focused kitty socket missing; falling back to KITTY_LISTEN_ON"
+      printf '%s\n' "$listen"
       return 0
     fi
-  done
+    debug "stale KITTY_LISTEN_ON ($listen)"
+  fi
+
   return 1
 }
 
