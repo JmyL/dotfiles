@@ -21,12 +21,21 @@ sizes=(16x16 22x22 24x24 32x32 48x48)
 themes=(hicolor Yaru Yaru-dark)
 
 write_bt() {
-  local dest=$1 fill=$2 path=$3
+  local dest=$1 fill=$2 path=$3 scale=${4:-1}
+  local body
   mkdir -p "$(dirname "$dest")"
+  if [[ $scale == 1 ]]; then
+    body="  <path fill=\"$fill\" d=\"$path\"/>"
+  else
+    # Scale about the 16x16 center so tray padding matches neighboring icons.
+    body="  <g transform=\"translate(8 8) scale($scale) translate(-8 -8)\">
+    <path fill=\"$fill\" d=\"$path\"/>
+  </g>"
+  fi
   cat >"$dest" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-  <path fill="$fill" d="$path"/>
+$body
 </svg>
 EOF
 }
@@ -94,10 +103,11 @@ write_index_theme() {
 install_bluetooth() {
   local theme=$1
   local base="$icons_root/$theme/scalable/status"
-  write_bt "$base/blueman-tray.svg" "$muted" "$bt_path"
-  write_bt "$base/blueman-active.svg" "$active" "$bt_path"
-  write_bt "$base/blueman-disabled.svg" "$muted" "$bt_disabled_path"
-  write_bt "$base/blueman.svg" "$muted" "$bt_path"
+  local bt_scale=0.9
+  write_bt "$base/blueman-tray.svg" "$muted" "$bt_path" "$bt_scale"
+  write_bt "$base/blueman-active.svg" "$active" "$bt_path" "$bt_scale"
+  write_bt "$base/blueman-disabled.svg" "$muted" "$bt_disabled_path" "$bt_scale"
+  write_bt "$base/blueman.svg" "$muted" "$bt_path" "$bt_scale"
   link_sizes "$theme" status/blueman-tray.svg
   link_sizes "$theme" status/blueman-active.svg
   link_sizes "$theme" status/blueman-disabled.svg
