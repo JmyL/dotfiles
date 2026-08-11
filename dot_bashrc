@@ -97,5 +97,11 @@ if [[ $- == *i* ]]; then
   }
   # Ctrl-L bypasses the clear function unless rebound.
   bind -x '"\C-l": clear'
+  # Re-anchor after Atuin/other TUIs that leave the cursor mid-pane.
+  if [[ "$(declare -p PROMPT_COMMAND 2>&1)" == "declare -a"* ]]; then
+    PROMPT_COMMAND+=(__prompt_to_bottom)
+  else
+    PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND;}__prompt_to_bottom"
+  fi
   __prompt_to_bottom
 fi
