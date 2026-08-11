@@ -94,6 +94,7 @@ Core desktop tools:
 - `thunar`
 - `flatpak`
 - Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup
+- Tampermonkey (Brave/Chrome extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
 - Local Brave extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+Shift+S focuses an open Slack tab (`brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON). Restart Brave fully after installing or upgrading on a new machine.
 - `wireplumber` (`wpctl`) and `pipewire-bin`/`pipewire-utils` (`pw-dump`) — used by `sway-audio-switch` to list/switch default audio devices
 
