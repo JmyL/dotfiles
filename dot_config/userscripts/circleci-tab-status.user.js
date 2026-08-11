@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CircleCI tab status + notify
 // @namespace    local.sungsik
-// @version      1.1.0
-// @description  Recolor CircleCI favicon by run status; system notify when a watched run finishes
+// @version      1.2.0
+// @description  Status-colored CircleCI favicon (C on yellow/green/red); notify when a run finishes
 // @author       sungsik
 // @match        https://app.circleci.com/*
 // @grant        GM_notification
@@ -54,7 +54,6 @@
   let label = pageLabel();
   let notifiedFor = null;
   let page = parsePage();
-  let faviconHref = null;
   let applyingFavicon = false;
 
   function normalizeStatus(raw) {
@@ -108,13 +107,6 @@
     );
   }
 
-  function rememberOriginalFavicon() {
-    const link = currentIconLink();
-    if (!link) return;
-    const href = link.getAttribute("href");
-    if (href && !href.startsWith("data:")) faviconHref = href;
-  }
-
   function setFaviconHref(href) {
     applyingFavicon = true;
     let link = currentIconLink();
@@ -134,7 +126,6 @@
   }
 
   function drawStatusFavicon(status) {
-    rememberOriginalFavicon();
     const color = STATUS_COLOR[status] || "#6b7280";
     const size = 64;
     const canvas = document.createElement("canvas");
@@ -142,50 +133,18 @@
     canvas.height = size;
     const ctx = canvas.getContext("2d");
 
-    const finish = () => {
-      // Soft circular badge so it reads in a crowded tab strip.
-      ctx.globalCompositeOperation = "destination-over";
-      ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      setFaviconHref(canvas.toDataURL("image/png"));
-    };
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
 
-    if (!faviconHref) {
-      // Fallback: solid circle with a simple "C".
-      ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 40px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("C", size / 2, size / 2 + 2);
-      setFaviconHref(canvas.toDataURL("image/png"));
-      return;
-    }
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 42px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("C", size / 2, size / 2 + 2);
 
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => {
-      // Draw logo inset so the colored ring/background shows around it.
-      const pad = 8;
-      ctx.clearRect(0, 0, size, size);
-      ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
-      finish();
-    };
-    img.onerror = () => {
-      faviconHref = null;
-      drawStatusFavicon(status);
-    };
-    // Same-origin / absolute URL on app.circleci.com should load fine.
-    img.src = faviconHref.startsWith("//")
-      ? `${location.protocol}${faviconHref}`
-      : faviconHref.startsWith("/")
-        ? `${location.origin}${faviconHref}`
-        : faviconHref;
+    setFaviconHref(canvas.toDataURL("image/png"));
   }
 
   function applyFavicon(status) {
@@ -356,7 +315,6 @@
     attributeFilter: ["href"],
   });
 
-  rememberOriginalFavicon();
   hookNetwork();
   scanDom();
   setInterval(scanDom, 2000);
@@ -366,7 +324,6 @@
     label = pageLabel();
     lastStatus = null;
     notifiedFor = null;
-    rememberOriginalFavicon();
   }
 
   window.addEventListener("popstate", resetPage);
