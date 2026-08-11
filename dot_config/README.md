@@ -91,9 +91,13 @@ Typical shell integration belongs in the relevant shell config, for example
 `~/.config/fish/config.fish`, `~/.bashrc`, or `~/.zshrc`. Keep any Atuin sync
 credentials or session keys out of chezmoi-tracked files.
 
+Bash recording also needs `bash-preexec` sourced before `atuin init bash`
+(tracked as `~/.bash-preexec.sh`). zsh/fish do not need that file.
+
 Related paths:
 
 - Managed Atuin config: `~/.config/atuin/config.toml`
+- Bash preexec helper: `~/.bash-preexec.sh`
 - Shell integrations: `~/.bashrc`, `~/.zshrc`, `~/.config/fish/conf.d/atuin.env.fish`
 - Untracked Atuin data/state: `~/.local/share/atuin/`
 - Atuin cache/state may vary by version and package source.
