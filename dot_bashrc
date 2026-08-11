@@ -83,3 +83,19 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 if command -v atuin >/dev/null 2>&1; then
   eval "$(atuin init bash)"
 fi
+
+# Keep the interactive prompt at the bottom of the terminal viewport.
+__prompt_to_bottom() {
+  [[ $- == *i* && -n ${LINES:-} ]] || return 0
+  printf '\033[%s;1H' "$LINES"
+}
+
+if [[ $- == *i* ]]; then
+  clear() {
+    command clear "$@"
+    __prompt_to_bottom
+  }
+  # Ctrl-L bypasses the clear function unless rebound.
+  bind -x '"\C-l": clear'
+  __prompt_to_bottom
+fi
