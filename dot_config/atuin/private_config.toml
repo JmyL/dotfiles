@@ -170,7 +170,7 @@ show_preview = false
 ## whereas tab will put the command in the prompt for editing.
 ## If set to false, both enter and tab will place the command in the prompt for editing.
 ## This applies for new installs. Old installs will keep the old behaviour unless configured otherwise.
-enter_accept = false
+enter_accept = true
 
 ## Defaults to false. If enabled, when triggered after &&, || or |, Atuin will complete commands to chain rather than replace the current line.
 # command_chaining = false
@@ -250,10 +250,13 @@ enter_accept = false
 # accept_with_backspace = false
 
 # Custom TUI bindings. Any [keymap] section disables the older [keys] overrides above.
-# Ctrl+Enter needs a terminal with the kitty keyboard protocol (kitty; Herdr via kitty).
 [keymap.emacs]
-"enter" = "return-selection"
-"ctrl-enter" = "accept"
+"enter" = "accept"
+# Right arrow inserts for editing (keeps in-line cursor movement until EOL).
+"right" = [
+  { when = "cursor-at-end", action = "return-selection" },
+  { action = "cursor-right" },
+]
 
 [sync]
 # Enable sync v2 by default
