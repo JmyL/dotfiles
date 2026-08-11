@@ -10,4 +10,4 @@ Source-of-truth copies for Tampermonkey (Brave).
 
 ## Scripts
 
-- `circleci-tab-status.user.js` — put run status in the tab title; system notify when a watched run finishes.
+- `circleci-tab-status.user.js` — recolor the CircleCI favicon by run status (yellow/green/red); system notify when a watched run finishes. Does not touch `document.title` (plays nice with tab-number extensions).

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         CircleCI tab status + notify
 // @namespace    local.sungsik
-// @version      1.0.0
-// @description  Show CircleCI status in the tab title; system notify when a watched run finishes
+// @version      1.1.0
+// @description  Recolor CircleCI favicon by run status; system notify when a watched run finishes
 // @author       sungsik
 // @match        https://app.circleci.com/*
 // @grant        GM_notification
@@ -30,20 +30,21 @@
     "unauthorized",
   ]);
 
-  const TITLE_MARK = {
-    running: "⏳",
-    queued: "…",
-    not_run: "…",
-    on_hold: "⏸",
-    failing: "⚠",
-    pending: "…",
-    setup: "…",
-    success: "✓",
-    failed: "✗",
-    error: "✗",
-    canceled: "■",
-    cancelled: "■",
-    unauthorized: "✗",
+  // Favicon badge colors (logo stays white-ish on top).
+  const STATUS_COLOR = {
+    running: "#eab308", // yellow
+    queued: "#eab308",
+    not_run: "#eab308",
+    pending: "#eab308",
+    setup: "#eab308",
+    on_hold: "#3b82f6", // blue
+    failing: "#f97316", // orange
+    success: "#22c55e", // green
+    failed: "#ef4444", // red
+    error: "#ef4444",
+    canceled: "#6b7280", // gray
+    cancelled: "#6b7280",
+    unauthorized: "#ef4444",
   };
 
   const DOM_STATUS_RE =
@@ -51,9 +52,10 @@
 
   let lastStatus = null;
   let label = pageLabel();
-  let baseTitle = stripStatusTitle(document.title);
   let notifiedFor = null;
   let page = parsePage();
+  let faviconHref = null;
+  let applyingFavicon = false;
 
   function normalizeStatus(raw) {
     if (raw == null) return null;
@@ -94,24 +96,100 @@
     if (page.workflowId && id && String(id) === page.workflowId) return true;
     if (page.jobNum && jobNum && String(jobNum) === page.jobNum) return true;
     if (!page.workflowId && page.pipeNum && num && String(num) === page.pipeNum) return true;
-    // Objects without identifying fields are allowed (nested status-only nodes).
     if (!id && !num && !jobNum) return true;
     return false;
   }
 
-  function stripStatusTitle(title) {
-    return String(title || "")
-      .replace(/^[⏳…⏸⚠✓✗■]\s+\S+\s+[·•|-]\s*/u, "")
-      .replace(/^\[(?:running|success|failed|error|canceled|on_hold|queued|failing)\]\s*/i, "")
-      .trim();
+  function currentIconLink() {
+    return (
+      document.querySelector('link[rel="icon"]') ||
+      document.querySelector('link[rel="shortcut icon"]') ||
+      document.querySelector('link[rel*="icon"]')
+    );
   }
 
-  function applyTitle(status) {
-    const mark = TITLE_MARK[status] || "•";
-    const pretty = status.replace(/_/g, " ");
-    const rest = baseTitle || label || "CircleCI";
-    const next = `${mark} ${pretty} · ${rest}`;
-    if (document.title !== next) document.title = next;
+  function rememberOriginalFavicon() {
+    const link = currentIconLink();
+    if (!link) return;
+    const href = link.getAttribute("href");
+    if (href && !href.startsWith("data:")) faviconHref = href;
+  }
+
+  function setFaviconHref(href) {
+    applyingFavicon = true;
+    let link = currentIconLink();
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.type = "image/png";
+    link.href = href;
+    // Nudge Chromium to refresh the tab icon.
+    const clone = link.cloneNode(true);
+    link.parentNode.replaceChild(clone, link);
+    queueMicrotask(() => {
+      applyingFavicon = false;
+    });
+  }
+
+  function drawStatusFavicon(status) {
+    rememberOriginalFavicon();
+    const color = STATUS_COLOR[status] || "#6b7280";
+    const size = 64;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+
+    const finish = () => {
+      // Soft circular badge so it reads in a crowded tab strip.
+      ctx.globalCompositeOperation = "destination-over";
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      setFaviconHref(canvas.toDataURL("image/png"));
+    };
+
+    if (!faviconHref) {
+      // Fallback: solid circle with a simple "C".
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 40px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("C", size / 2, size / 2 + 2);
+      setFaviconHref(canvas.toDataURL("image/png"));
+      return;
+    }
+
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      // Draw logo inset so the colored ring/background shows around it.
+      const pad = 8;
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
+      finish();
+    };
+    img.onerror = () => {
+      faviconHref = null;
+      drawStatusFavicon(status);
+    };
+    // Same-origin / absolute URL on app.circleci.com should load fine.
+    img.src = faviconHref.startsWith("//")
+      ? `${location.protocol}${faviconHref}`
+      : faviconHref.startsWith("/")
+        ? `${location.origin}${faviconHref}`
+        : faviconHref;
+  }
+
+  function applyFavicon(status) {
+    drawStatusFavicon(status);
   }
 
   function notifyFinished(status) {
@@ -152,11 +230,10 @@
     if (sourceLabel) label = sourceLabel;
     else label = pageLabel();
 
-    if (!baseTitle) baseTitle = stripStatusTitle(document.title) || label;
-
     const prev = lastStatus;
+    if (prev === status) return;
     lastStatus = status;
-    applyTitle(status);
+    applyFavicon(status);
 
     if (prev && RUNNING.has(prev) && TERMINAL.has(status)) {
       notifyFinished(status);
@@ -213,7 +290,6 @@
       if (!text || text.length > 32) continue;
       const m = text.match(DOM_STATUS_RE);
       if (!m) continue;
-      // Prefer badges near the top of the page.
       const rect = el.getBoundingClientRect();
       if (rect.top < 0 || rect.top > 280) continue;
       found = m[1];
@@ -265,20 +341,22 @@
     window.XMLHttpRequest = XHR;
   }
 
-  // Keep our title if the SPA overwrites it.
-  const titleEl = document.querySelector("title");
-  if (titleEl) {
-    new MutationObserver(() => {
-      if (!lastStatus) {
-        baseTitle = stripStatusTitle(document.title) || baseTitle;
-        return;
-      }
-      const stripped = stripStatusTitle(document.title);
-      if (stripped && stripped !== label) baseTitle = stripped;
-      applyTitle(lastStatus);
-    }).observe(titleEl, { childList: true, characterData: true, subtree: true });
-  }
+  // If the SPA swaps the favicon back, re-apply ours.
+  const headObserver = new MutationObserver(() => {
+    if (applyingFavicon || !lastStatus) return;
+    const link = currentIconLink();
+    if (!link) return;
+    const href = link.getAttribute("href") || "";
+    if (!href.startsWith("data:")) applyFavicon(lastStatus);
+  });
+  headObserver.observe(document.head, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["href"],
+  });
 
+  rememberOriginalFavicon();
   hookNetwork();
   scanDom();
   setInterval(scanDom, 2000);
@@ -288,7 +366,7 @@
     label = pageLabel();
     lastStatus = null;
     notifiedFor = null;
-    baseTitle = stripStatusTitle(document.title) || label;
+    rememberOriginalFavicon();
   }
 
   window.addEventListener("popstate", resetPage);
