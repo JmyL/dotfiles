@@ -78,3 +78,8 @@ eval "$(zoxide init bash)"
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+[[ -f "$HOME/.atuin/bin/env" ]] && . "$HOME/.atuin/bin/env"
+if command -v atuin >/dev/null 2>&1; then
+  eval "$(atuin init bash)"
+fi
