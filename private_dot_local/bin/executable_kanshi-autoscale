@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Scales an output 1.5x if its current mode exceeds 2560x1440, else no scale.
+# Scales an output 1.6x if its current mode exceeds 2560x1440, else no scale.
 set -euo pipefail
 
 output="${1:?usage: kanshi-autoscale <output-name>}"
@@ -15,7 +15,7 @@ if [[ -z "${width:-}" || -z "${height:-}" ]]; then
 fi
 
 if ((width > 2560 || height > 1440)); then
-  swaymsg output "$output" scale 1.5
+  swaymsg output "$output" scale 1.6
 else
   swaymsg output "$output" scale 1
 fi
