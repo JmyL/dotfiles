@@ -167,6 +167,14 @@ command = "rmarganti.herdr-pluck.pluck"
 description = "pluck visible token"
 
 [[keys.command]]
+key = "alt+semicolon"
+type = "popup"
+command = "$SHELL"
+width = "80%"
+height = "80%"
+description = "scratch shell popup"
+
+[[keys.command]]
 key = "prefix+space"
 type = "shell"
 command = "herdr-rotate-split"
