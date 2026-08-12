@@ -23,3 +23,5 @@
 	conflictstyle = zdiff3
 [diff]
 	colorMoved = default
+[rebase]
+	instructionFormat = %<(20,trunc)%an %s
