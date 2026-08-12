@@ -1,3 +1,12 @@
-/* Active-tab highlight intentionally empty (was too strong).
- * Add rules here again if a subtler style is wanted later.
- */
+/* Active tab: slightly darker background only. */
+.tab-position .tab.active,
+#tabs-container .tab.active,
+.toolbar-tabbar .tab.active {
+  background-color: #2a2a2c !important;
+}
+
+.tab-position .tab.active .tab-header,
+#tabs-container .tab.active .tab-header,
+.toolbar-tabbar .tab.active .tab-header {
+  background-color: transparent !important;
+}
