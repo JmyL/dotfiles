@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Point Vivaldi Custom UI Modifications at the chezmoi-managed CSS dir.
+# Apply chezmoi-managed Vivaldi UI bits into Preferences:
+# - Custom UI Modifications directory (~/.config/vivaldi-ui/*.css)
+# - layout.json (toolbar composition, hidden extension icons, bar positions, …)
 # Prefer running while Vivaldi is quit so Preferences is not overwritten on exit.
 
 ui_dir="${XDG_CONFIG_HOME:-$HOME/.config}/vivaldi-ui"
+layout="${ui_dir}/layout.json"
 prefs="${XDG_CONFIG_HOME:-$HOME/.config}/vivaldi/Default/Preferences"
 
 if [[ ! -d "$ui_dir" ]]; then
   printf 'Missing UI dir: %s\n' "$ui_dir" >&2
+  exit 1
+fi
+if [[ ! -f "$layout" ]]; then
+  printf 'Missing layout: %s\n' "$layout" >&2
   exit 1
 fi
 if [[ ! -f "$prefs" ]]; then
@@ -22,20 +29,70 @@ if pgrep -x vivaldi-bin >/dev/null 2>&1; then
   printf 'Quit Vivaldi, re-run this script, then start Vivaldi again.\n' >&2
 fi
 
-python3 - "$prefs" "$ui_dir" <<'PY'
+python3 - "$prefs" "$ui_dir" "$layout" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 prefs_path = Path(sys.argv[1])
 ui_dir = str(Path(sys.argv[2]).resolve())
+layout = json.loads(Path(sys.argv[3]).read_text())
 data = json.loads(prefs_path.read_text())
 vivaldi = data.setdefault("vivaldi", {})
+
+def deep_merge(dst, src):
+  for key, val in src.items():
+    if key.startswith("_"):
+      continue
+    if isinstance(val, dict) and isinstance(dst.get(key), dict):
+      deep_merge(dst[key], val)
+    else:
+      dst[key] = val
+
 appearance = vivaldi.setdefault("appearance", {})
-old = appearance.get("css_ui_mods_directory")
+old_css = appearance.get("css_ui_mods_directory")
 appearance["css_ui_mods_directory"] = ui_dir
+
+if "appearance" in layout:
+  deep_merge(appearance, layout["appearance"])
+if "address_bar" in layout:
+  deep_merge(vivaldi.setdefault("address_bar", {}), layout["address_bar"])
+if "toolbars" in layout:
+  deep_merge(vivaldi.setdefault("toolbars", {}), layout["toolbars"])
+if "tabs" in layout:
+  deep_merge(vivaldi.setdefault("tabs", {}), layout["tabs"])
+if "windows" in layout:
+  deep_merge(vivaldi.setdefault("windows", {}), layout["windows"])
+
+color_pos = layout.get("theme_color_position")
+if color_pos:
+  schedule = (vivaldi.get("theme") or {}).get("schedule") or {}
+  ids = set()
+  for bucket in schedule.values():
+    if isinstance(bucket, dict):
+      ids.update(v for v in bucket.values() if isinstance(v, str))
+  current = (vivaldi.get("themes") or {}).get("current")
+  if isinstance(current, str):
+    ids.add(current)
+  themes = vivaldi.setdefault("themes", {})
+  for bucket_name in ("system", "user"):
+    for theme in themes.get(bucket_name) or []:
+      if theme.get("id") in ids:
+        theme["colorPosition"] = color_pos
+
 prefs_path.write_text(json.dumps(data, separators=(",", ":"), ensure_ascii=False) + "\n")
-print(f"css_ui_mods_directory: {old!r} -> {ui_dir!r}")
+print(f"css_ui_mods_directory: {old_css!r} -> {ui_dir!r}")
+hidden = (
+  vivaldi.get("address_bar", {})
+  .get("extensions", {})
+  .get("hidden_extensions", [])
+)
+print(f"hidden_extensions: {hidden}")
+print(f"toolbars.navigation: {vivaldi.get('toolbars', {}).get('navigation')}")
+print(f"tabs.bar.position: {vivaldi.get('tabs', {}).get('bar', {}).get('position')}")
+print(f"address_bar.position: {vivaldi.get('address_bar', {}).get('position')}")
+if color_pos:
+  print(f"theme_color_position: {color_pos}")
 PY
 
-printf 'Done. Restart Vivaldi (or set Appearance → Custom UI Modifications → %s).\n' "$ui_dir"
+printf 'Done. Restart Vivaldi to load CSS from %s.\n' "$ui_dir"
