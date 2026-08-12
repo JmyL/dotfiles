@@ -1,15 +1,3 @@
-/* Active tab: high-contrast highlight (Vivaldi Custom UI Modifications). */
-.tab-position .tab.active,
-#tabs-container .tab.active,
-.toolbar-tabbar .tab.active {
-  background-color: #0d0d0d !important;
-  color: #ffffff !important;
-  box-shadow: inset 0 -3px 0 #7aa0ff !important;
-}
-
-.tab-position .tab.active .tab-header,
-#tabs-container .tab.active .tab-header,
-.toolbar-tabbar .tab.active .tab-header {
-  background-color: transparent !important;
-  color: #ffffff !important;
-}
+/* Active-tab highlight intentionally empty (was too strong).
+ * Add rules here again if a subtler style is wanted later.
+ */
