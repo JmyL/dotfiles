@@ -2,7 +2,7 @@
 .tab-position .tab.active,
 #tabs-container .tab.active,
 .toolbar-tabbar .tab.active {
-  background-color: #2a2a2c !important;
+  background-color: #1f1f21 !important;
 }
 
 .tab-position .tab.active .tab-header,
