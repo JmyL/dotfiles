@@ -4,6 +4,6 @@
     "fit-to-screen": true,
     "widgets": ["notifications"],
     "notification-grouping": false,
-    "notification-2fa-action": false,
+    "notification-2fa-action": true,
     "timeout": 20
 }

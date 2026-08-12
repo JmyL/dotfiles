@@ -321,6 +321,8 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     bindsym $mod+BackSpace exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" --close-latest -sw'
     # Activate (click) the latest notification's default action
     bindsym $mod+Return exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -ad -sw'
+    # Activate the latest notification's first action (e.g. COPY 2FA code)
+    bindsym $mod+y exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -a 0 -sw'
     # Clipboard history (clipse TUI in floating foot; auto-pastes on choose)
     bindsym $mod+v exec foot --app-id=clipse --window-size-chars=100x32 ~/.local/bin/clipse
     # Toggle idle/sleep inhibitor
