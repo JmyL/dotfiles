@@ -1,6 +1,8 @@
 {
     "positionX": "right",
     "positionY": "bottom",
+    "fit-to-screen": false,
+    "widgets": ["notifications"],
     "notification-grouping": false,
     "notification-2fa-action": false,
     "timeout": 20
