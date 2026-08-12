@@ -1,7 +1,7 @@
 /**
  * Slack stay in browser — background service worker.
  *
- * Alt+Shift+S (command focus-slack-tab) focuses an open Slack tab.
+ * Alt+S (command focus-slack-tab) focuses an open Slack tab.
  *
  * Reusing an open tab for incoming permalinks is deliberately not attempted:
  * Slack only renders history entries it created itself, so an injected route

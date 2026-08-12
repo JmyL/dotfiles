@@ -37,7 +37,7 @@ client.placeholder      #000000 #1e1e2e #cdd6f4 #000000   #000000
 
 default_border pixel 3
 default_floating_border pixel 3
-gaps inner 6
+gaps inner 7
 gaps outer 0
 smart_gaps on
 smart_borders on
@@ -106,8 +106,8 @@ seat * hide_cursor 3000
     # Start a terminal
     bindsym $mod+i exec $term
 
-    # Start Brave browser
-    bindsym $mod+Shift+i exec ~/.local/bin/brave-browser
+    # Start Vivaldi (Slack stay-in-browser via External Extensions)
+    bindsym $mod+Shift+i exec /usr/bin/vivaldi-stable
 
     # Start file browser
     bindsym $mod+e exec thunar

@@ -93,9 +93,10 @@ Core desktop tools:
 - `swaylock`
 - `thunar`
 - `flatpak`
-- Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup
-- Tampermonkey (Brave/Chrome extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
-- Local Brave extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+Shift+S focuses an open Slack tab (`brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON). Restart Brave fully after installing or upgrading on a new machine.
+- Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup (still used for packing local extensions / optional browsing)
+- Vivaldi (`vivaldi-stable`) — Sway `$mod+Shift+i` default browser on this setup
+- Tampermonkey (Brave/Chrome/Vivaldi extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
+- Local Chromium extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+S focuses an open Slack tab (`vivaldi://extensions/shortcuts` / `brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON for both Brave and Vivaldi). Restart the browser fully after installing or upgrading on a new machine.
 - `wireplumber` (`wpctl`) and `pipewire-bin`/`pipewire-utils` (`pw-dump`) — used by `sway-audio-switch` to list/switch default audio devices
 
 Screenshot/recording/clipboard:
@@ -291,7 +292,8 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 
 - `foot` ≥1.26 (Ubuntu 26.04 apt is 1.25): build to `~/.local` — `sudo apt install meson ninja-build libwayland-dev wayland-protocols libxkbcommon-dev libfontconfig-dev libfreetype-dev libpixman-1-dev libfcft-dev libtllist-dev libutf8proc-dev libutempter-dev scdoc` then from the [release tarball](https://codeberg.org/dnkl/foot/releases): `meson setup build --buildtype=release --prefix="$HOME/.local" && ninja -C build install`
 - npm install -g @mermaid-js/mermaid-cli
-- brave-browser
+- brave-browser (still used to pack local `.crx` via `brave-install-local-extensions`)
+- vivaldi-stable (Sway `$mod+Shift+i`; install from Vivaldi’s apt repo or package)
 - `grimshot` may come from `sway-contrib` or need a manual install depending on release.
 - `swayosd-client`
 - `swaync-client`
