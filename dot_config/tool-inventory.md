@@ -95,8 +95,19 @@ Core desktop tools:
 - `flatpak`
 - Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup (still used for packing local extensions / optional browsing)
 - Vivaldi (`vivaldi-stable`) — Sway `$mod+Shift+i` default browser on this setup
+- Vivaldi Custom UI CSS: `~/.config/vivaldi-ui/` (chezmoi). Point Appearance → Custom UI Modifications at that directory, or run `vivaldi-setup-ui` while Vivaldi is quit. Includes darker active-tab background (`active-tab.css`).
 - Tampermonkey (Brave/Chrome/Vivaldi extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
 - Local Chromium extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+S focuses an open Slack tab (`vivaldi://extensions/shortcuts` / `brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON for both Brave and Vivaldi). Restart the browser fully after installing or upgrading on a new machine.
+
+Vivaldi UI checklist (new machine; do **not** chezmoi-track `~/.config/vivaldi/` profile state):
+
+1. Install `vivaldi-stable`, then once: `brave-install-local-extensions` and fully restart Vivaldi (Slack stay-in-browser).
+2. `vivaldi-setup-ui` (Vivaldi quit) — wires Custom UI Modifications → `~/.config/vivaldi-ui`.
+3. Tabs → Tab Bar Position: **Bottom**; Address Bar → Address Bar Position: **Bottom**.
+4. Appearance → Window: **Use native window**; disable title bar if offered.
+5. Themes: prefer a **user copy** of Dark; Coloring mode **not Unified** (e.g. address bar) — Unified draws a thick frame around the window. Avoid relying on editing stock `Vivaldi2` (updates can reset it).
+6. Auto-Hide: optional; address bar only if used. Unified + Auto-Hide can leave a frame even after mode changes.
+7. Confirm `vivaldi://extensions` has Slack stay-in-browser; shortcuts: Alt+S for Slack tab focus.
 - `wireplumber` (`wpctl`) and `pipewire-bin`/`pipewire-utils` (`pw-dump`) — used by `sway-audio-switch` to list/switch default audio devices
 
 Screenshot/recording/clipboard:

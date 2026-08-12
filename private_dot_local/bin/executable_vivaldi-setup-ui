@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Point Vivaldi Custom UI Modifications at the chezmoi-managed CSS dir.
+# Prefer running while Vivaldi is quit so Preferences is not overwritten on exit.
+
+ui_dir="${XDG_CONFIG_HOME:-$HOME/.config}/vivaldi-ui"
+prefs="${XDG_CONFIG_HOME:-$HOME/.config}/vivaldi/Default/Preferences"
+
+if [[ ! -d "$ui_dir" ]]; then
+  printf 'Missing UI dir: %s\n' "$ui_dir" >&2
+  exit 1
+fi
+if [[ ! -f "$prefs" ]]; then
+  printf 'Vivaldi Preferences not found: %s\n' "$prefs" >&2
+  printf 'Start Vivaldi once, quit, then re-run.\n' >&2
+  exit 1
+fi
+
+if pgrep -x vivaldi-bin >/dev/null 2>&1; then
+  printf 'Warning: Vivaldi is running; it may overwrite Preferences on quit.\n' >&2
+  printf 'Quit Vivaldi, re-run this script, then start Vivaldi again.\n' >&2
+fi
+
+python3 - "$prefs" "$ui_dir" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+prefs_path = Path(sys.argv[1])
+ui_dir = str(Path(sys.argv[2]).resolve())
+data = json.loads(prefs_path.read_text())
+vivaldi = data.setdefault("vivaldi", {})
+appearance = vivaldi.setdefault("appearance", {})
+old = appearance.get("css_ui_mods_directory")
+appearance["css_ui_mods_directory"] = ui_dir
+prefs_path.write_text(json.dumps(data, separators=(",", ":"), ensure_ascii=False) + "\n")
+print(f"css_ui_mods_directory: {old!r} -> {ui_dir!r}")
+PY
+
+printf 'Done. Restart Vivaldi (or set Appearance → Custom UI Modifications → %s).\n' "$ui_dir"
