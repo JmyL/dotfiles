@@ -170,8 +170,8 @@ description = "pluck visible token"
 key = "alt+semicolon"
 type = "popup"
 command = "$SHELL"
-width = "80%"
-height = "80%"
+width = "50%"
+height = "50%"
 description = "scratch shell popup"
 
 [[keys.command]]
