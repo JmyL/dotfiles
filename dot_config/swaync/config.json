@@ -1,4 +1,6 @@
 {
+    "positionX": "right",
+    "positionY": "bottom",
     "notification-grouping": false,
     "notification-2fa-action": false,
     "timeout": 20
