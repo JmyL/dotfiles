@@ -7,3 +7,4 @@ lmilojevicc/herdr-splits.nvim
 JmyL/herdr-focus-notify main
 JmyL/herdr-navigator jump-back-agent-workspace
 danbuhler/herdr-pane-topic-sync
+rjyo/herdr-window-title-sync
