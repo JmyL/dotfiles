@@ -1,6 +1,6 @@
 {
     "positionX": "right",
-    "positionY": "bottom",
+    "positionY": "top",
     "fit-to-screen": true,
     "widgets": ["notifications"],
     "notification-grouping": false,
