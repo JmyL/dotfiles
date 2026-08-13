@@ -72,27 +72,30 @@ alias ping='ping -4'
 #   fi
 # fi
 
-eval "$(starship init bash)"
-eval "$(zoxide init bash)"
-
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
-# Atuin bash recording requires bash-preexec (zsh-like precmd/preexec hooks).
-[[ -f "$HOME/.bash-preexec.sh" ]] && . "$HOME/.bash-preexec.sh"
+# Keep atuin on PATH for non-interactive shells; init/bind is interactive-only.
 [[ -f "$HOME/.atuin/bin/env" ]] && . "$HOME/.atuin/bin/env"
-if command -v atuin >/dev/null 2>&1; then
-  eval "$(atuin init bash)"
-fi
 
-# Keep the interactive prompt at the bottom of the terminal viewport.
-__prompt_to_bottom() {
-  [[ $- == *i* && -n ${LINES:-} ]] || return 0
-  printf '\033[%s;1H' "$LINES"
-}
-
+# Prompt widgets and readline bindings must not run under BASH_ENV (e.g. vifm :!).
 if [[ $- == *i* ]]; then
+  eval "$(starship init bash)"
+  eval "$(zoxide init bash)"
+
+  # Atuin bash recording requires bash-preexec (zsh-like precmd/preexec hooks).
+  [[ -f "$HOME/.bash-preexec.sh" ]] && . "$HOME/.bash-preexec.sh"
+  if command -v atuin >/dev/null 2>&1; then
+    eval "$(atuin init bash)"
+  fi
+
+  # Keep the interactive prompt at the bottom of the terminal viewport.
+  __prompt_to_bottom() {
+    [[ -n ${LINES:-} ]] || return 0
+    printf '\033[%s;1H' "$LINES"
+  }
+
   clear() {
     command clear "$@"
     __prompt_to_bottom
