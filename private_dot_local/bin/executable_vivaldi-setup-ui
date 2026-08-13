@@ -63,6 +63,8 @@ if "tabs" in layout:
   deep_merge(vivaldi.setdefault("tabs", {}), layout["tabs"])
 if "windows" in layout:
   deep_merge(vivaldi.setdefault("windows", {}), layout["windows"])
+if "downloads" in layout:
+  deep_merge(vivaldi.setdefault("downloads", {}), layout["downloads"])
 
 color_pos = layout.get("theme_color_position")
 if color_pos:
@@ -91,6 +93,7 @@ print(f"hidden_extensions: {hidden}")
 print(f"toolbars.navigation: {vivaldi.get('toolbars', {}).get('navigation')}")
 print(f"tabs.bar.position: {vivaldi.get('tabs', {}).get('bar', {}).get('position')}")
 print(f"address_bar.position: {vivaldi.get('address_bar', {}).get('position')}")
+print(f"downloads.open_panel_on_new: {vivaldi.get('downloads', {}).get('open_panel_on_new')}")
 if color_pos:
   print(f"theme_color_position: {color_pos}")
 PY

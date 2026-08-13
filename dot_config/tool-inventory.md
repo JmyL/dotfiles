@@ -95,7 +95,7 @@ Core desktop tools:
 - `flatpak`
 - Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup (still used for packing local extensions / optional browsing)
 - Vivaldi (`vivaldi-stable`) — Sway `$mod+Shift+i` default browser on this setup
-- Vivaldi UI pack: `~/.config/vivaldi-ui/` (chezmoi) — `active-tab.css` (strong active-tab highlight), `layout.json` (toolbar composition, hidden extension toolbar icons, tab/address bar bottom, native window). Apply with `vivaldi-setup-ui` while Vivaldi is quit (sets Custom UI Modifications path + merges `layout.json` into Preferences). Do **not** track `~/.config/vivaldi/` profile state.
+- Vivaldi UI pack: `~/.config/vivaldi-ui/` (chezmoi) — `active-tab.css` (strong active-tab highlight), `layout.json` (toolbar composition, hidden extension toolbar icons, tab/address bar bottom, native window, no auto Downloads panel). Apply with `vivaldi-setup-ui` while Vivaldi is quit (sets Custom UI Modifications path + merges `layout.json` into Preferences). Do **not** track `~/.config/vivaldi/` profile state.
 - Tampermonkey (Brave/Chrome/Vivaldi extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
 - Local Chromium extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+S focuses an open Slack tab (`vivaldi://extensions/shortcuts` / `brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON for both Brave and Vivaldi). Restart the browser fully after installing or upgrading on a new machine.
 
@@ -103,7 +103,7 @@ Vivaldi UI checklist (new machine):
 
 1. Install `vivaldi-stable`, then once: `brave-install-local-extensions` and fully restart Vivaldi (Slack stay-in-browser).
 2. Quit Vivaldi, run `vivaldi-setup-ui`, start Vivaldi — CSS + toolbar/hidden icons + bar positions from `vivaldi-ui/layout.json`.
-3. After changing toolbars or “Hide button” on an extension icon in the UI, copy the new `toolbars.*` / `address_bar.extensions.hidden_extensions` values into `~/.config/vivaldi-ui/layout.json`, then `chezmoi add` that file.
+3. After changing toolbars, “Hide button” on an extension icon, or Downloads settings in the UI, copy the new `toolbars.*` / `address_bar.extensions.hidden_extensions` / `downloads.*` values into `~/.config/vivaldi-ui/layout.json`, then `chezmoi add` that file. `downloads.open_panel_on_new=false` keeps the left Downloads panel from opening on each download.
 4. Themes: prefer a **user copy** of Dark; Coloring mode **not Unified** (`layout.json` sets `theme_color_position=addressbar` on the scheduled theme). Stock theme edits can reset on update.
 5. Auto-Hide: optional; address bar only if used. Unified + Auto-Hide can leave a frame.
 6. Confirm `vivaldi://extensions` has Slack stay-in-browser; shortcuts: Alt+S for Slack tab focus. Hidden toolbar icons (Show Tab Numbers, Slack stay-in-browser) still run in the background.
