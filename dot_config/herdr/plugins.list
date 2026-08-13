@@ -6,3 +6,4 @@ JmyL/herdr-pluck osc52-clipboard
 lmilojevicc/herdr-splits.nvim
 JmyL/herdr-focus-notify main
 JmyL/herdr-navigator jump-back-agent-workspace
+rjyo/herdr-window-title-sync
