@@ -145,6 +145,7 @@
 		"return-type": "json",
 		"interval": 15,
 		"signal": 10,
+		"on-click": "$HOME/.local/bin/work/ree-reserve select --next",
 		"menu": "on-click-right",
 		"menu-file": "$HOME/.config/waybar/ree-testbed-menu.xml",
 		"menu-actions": {
