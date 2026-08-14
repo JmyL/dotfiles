@@ -266,9 +266,9 @@ bindsym $mod+r mode "$resize_mode"
 # Screenshot mode: captures go to the clipboard by default.
 set $screenshot_mode Screenshot: [a]rea [w]indow [f]ull [e]dit [s]ave [q]uit
 mode "$screenshot_mode" {
-    bindsym a exec grimshot copy area
-    bindsym w exec grimshot copy window
-    bindsym f exec grimshot copy screen
+    bindsym a mode "default", exec grimshot copy area
+    bindsym w mode "default", exec grimshot copy window
+    bindsym f mode "default", exec grimshot copy screen
     bindsym e mode "default", exec wl-paste --type image/png | swappy -f -
     bindsym s mode "default", exec ~/.local/bin/save-screenshot
     bindsym Return mode "default"
