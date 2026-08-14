@@ -35,10 +35,8 @@
   fill: #11111b !important;
 }
 
-/* Site favicons: same filled halo as Vivaldi's dark-theme outline, in black. */
+/* Site favicons: rounded square frame instead of the icon-shaped halo. */
 .tab.active .tab-header .favicon:not(.svg) {
-  filter: drop-shadow(1px 0 0 rgba(0, 0, 0, 0.75))
-    drop-shadow(-1px 0 0 rgba(0, 0, 0, 0.75))
-    drop-shadow(0 1px 0 rgba(0, 0, 0, 0.75))
-    drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.75)) !important;
+  filter: none !important;
+  box-shadow: 0 0 0 2px #000 !important;
 }
