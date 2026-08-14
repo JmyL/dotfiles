@@ -82,7 +82,7 @@
 		}
 	},
 	"sway/mode": {
-		"format": "<span style=\"italic\">{}</span>"
+		"format": "{}"
 	},
 	// Tiny exec only: Waybar 0.15 runs image `exec` on the GTK main thread.
 	// Heavy icon lookup/rasterize happens in waybar-window-focus-watcher; this
