@@ -35,7 +35,7 @@
   fill: #11111b !important;
 }
 
-/* Site favicons: filled black rounded square behind the icon. */
+/* Site favicons: filled dark rounded square behind the icon. */
 .tab.active .tab-header .favicon:not(.svg) {
   filter: none !important;
   background-color: #222 !important;
