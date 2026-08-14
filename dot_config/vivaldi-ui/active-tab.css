@@ -35,8 +35,9 @@
   fill: #11111b !important;
 }
 
-/* Site favicons: rounded square frame instead of the icon-shaped halo. */
+/* Site favicons: filled black rounded square behind the icon. */
 .tab.active .tab-header .favicon:not(.svg) {
   filter: none !important;
+  background-color: #000 !important;
   box-shadow: 0 0 0 2px #000 !important;
 }
