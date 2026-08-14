@@ -3,11 +3,29 @@
 #
 # Sway does not respawn swaybar_command after exit. Login-time kanshi output
 # reshuffles can race the first start so the bar never appears until reload.
-# Keep this as the only Waybar launcher (bar { swaybar_command ... }); do not
+# Keep this as the only Waybar launcher (bar { swaybar_command … }); do not
 # also exec waybar from Sway config.
+#
+# swaybar_command must be an absolute path — Sway does not expand ~ or $HOME.
 set -euo pipefail
 
 waybar_bin="$(command -v waybar)" || exit 1
+pidfile="${XDG_RUNTIME_DIR:-/tmp}/waybar-sway-bar.pid"
+
+# Replace a leftover wrapper (e.g. after killall waybar) so reload cannot
+# stack a second bar client.
+if [[ -f "$pidfile" ]]; then
+  old="$(cat "$pidfile" 2>/dev/null || true)"
+  if [[ -n "${old:-}" && "$old" -ne $$ ]] && kill -0 "$old" 2>/dev/null; then
+    kill "$old" 2>/dev/null || true
+    for ((i=0; i<20; i++)); do
+      kill -0 "$old" 2>/dev/null || break
+      sleep 0.05
+    done
+  fi
+  rm -f "$pidfile"
+fi
+echo $$ >"$pidfile"
 
 child=
 cleanup() {
@@ -15,6 +33,7 @@ cleanup() {
     kill "$child" 2>/dev/null || true
     wait "$child" 2>/dev/null || true
   fi
+  rm -f "$pidfile"
   exit 0
 }
 trap cleanup TERM INT HUP

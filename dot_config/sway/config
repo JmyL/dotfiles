@@ -76,11 +76,9 @@ exec swayidle -w \
 # instead of it polling every second.
 exec_always ~/.local/bin/waybar-window-focus-watcher
 
-# waybar-sway-bar restarts waybar if it exits (Sway will not). Do not also
-# exec waybar — that stacks a second unmanaged instance on reload.
-bar {
-    swaybar_command ~/.local/bin/waybar-sway-bar
-}
+# bar { swaybar_command … } lives in config.d/05-waybar-bar.conf (chezmoi
+# templates an absolute path; sway does not expand ~ or $HOME here).
+# Do not also exec waybar — that stacks a second unmanaged instance on reload.
 
 ### Input configuration
 #

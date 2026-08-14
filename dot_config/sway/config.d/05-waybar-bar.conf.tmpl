@@ -1,0 +1,5 @@
+# Waybar via Sway bar client. swaybar_command must be absolute — Sway does not
+# expand ~ or $HOME here. waybar-sway-bar restarts waybar if it exits.
+bar {
+    swaybar_command {{ .chezmoi.homeDir }}/.local/bin/waybar-sway-bar
+}
