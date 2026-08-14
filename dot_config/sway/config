@@ -97,7 +97,8 @@ exec_always ~/.local/bin/waybar-window-focus-watcher
 #
 # You can also configure each device individually.
 # Read `man 5 sway-input` for more information about this section.
-seat * hide_cursor 3000
+seat * hide_cursor 0
+seat * hide_cursor when-typing enable
 
 ### Key bindings
 #

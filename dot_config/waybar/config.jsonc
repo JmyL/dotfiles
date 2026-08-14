@@ -144,7 +144,14 @@
 		"exec": "$HOME/.local/bin/work/ree-testbed-status",
 		"return-type": "json",
 		"interval": 15,
-		"signal": 10
+		"signal": 10,
+		"menu": "on-click-right",
+		"menu-file": "$HOME/.config/waybar/ree-testbed-menu.xml",
+		"menu-actions": {
+			"reserve": "$HOME/.local/bin/work/ree-open-pipeline reserve",
+			"ts": "$HOME/.local/bin/work/ree-open-pipeline ts",
+			"ve": "$HOME/.local/bin/work/ree-open-pipeline ve"
+		}
 	},
 	"custom/idle_inhibitor": {
 		"exec": "~/.local/bin/idle-inhibit-status",
