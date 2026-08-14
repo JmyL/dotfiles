@@ -10,7 +10,7 @@
 [credential "https://gist.github.com"]
 	helper = 
 	helper = !/usr/bin/gh auth git-credential
-[includeIf "gitdir:~/projects/ree-*/"]
+[includeIf "gitdir:~/projects/"]
 	path = ~/.config/work/gitconfig
 [core]
 	pager = delta
