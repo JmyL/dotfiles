@@ -129,6 +129,7 @@ button:hover {
 #interactive,
 #sound,
 #connectivity,
+#work,
 #system-status {
     /* Item padding (4px each side) already sets in-group gaps; don't add extra
        group padding. Negative margin cancels bar "spacing" between group pills. */
@@ -165,6 +166,8 @@ button:hover {
 #sound #pulseaudio,
 #connectivity #bluetooth,
 #connectivity #custom-forager-battery,
+#work #custom-ree-vpn,
+#work #custom-ree-testbed,
 #system-status #cpu,
 #system-status #memory,
 #system-status #battery {
@@ -329,6 +332,32 @@ label:focus {
 #custom-idle_inhibitor.activated {
     background-color: transparent;
     color: #69db8b;
+}
+
+#custom-ree-vpn.ok,
+#custom-ree-testbed.ready,
+#custom-ree-testbed.session {
+    color: #69db8b;
+}
+
+#custom-ree-vpn.warn,
+#custom-ree-testbed.reserving,
+#custom-ree-testbed.deploying {
+    color: #ffd166;
+}
+
+#custom-ree-vpn.expired,
+#custom-ree-testbed.failed,
+#custom-ree-testbed.urgent {
+    color: #ff7b86;
+}
+
+#custom-ree-testbed.idle {
+    color: #aeb4ba;
+}
+
+#custom-ree-testbed.reserved {
+    color: #72b7f2;
 }
 
 #mpd {

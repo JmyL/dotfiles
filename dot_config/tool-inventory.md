@@ -95,6 +95,9 @@ Core desktop tools:
 - `flatpak`
 - Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup (still used for packing local extensions / optional browsing)
 - Vivaldi (`vivaldi-stable`) — Sway `$mod+Shift+i` default browser on this setup
+- 1Password desktop (`1password`) + CLI (`op`) — `ree-goodmorning` / `vay-token-update` TOTP. Linux Vivaldi needs `/etc/1password/custom_allowed_browsers` to contain `vivaldi-bin` (uncomment; restart 1Password) so the extension shares the app lock
+- Twingate CLI (`twingate`) — `ree-goodmorning` / Waybar VPN status (`Berlin_Testbeds_ALL`)
+- AWS CLI (`aws`) + `~/projects/vay-aws-mfa` — `vay-token-update` writes `~/.aws/vay_aws_mfa_cache.env`
 - Vivaldi UI pack: `~/.config/vivaldi-ui/` (chezmoi) — `active-tab.css` (strong active-tab highlight), `layout.json` (toolbar composition, hidden extension toolbar icons, tab/address bar bottom, native window, no auto Downloads panel). Apply with `vivaldi-setup-ui` while Vivaldi is quit (sets Custom UI Modifications path + merges `layout.json` into Preferences). Do **not** track `~/.config/vivaldi/` profile state.
 - Tampermonkey (Brave/Chrome/Vivaldi extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
 - Local Chromium extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+S focuses an open Slack tab (`vivaldi://extensions/shortcuts` / `brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON for both Brave and Vivaldi). Restart the browser fully after installing or upgrading on a new machine.
@@ -259,6 +262,9 @@ May need separate installation depending on Fedora version/repositories:
 - `tmuxinator`
 - `pi`
 - `herdr`
+- `1password` + `op` (1Password Linux + CLI)
+- `twingate`
+- `awscli`
 - `bun` — `curl -fsSL https://bun.sh/install | bash` (symlink `~/.bun/bin/bun` into `~/.local/bin` if Herdr's PATH lacks `~/.bun/bin`)
 - `uv`
 - `gh` extension `dlvhdr/gh-dash`: `gh extension install dlvhdr/gh-dash`
@@ -311,6 +317,9 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `tmuxinator`
 - `pi`
 - `herdr`
+- `1password` + `op` (1Password Linux + CLI)
+- `twingate`
+- `awscli`
 - `bun` — `curl -fsSL https://bun.sh/install | bash` (symlink `~/.bun/bin/bun` into `~/.local/bin` if Herdr's PATH lacks `~/.bun/bin`)
 - `uv`
 - `gh` extension `dlvhdr/gh-dash`: `gh extension install dlvhdr/gh-dash`

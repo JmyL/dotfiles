@@ -22,6 +22,7 @@
 		"group/interactive",
 		"group/sound",
 		"group/connectivity",
+		"group/work",
 		"group/system-status"
 	],
 	"group/interactive": {
@@ -44,6 +45,13 @@
 		"modules": [
 			"network",
 			"custom/forager-battery"
+		]
+	},
+	"group/work": {
+		"orientation": "horizontal",
+		"modules": [
+			"custom/ree-vpn",
+			"custom/ree-testbed"
 		]
 	},
 	"group/system-status": {
@@ -124,6 +132,19 @@
 		},
 		"tooltip-format": "MPD (connected)",
 		"tooltip-format-disconnected": "MPD (disconnected)"
+	},
+	"custom/ree-vpn": {
+		"exec": "$HOME/.local/bin/work/ree-vpn-status",
+		"return-type": "json",
+		"interval": 60,
+		"signal": 10,
+		"on-click": "foot --app-id=ree-goodmorning --title=goodmorning -e $HOME/.local/bin/work/ree-goodmorning"
+	},
+	"custom/ree-testbed": {
+		"exec": "$HOME/.local/bin/work/ree-testbed-status",
+		"return-type": "json",
+		"interval": 15,
+		"signal": 10
 	},
 	"custom/idle_inhibitor": {
 		"exec": "~/.local/bin/idle-inhibit-status",
