@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Sway bar client wrapper: run waybar and restart it if it exits.
+#
+# Sway does not respawn swaybar_command after exit. Login-time kanshi output
+# reshuffles can race the first start so the bar never appears until reload.
+# Keep this as the only Waybar launcher (bar { swaybar_command ... }); do not
+# also exec waybar from Sway config.
+set -euo pipefail
+
+waybar_bin="$(command -v waybar)" || exit 1
+
+child=
+cleanup() {
+  if [[ -n "${child:-}" ]]; then
+    kill "$child" 2>/dev/null || true
+    wait "$child" 2>/dev/null || true
+  fi
+  exit 0
+}
+trap cleanup TERM INT HUP
+
+wait_for_active_output() {
+  local i
+  for ((i=0; i<50; i++)); do
+    if swaymsg -t get_outputs 2>/dev/null | grep -q '"active": true'; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
+wait_for_active_output || true
+
+while true; do
+  "$waybar_bin" "$@" &
+  child=$!
+  wait "$child" || true
+  child=
+  sleep 0.3
+done

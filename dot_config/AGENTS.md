@@ -34,7 +34,7 @@ When an agent is launched from this home directory, assume the task is to modify
 
 ## Sway / Waybar
 
-Waybar is started only by Sway's `bar { swaybar_command waybar }` block (`waybar -b bar-0`). Do not also `swaymsg exec waybar` (or equivalent): that leaves an unmanaged second instance that survives `swaymsg reload` and stacks with the bar-managed one.
+Waybar is started only by Sway's `bar { swaybar_command ~/.local/bin/waybar-sway-bar }` block (wrapper runs `waybar -b bar-0` and restarts on exit). Do not also `swaymsg exec waybar` (or equivalent): that leaves an unmanaged second instance that survives `swaymsg reload` and stacks with the bar-managed one.
 
 - CSS/config-only changes: `swaymsg reload` is enough.
 - If Waybar must be restarted: `killall waybar; swaymsg reload` — never `swaymsg exec waybar`.
