@@ -143,6 +143,7 @@
 	"custom/ree-testbed": {
 		"exec": "$HOME/.local/bin/work/ree-testbed-status",
 		"return-type": "json",
+		"markup": true,
 		"interval": 15,
 		"signal": 10,
 		"on-click": "$HOME/.local/bin/work/ree-reserve select --next",
