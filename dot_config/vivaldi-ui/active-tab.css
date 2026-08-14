@@ -1,8 +1,8 @@
-/* Active tab: slightly darker background only. */
+/* Active tab: darker, blue-slate background only. */
 .tab-position .tab.active,
 #tabs-container .tab.active,
 .toolbar-tabbar .tab.active {
-  background-color: #1f1f21 !important;
+  background-color: #161b26 !important;
 }
 
 .tab-position .tab.active .tab-header,
