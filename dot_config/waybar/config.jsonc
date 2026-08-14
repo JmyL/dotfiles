@@ -147,13 +147,7 @@
 		"interval": 15,
 		"signal": 10,
 		"on-click": "$HOME/.local/bin/work/ree-reserve select --next",
-		"menu": "on-click-right",
-		"menu-file": "$HOME/.config/waybar/ree-testbed-menu.xml",
-		"menu-actions": {
-			"reserve": "$HOME/.local/bin/work/ree-open-pipeline reserve",
-			"ts": "$HOME/.local/bin/work/ree-open-pipeline ts",
-			"ve": "$HOME/.local/bin/work/ree-open-pipeline ve"
-		}
+		"on-click-right": "$HOME/.local/bin/work/ree-open-pipeline"
 	},
 	"custom/idle_inhibitor": {
 		"exec": "~/.local/bin/idle-inhibit-status",
