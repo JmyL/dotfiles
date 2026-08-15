@@ -4,59 +4,207 @@ set -eu
 recording_dir="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
 pid_file="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.pid"
 log_file="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.log"
+mix_pid_file="${XDG_RUNTIME_DIR:-/tmp}/sway-recording-mix.pid"
 # Must match $recording_start_mode / $recording_stop_mode in ~/.config/sway/config.
 recording_start_mode="${SWAY_RECORDING_START_MODE:-Recording: [a]rea [f]ull [q]uit}"
 recording_stop_mode="${SWAY_RECORDING_STOP_MODE:-Recording: [s]top [q]uit}"
+mix_source_name="${SWAY_RECORDING_MIX_SOURCE:-sway-recording-mix}"
+mix_sink_name="${SWAY_RECORDING_MIX_SINK:-sway-recording-mix-sink}"
 swaymsg_cmd="${SWAYMSG:-swaymsg}"
+wpctl_cmd="${WPCTL:-wpctl}"
+pw_loopback_cmd="${PW_LOOPBACK:-pw-loopback}"
+pw_link_cmd="${PW_LINK:-pw-link}"
+wf_recorder_cmd="${WF_RECORDER:-wf-recorder}"
+slurp_cmd="${SLURP:-slurp}"
 mkdir -p "$recording_dir"
+
+notify() {
+    urgency=$1
+    shift
+    command -v notify-send >/dev/null 2>&1 && notify-send -u "$urgency" "$@" || true
+}
 
 recording_active() {
     [ -s "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null
 }
 
+default_node_name() {
+    "$wpctl_cmd" inspect "@DEFAULT_AUDIO_${1}@" | sed -n 's/^[[:space:]]*\* node.name = "\(.*\)"/\1/p' | head -n 1
+}
+
+pipewire_ports() {
+    "$pw_link_cmd" -io
+}
+
+port_exists() {
+    pipewire_ports | grep -Fxq "$1"
+}
+
+ports_with_prefix() {
+    node=$1
+    prefix=$2
+    pipewire_ports | while IFS= read -r line; do
+        case "$line" in
+        "${node}:${prefix}"*) printf '%s\n' "$line" ;;
+        esac
+    done
+}
+
+wait_for_port() {
+    i=0
+    while [ "$i" -lt 20 ]; do
+        if port_exists "$1"; then
+            return 0
+        fi
+        sleep 0.1
+        i=$((i+1))
+    done
+    return 1
+}
+
+link_into_mix() {
+    src_node=$1
+    src_kind=$2
+    linked=0
+
+    for src in $(ports_with_prefix "$src_node" "${src_kind}_"); do
+        chan=${src##*_}
+        dst="${mix_sink_name}:playback_${chan}"
+        if port_exists "$dst"; then
+            "$pw_link_cmd" "$src" "$dst"
+            linked=1
+        fi
+    done
+
+    if [ "$linked" -eq 0 ]; then
+        mono=$(ports_with_prefix "$src_node" "${src_kind}_MONO" | head -n 1)
+        if [ -z "$mono" ]; then
+            mono=$(ports_with_prefix "$src_node" "${src_kind}_" | head -n 1)
+        fi
+        if [ -n "$mono" ]; then
+            for dst in $(ports_with_prefix "$mix_sink_name" "playback_"); do
+                "$pw_link_cmd" "$mono" "$dst"
+                linked=1
+            done
+        fi
+    fi
+
+    [ "$linked" -eq 1 ]
+}
+
+stop_audio_mix() {
+    if [ -s "$mix_pid_file" ]; then
+        kill "$(cat "$mix_pid_file")" 2>/dev/null || true
+        rm -f "$mix_pid_file"
+    fi
+}
+
+start_audio_mix() {
+    stop_audio_mix
+
+    source_node=$(default_node_name SOURCE)
+    sink_node=$(default_node_name SINK)
+    if [ -z "$source_node" ] || [ -z "$sink_node" ]; then
+        notify critical "Screen recording failed" "Could not find the default microphone or speaker"
+        return 1
+    fi
+
+    "$pw_loopback_cmd" \
+        -n "$mix_source_name" \
+        --capture-props="media.class=Audio/Sink node.name=${mix_sink_name} node.description=${mix_sink_name}" \
+        --playback-props="media.class=Audio/Source node.name=${mix_source_name} node.description=${mix_source_name}" \
+        >"$log_file" 2>&1 &
+    echo $! >"$mix_pid_file"
+
+    if ! wait_for_port "${mix_sink_name}:playback_FL" && ! wait_for_port "${mix_sink_name}:playback_MONO"; then
+        stop_audio_mix
+        notify critical "Screen recording failed" "Could not create the microphone + system-audio mix"
+        return 1
+    fi
+
+    if ! link_into_mix "$source_node" capture; then
+        stop_audio_mix
+        notify critical "Screen recording failed" "Could not tap the default microphone"
+        return 1
+    fi
+    if ! link_into_mix "$sink_node" monitor; then
+        stop_audio_mix
+        notify critical "Screen recording failed" "Could not tap system audio from the default speaker"
+        return 1
+    fi
+}
+
 stop_recording() {
+    stopped=0
     if recording_active; then
         pid=$(cat "$pid_file")
         kill -INT "$pid"
-        rm -f "$pid_file"
-        return 0
+        stopped=1
     fi
     rm -f "$pid_file"
-    command -v notify-send >/dev/null 2>&1 && notify-send "No active screen recording" || true
+    stop_audio_mix
+    if [ "$stopped" -eq 0 ]; then
+        notify normal "No active screen recording"
+    fi
+}
+
+start_wf_recorder() {
+    case "${1:-}" in
+    area)
+        "$wf_recorder_cmd" \
+            --audio-backend=pipewire \
+            --audio="$mix_source_name" \
+            -g "$2" \
+            -f "$file" >"$log_file" 2>&1 &
+        ;;
+    full)
+        "$wf_recorder_cmd" \
+            --audio-backend=pipewire \
+            --audio="$mix_source_name" \
+            -o "$2" \
+            -f "$file" >"$log_file" 2>&1 &
+        ;;
+    *)
+        return 2
+        ;;
+    esac
 }
 
 start_recording() {
     if recording_active; then
-        command -v notify-send >/dev/null 2>&1 && notify-send "Screen recording is already running" || true
+        notify normal "Screen recording is already running"
         exit 1
     fi
 
     file="$recording_dir/recording-$(date +%Y%m%d-%H%M%S).mp4"
 
     case "${1:-}" in
-        area)
-            geometry=$(slurp) || exit 1
-            wf-recorder -g "$geometry" -f "$file" &
-            ;;
-        full)
-            output=$(swaymsg -t get_workspaces -r | jq -r '.[] | select(.focused).output') || output=
-            if [ -z "$output" ] || [ "$output" = null ]; then
-                command -v notify-send >/dev/null 2>&1 && notify-send -u critical "Screen recording failed" "Could not determine the focused output" || true
-                exit 1
-            fi
-            wf-recorder -o "$output" -f "$file" >"$log_file" 2>&1 &
-            ;;
-        *)
-            echo "Usage: $0 {area|full|stop|status|toggle}" >&2
-            exit 2
-            ;;
+    area)
+        geometry=$("$slurp_cmd") || exit 1
+        start_audio_mix || exit 1
+        start_wf_recorder area "$geometry"
+        ;;
+    full)
+        output=$("$swaymsg_cmd" -t get_workspaces -r | jq -r '.[] | select(.focused).output') || output=
+        if [ -z "$output" ] || [ "$output" = null ]; then
+            notify critical "Screen recording failed" "Could not determine the focused output"
+            exit 1
+        fi
+        start_audio_mix || exit 1
+        start_wf_recorder full "$output"
+        ;;
+    *)
+        echo "Usage: $0 {area|full|stop|status|toggle}" >&2
+        exit 2
+        ;;
     esac
 
-    echo $! > "$pid_file"
+    echo $! >"$pid_file"
     sleep 0.2
     if ! kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+        stop_audio_mix
         rm -f "$pid_file" "$file"
-        command -v notify-send >/dev/null 2>&1 && notify-send -u critical "Screen recording failed" "See $log_file" || true
+        notify critical "Screen recording failed" "See $log_file"
         exit 1
     fi
 }
@@ -82,9 +230,12 @@ toggle_recording() {
 }
 
 case "${1:-}" in
-    area|full) start_recording "$1" ;;
-    stop) stop_recording ;;
-    status) recording_status ;;
-    toggle) toggle_recording ;;
-    *) echo "Usage: $0 {area|full|stop|status|toggle}" >&2; exit 2 ;;
+area | full) start_recording "$1" ;;
+stop) stop_recording ;;
+status) recording_status ;;
+toggle) toggle_recording ;;
+*)
+    echo "Usage: $0 {area|full|stop|status|toggle}" >&2
+    exit 2
+    ;;
 esac
