@@ -159,12 +159,18 @@ class OneShotWindowFocusTest(unittest.TestCase):
         MOD.WARP_DIR = Path(self.td.name)
         self.computes: list[str] = []
         MOD.compute_warp = lambda token: self.computes.append(token)
+        os.environ["HERDR_WARP_BINDING_WAIT_MS"] = "0"
+        (MOD.WARP_DIR / "last-binding").write_text(
+            str(int(__import__("time").time() * 1000)),
+            encoding="utf-8",
+        )
 
     def tearDown(self):
         MOD.WARP_DIR = self._old_dir
         MOD.compute_warp = self._old_compute
         MOD.kitty_has_herdr = self._old_has_herdr
         os.environ.pop("HERDR_WARP_FOCUSED_PID", None)
+        os.environ.pop("HERDR_WARP_BINDING_WAIT_MS", None)
         self.td.cleanup()
 
     def test_cancel_is_noop(self):
@@ -205,6 +211,22 @@ class OneShotWindowFocusTest(unittest.TestCase):
         MOD.kitty_has_herdr = lambda pid: True
         MOD.run_focus_in(99, "title")
         self.assertEqual(len(self.computes), 1)
+
+    def test_skips_when_no_keyboard_binding(self):
+        os.environ["HERDR_WARP_FOCUSED_PID"] = "99"
+        MOD.kitty_has_herdr = lambda pid: True
+        (MOD.WARP_DIR / "last-binding").unlink()
+        MOD.run_focus_in(99, "herdr")
+        self.assertEqual(self.computes, [])
+        self.assertIn("no-keyboard", (MOD.WARP_DIR / "last-run").read_text(encoding="utf-8"))
+
+    def test_skips_when_keyboard_binding_is_stale(self):
+        os.environ["HERDR_WARP_FOCUSED_PID"] = "99"
+        MOD.kitty_has_herdr = lambda pid: True
+        (MOD.WARP_DIR / "last-binding").write_text("1\n", encoding="utf-8")
+        MOD.run_focus_in(99, "herdr")
+        self.assertEqual(self.computes, [])
+        self.assertIn("no-keyboard", (MOD.WARP_DIR / "last-run").read_text(encoding="utf-8"))
 
     def test_with_user_bin_prepends_once(self):
         env = {"PATH": "/usr/bin:/bin"}

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Run the same warp as alt+space after Kitty gains focus.
 
-Not a long-lived subscriber. Skip when a notification click holds the
-window, or when pane.focused already warped.
+Not a long-lived subscriber. Skip hover and click-to-focus (no recent
+Sway keyboard binding), notification clicks (hold-window), and when
+pane.focused already warped.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from pathlib import Path
 
 SKIP_AFTER_PANE_MS = int(os.environ.get("HERDR_WARP_SKIP_AFTER_PANE_MS", "250"))
 HOLD_MS = int(os.environ.get("HERDR_WARP_HOLD_MS", "2000"))
+BINDING_MS = int(os.environ.get("HERDR_WARP_BINDING_MS", "300"))
 
 
 def runtime_dir() -> Path:
@@ -93,6 +95,52 @@ def recent_pane_warp(now_ms: int | None = None, skip_ms: int = SKIP_AFTER_PANE_M
     if now_ms is None:
         now_ms = int(time.time() * 1000)
     return 0 <= now_ms - last < skip_ms
+
+
+def last_binding_ms() -> int | None:
+    try:
+        raw = int((WARP_DIR / "last-binding").read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    if raw > 10**15:
+        return raw // 1_000_000
+    return raw
+
+
+def recent_keyboard_binding(now_ms: int | None = None, within_ms: int = BINDING_MS) -> bool:
+    last = last_binding_ms()
+    if last is None:
+        return False
+    if now_ms is None:
+        now_ms = int(time.time() * 1000)
+    return 0 <= now_ms - last < within_ms
+
+
+def binding_wait_ms() -> int:
+    try:
+        return int(os.environ.get("HERDR_WARP_BINDING_WAIT_MS", "150"))
+    except ValueError:
+        return 150
+
+
+def wait_for_keyboard_binding(
+    now_ms: int | None = None,
+    within_ms: int = BINDING_MS,
+    wait_ms: int | None = None,
+) -> bool:
+    """Wait briefly so the binding stamper can win the focus race."""
+    if recent_keyboard_binding(now_ms=now_ms, within_ms=within_ms):
+        return True
+    if wait_ms is None:
+        wait_ms = binding_wait_ms()
+    if wait_ms <= 0:
+        return False
+    deadline = time.monotonic() + wait_ms / 1000
+    while time.monotonic() < deadline:
+        time.sleep(0.02)
+        if recent_keyboard_binding(within_ms=within_ms):
+            return True
+    return False
 
 
 def comm(pid: int) -> str:
@@ -251,6 +299,8 @@ def handle_focused_kitty(pid: int, title: str, token: str) -> str:
     )
     if action == "skip":
         return "skip not-herdr"
+    if not wait_for_keyboard_binding():
+        return "skip no-keyboard"
     if current_token() != token:
         return "skip stale-token"
     compute_warp(token)
