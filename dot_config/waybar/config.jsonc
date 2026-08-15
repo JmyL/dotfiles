@@ -138,7 +138,7 @@
 		"return-type": "json",
 		"interval": 60,
 		"signal": 10,
-		"on-click": "foot --app-id=ree-goodmorning --title=goodmorning -e $HOME/.local/bin/work/ree-goodmorning"
+		"on-click": "$HOME/.local/bin/work/ree-goodmorning-launch"
 	},
 	"custom/ree-testbed": {
 		"exec": "$HOME/.local/bin/work/ree-testbed-status",
