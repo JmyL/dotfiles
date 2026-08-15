@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Screenshots go to ~/Pictures/Screenshots and the clipboard.
+# full is the focused output only — never every monitor at once.
+# Sway IPC has no cursor position; the focused output is the one
+# under the pointer when focus follows the mouse (Sway default).
+
+screenshot_dir="${XDG_SCREENSHOTS_DIR:-${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots}"
+grimshot_cmd="${GRIMSHOT:-grimshot}"
+date_cmd="${DATE:-date}"
+
+usage() {
+  echo "Usage: $0 {area|window|full}" >&2
+  exit 2
+}
+
+subject_for() {
+  case "$1" in
+  area | window)
+    printf '%s\n' "$1"
+    ;;
+  full)
+    printf '%s\n' output
+    ;;
+  *)
+    usage
+    ;;
+  esac
+}
+
+take_screenshot() {
+  subject=$(subject_for "${1:-}")
+  mkdir -p "$screenshot_dir"
+  file="$screenshot_dir/screenshot-$("$date_cmd" +%Y%m%d-%H%M%S-%N).png"
+  "$grimshot_cmd" --notify savecopy "$subject" "$file"
+  printf '%s\n' "$file"
+}
+
+take_screenshot "${1:-}"
