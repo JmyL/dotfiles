@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""One-shot Herdr pane warp after Kitty gains focus.
+"""Run the same warp as alt+space after Kitty gains focus.
 
-Kitty's on_focus_change launches this. It is not a long-lived subscriber.
-
-The focus-in path is debounced so notification-click (Sway focus, then
-`herdr agent focus`) does not first warp to the old pane — and so a stale
-in-flight compute cannot overwrite the later target-pane warp.
+Not a long-lived subscriber. Debounce so a notification click can finish
+`herdr workspace/agent focus` first; if pane.focused already warped, skip.
 """
 
 from __future__ import annotations
@@ -20,8 +17,8 @@ import sys
 import time
 from pathlib import Path
 
-DEBOUNCE_SEC = float(os.environ.get("HERDR_WARP_ON_WINDOW_FOCUS_MS", "150")) / 1000.0
-SKIP_AFTER_PANE_MS = int(os.environ.get("HERDR_WARP_SKIP_AFTER_PANE_MS", "200"))
+DEBOUNCE_SEC = float(os.environ.get("HERDR_WARP_ON_WINDOW_FOCUS_MS", "200")) / 1000.0
+SKIP_AFTER_PANE_MS = int(os.environ.get("HERDR_WARP_SKIP_AFTER_PANE_MS", "250"))
 WARP_DIR = Path(os.environ.get("HERDR_WARP_DIR") or os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "herdr-warp"
 PROC_ROOT = Path(os.environ.get("HERDR_WARP_PROC_ROOT") or "/proc")
 SWAYMSG = os.environ.get("HERDR_WARP_SWAYMSG") or "swaymsg"
@@ -57,32 +54,11 @@ def run_host(args: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, **kwargs)
 
 
-def parse_cache(text: str) -> tuple[int, int, int, int] | None:
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if len(lines) < 2:
-        return None
-    try:
-        x_s, y_s = lines[0].split()
-        w_s, h_s = lines[1].split()
-        return int(x_s), int(y_s), int(w_s), int(h_s)
-    except (TypeError, ValueError):
-        return None
-
-
-def read_cache(pid: int) -> tuple[int, int, int, int] | None:
-    path = WARP_DIR / f"pane-{pid}"
-    try:
-        return parse_cache(path.read_text(encoding="utf-8"))
-    except OSError:
-        return None
-
-
 def last_pane_warp_ms() -> int | None:
     try:
         raw = int((WARP_DIR / "last-pane-warp").read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
         return None
-    # Older writes used `date +%s%3N`, which is nanoseconds on this host.
     if raw > 10**15:
         return raw // 1_000_000
     return raw
@@ -95,16 +71,6 @@ def recent_pane_warp(now_ms: int | None = None, skip_ms: int = SKIP_AFTER_PANE_M
     if now_ms is None:
         now_ms = int(time.time() * 1000)
     return 0 <= now_ms - last < skip_ms
-
-
-def cache_matches_rect(cache: tuple[int, int, int, int], rect: dict | None) -> bool:
-    if not rect:
-        return True
-    try:
-        ww, wh = int(rect["width"]), int(rect["height"])
-    except (KeyError, TypeError, ValueError):
-        return True
-    return cache[2] == ww and cache[3] == wh
 
 
 def comm(pid: int) -> str:
@@ -164,20 +130,11 @@ def title_has_herdr(title: str) -> bool:
     return "herdr" in (title or "").lower()
 
 
-def decide_action(
-    *,
-    recent_pane: bool,
-    cache: tuple[int, int, int, int] | None,
-    cache_size_ok: bool,
-    is_herdr: bool,
-    title_herdr: bool,
-) -> str:
-    """Return skip, replay, or compute."""
+def decide_action(*, recent_pane: bool, is_herdr: bool, title_herdr: bool) -> str:
+    """Return skip or compute (same as alt+space)."""
     if recent_pane:
         return "skip"
-    if cache is not None and cache_size_ok:
-        return "replay"
-    if cache is not None or is_herdr or title_herdr:
+    if is_herdr or title_herdr:
         return "compute"
     return "skip"
 
@@ -217,10 +174,6 @@ def sway_focused_pid() -> int | None:
 def write_last_run(message: str) -> None:
     WARP_DIR.mkdir(parents=True, exist_ok=True)
     (WARP_DIR / "last-run").write_text(f"{message}\n", encoding="utf-8")
-
-
-def replay_cursor(x: int, y: int) -> None:
-    run_host([SWAYMSG, f"seat seat0 cursor set {x} {y}"])
 
 
 def bump_token() -> str:
@@ -264,32 +217,20 @@ def compute_warp(token: str) -> None:
     )
 
 
-def handle_focused_kitty(container: dict, token: str | None = None) -> None:
-    try:
-        pid = int(container.get("pid") or 0)
-    except (TypeError, ValueError):
-        return
-    if pid <= 0:
-        return
+def handle_focused_kitty(pid: int, title: str, token: str) -> str:
     if recent_pane_warp():
-        return
-
-    cache = read_cache(pid)
+        return "skip recent-pane"
     action = decide_action(
         recent_pane=False,
-        cache=cache,
-        cache_size_ok=cache_matches_rect(cache, container.get("rect")) if cache else False,
         is_herdr=kitty_has_herdr(pid),
-        title_herdr=title_has_herdr(container.get("name") or ""),
+        title_herdr=title_has_herdr(title),
     )
     if action == "skip":
-        return
-    if action == "replay" and cache is not None:
-        if token is not None and current_token() != token:
-            return
-        replay_cursor(cache[0], cache[1])
-        return
-    compute_warp(token or bump_token())
+        return "skip not-herdr"
+    if current_token() != token:
+        return "skip stale-token"
+    compute_warp(token)
+    return "compute"
 
 
 def run_focus_in(pid: int, title: str) -> None:
@@ -302,8 +243,7 @@ def run_focus_in(pid: int, title: str) -> None:
     if focused != pid:
         write_last_run(f"skip not-focused pid={pid} focused={focused}")
         return
-    handle_focused_kitty({"pid": pid, "name": title}, token=token)
-    write_last_run(f"done pid={pid}")
+    write_last_run(f"{handle_focused_kitty(pid, title, token)} pid={pid}")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -313,7 +253,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--cancel",
         action="store_true",
-        help="Invalidate an in-flight focus-in warp (Kitty lost focus)",
+        help="Ignored; leaving Kitty is detected after debounce via Sway focus",
     )
     return parser.parse_args(argv)
 
@@ -323,8 +263,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     args = parse_args(argv)
     if args.cancel:
-        # Focus-lost cancel is ignored. Kitty can flicker unfocused while Sway
-        # still has the OS window; leaving is detected after debounce instead.
         return 0
     if args.pid is None or args.pid <= 0:
         return 0

@@ -24,91 +24,32 @@ MOD = load_mod()
 
 
 class DecideActionTest(unittest.TestCase):
-    def test_recent_pane_warp_skips_even_with_cache(self):
+    def test_recent_pane_warp_skips(self):
         self.assertEqual(
-            MOD.decide_action(
-                recent_pane=True,
-                cache=(10, 20, 800, 600),
-                cache_size_ok=True,
-                is_herdr=True,
-                title_herdr=True,
-            ),
+            MOD.decide_action(recent_pane=True, is_herdr=True, title_herdr=True),
             "skip",
         )
 
-    def test_matching_cache_replays(self):
+    def test_herdr_computes(self):
         self.assertEqual(
-            MOD.decide_action(
-                recent_pane=False,
-                cache=(10, 20, 800, 600),
-                cache_size_ok=True,
-                is_herdr=False,
-                title_herdr=False,
-            ),
-            "replay",
-        )
-
-    def test_resized_cache_recomputes(self):
-        self.assertEqual(
-            MOD.decide_action(
-                recent_pane=False,
-                cache=(10, 20, 800, 600),
-                cache_size_ok=False,
-                is_herdr=False,
-                title_herdr=False,
-            ),
-            "compute",
-        )
-
-    def test_herdr_child_without_cache_computes(self):
-        self.assertEqual(
-            MOD.decide_action(
-                recent_pane=False,
-                cache=None,
-                cache_size_ok=False,
-                is_herdr=True,
-                title_herdr=False,
-            ),
+            MOD.decide_action(recent_pane=False, is_herdr=True, title_herdr=False),
             "compute",
         )
 
     def test_plain_kitty_skips(self):
         self.assertEqual(
-            MOD.decide_action(
-                recent_pane=False,
-                cache=None,
-                cache_size_ok=False,
-                is_herdr=False,
-                title_herdr=False,
-            ),
+            MOD.decide_action(recent_pane=False, is_herdr=False, title_herdr=False),
             "skip",
         )
 
     def test_title_fallback_computes(self):
         self.assertEqual(
-            MOD.decide_action(
-                recent_pane=False,
-                cache=None,
-                cache_size_ok=False,
-                is_herdr=False,
-                title_herdr=True,
-            ),
+            MOD.decide_action(recent_pane=False, is_herdr=False, title_herdr=True),
             "compute",
         )
 
 
-class CacheHelpersTest(unittest.TestCase):
-    def test_parse_cache(self):
-        self.assertEqual(MOD.parse_cache("12 34\n800 600\n"), (12, 34, 800, 600))
-        self.assertIsNone(MOD.parse_cache("12 34\n"))
-        self.assertIsNone(MOD.parse_cache("nope\n"))
-
-    def test_cache_matches_rect(self):
-        cache = (1, 2, 800, 600)
-        self.assertTrue(MOD.cache_matches_rect(cache, {"width": 800, "height": 600}))
-        self.assertFalse(MOD.cache_matches_rect(cache, {"width": 801, "height": 600}))
-        self.assertTrue(MOD.cache_matches_rect(cache, None))
-
+class HelperTest(unittest.TestCase):
     def test_title_has_herdr(self):
         self.assertTrue(MOD.title_has_herdr("herdr"))
         self.assertTrue(MOD.title_has_herdr("codex: x (herdr-lab)"))
@@ -213,15 +154,19 @@ class OneShotWindowFocusTest(unittest.TestCase):
     def setUp(self):
         self._old_dir = MOD.WARP_DIR
         self._old_debounce = MOD.DEBOUNCE_SEC
-        self._old_replay = MOD.replay_cursor
+        self._old_compute = MOD.compute_warp
+        self._old_has_herdr = MOD.kitty_has_herdr
         self.td = tempfile.TemporaryDirectory()
         MOD.WARP_DIR = Path(self.td.name)
         MOD.DEBOUNCE_SEC = 0
+        self.computes: list[str] = []
+        MOD.compute_warp = lambda token: self.computes.append(token)
 
     def tearDown(self):
         MOD.WARP_DIR = self._old_dir
         MOD.DEBOUNCE_SEC = self._old_debounce
-        MOD.replay_cursor = self._old_replay
+        MOD.compute_warp = self._old_compute
+        MOD.kitty_has_herdr = self._old_has_herdr
         os.environ.pop("HERDR_WARP_FOCUSED_PID", None)
         self.td.cleanup()
 
@@ -230,10 +175,6 @@ class OneShotWindowFocusTest(unittest.TestCase):
         self.assertFalse((MOD.WARP_DIR / "window-pending").exists())
 
     def test_stale_token_skips_after_sleep(self):
-        calls: list[tuple] = []
-        MOD.replay_cursor = lambda x, y: calls.append((x, y))
-        (MOD.WARP_DIR / f"pane-99").write_text("10 20\n800 600\n", encoding="utf-8")
-
         original_sleep = MOD.time.sleep
 
         def sleep_and_cancel(_sec: float) -> None:
@@ -244,24 +185,26 @@ class OneShotWindowFocusTest(unittest.TestCase):
             MOD.run_focus_in(99, "herdr")
         finally:
             MOD.time.sleep = original_sleep
-        self.assertEqual(calls, [])
+        self.assertEqual(self.computes, [])
 
     def test_skips_when_sway_focus_left_kitty(self):
         os.environ["HERDR_WARP_FOCUSED_PID"] = "1"
-        calls: list[tuple] = []
-        MOD.replay_cursor = lambda x, y: calls.append((x, y))
-        (MOD.WARP_DIR / "pane-99").write_text("10 20\n800 600\n", encoding="utf-8")
         MOD.run_focus_in(99, "herdr")
-        self.assertEqual(calls, [])
+        self.assertEqual(self.computes, [])
         self.assertIn("not-focused", (MOD.WARP_DIR / "last-run").read_text(encoding="utf-8"))
 
-    def test_replays_when_sway_still_on_kitty(self):
+    def test_skips_when_pane_just_warped(self):
         os.environ["HERDR_WARP_FOCUSED_PID"] = "99"
-        calls: list[tuple] = []
-        MOD.replay_cursor = lambda x, y: calls.append((x, y))
-        (MOD.WARP_DIR / "pane-99").write_text("10 20\n800 600\n", encoding="utf-8")
+        (MOD.WARP_DIR / "last-pane-warp").write_text(str(int(__import__("time").time() * 1000)), encoding="utf-8")
+        MOD.run_focus_in(99, "herdr")
+        self.assertEqual(self.computes, [])
+        self.assertIn("recent-pane", (MOD.WARP_DIR / "last-run").read_text(encoding="utf-8"))
+
+    def test_computes_when_sway_still_on_herdr_kitty(self):
+        os.environ["HERDR_WARP_FOCUSED_PID"] = "99"
+        MOD.kitty_has_herdr = lambda pid: True
         MOD.run_focus_in(99, "title")
-        self.assertEqual(calls, [(10, 20)])
+        self.assertEqual(len(self.computes), 1)
 
     def test_with_user_bin_prepends_once(self):
         env = {"PATH": "/usr/bin:/bin"}
