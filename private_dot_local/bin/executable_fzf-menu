@@ -62,7 +62,6 @@ fi
 "$foot_bin" --app-id=fzf-menu \
   --title="${prompt%%>*}" \
   --window-size-chars="${width}x${height}" \
-  --override=colors-dark.alpha=1.0 \
   bash -c '
     set +e
     fzf --prompt="$1" --height=100% --layout=reverse --border --info=inline <"$2" >"$3"
