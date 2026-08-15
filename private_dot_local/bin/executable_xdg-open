@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# PATH wrapper: open http(s) via the real xdg-open with a Sway activation
+# token, then focus the Vivaldi window that became urgent (the one that
+# accepted the tab). Other schemes pass through unchanged.
+set -euo pipefail
+
+XDG_OPEN="${XDG_OPEN:-/usr/bin/xdg-open}"
+SWAYMSG="${SWAYMSG:-swaymsg}"
+BROWSER_APP_ID="${BROWSER_APP_ID:-vivaldi-stable}"
+URGENT_POLL_COUNT="${URGENT_POLL_COUNT:-12}"
+URGENT_POLL_INTERVAL="${URGENT_POLL_INTERVAL:-0.05}"
+
+is_http_url() {
+  local url="${1:-}"
+  [[ "$url" == http://* || "$url" == https://* ]]
+}
+
+sway_exec_open() {
+  local -a quoted=()
+  local arg
+  for arg in "$XDG_OPEN" "$@"; do
+    quoted+=("$(printf '%q' "$arg")")
+  done
+  "$SWAYMSG" "exec -- ${quoted[*]}" >/dev/null
+}
+
+sway_focus() {
+  "$SWAYMSG" "$1" >/dev/null
+}
+
+focus_urgent_browser() {
+  local i
+  for ((i=0; i<URGENT_POLL_COUNT; i++)); do
+    if sway_focus "[app_id=\"${BROWSER_APP_ID}\" urgent=latest] focus"; then
+      return 0
+    fi
+    sleep "$URGENT_POLL_INTERVAL"
+  done
+  return 1
+}
+
+focus_any_browser() {
+  sway_focus "[app_id=\"${BROWSER_APP_ID}\"] focus"
+}
+
+xdg_open_main() {
+  if ! is_http_url "${1:-}"; then
+    exec "$XDG_OPEN" "$@"
+  fi
+
+  if ! command -v "$SWAYMSG" >/dev/null 2>&1; then
+    exec "$XDG_OPEN" "$@"
+  fi
+
+  sway_exec_open "$@"
+  if ! focus_urgent_browser; then
+    focus_any_browser || true
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  xdg_open_main "$@"
+fi
