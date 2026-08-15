@@ -61,6 +61,9 @@ output * bg $wallpaper fill
 # 30 minutes. Sessions start with idle inhibit on (Awake); toggle via Waybar
 # or Mod+Shift+a. Inhibit blocks idle timeouts, but still allows an explicit
 # suspend via keybinding or systemctl.
+# After suspend, force the laptop panel on and disable externals. HDMI modeset
+# often fails on resume; kanshi would keep eDP off. Super+Shift+r restarts
+# kanshi once the external is healthy. Idle DPMS resume is unchanged.
 exec ~/.local/bin/idle-inhibit on
 exec ~/.local/bin/cycle-power-profile balanced
 exec swayidle -w \
@@ -68,7 +71,7 @@ exec swayidle -w \
          timeout 600 '~/.local/bin/idle-inhibited || swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
          timeout 1800 '~/.local/bin/idle-inhibited || systemctl suspend' \
          before-sleep '$lock' \
-         after-resume 'swaymsg "output * power on"'
+         after-resume '~/.local/bin/sway-recover-display --quiet'
 
 ### Bar
 #

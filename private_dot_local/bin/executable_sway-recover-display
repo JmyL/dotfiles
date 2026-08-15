@@ -4,7 +4,14 @@
 # kanshi's docked profiles disable eDP when an external is connected, so if
 # modeset on HDMI/DP is wedged the laptop panel stays dark. Stop kanshi first,
 # then force the internal panel on and disable externals.
+#
+# --quiet: skip the notification (used by swayidle after-resume).
 set -euo pipefail
+
+quiet=0
+if [[ "${1:-}" == --quiet ]]; then
+  quiet=1
+fi
 
 pkill -x kanshi 2>/dev/null || true
 
@@ -20,7 +27,7 @@ done
 
 swaymsg 'output * power on' || true
 
-if command -v notify-send >/dev/null 2>&1; then
+if ((quiet == 0)) && command -v notify-send >/dev/null 2>&1; then
   notify-send 'Display recovery' \
     'Forced laptop panel on; kanshi stopped. Unplug HDMI or Super+Shift+r to restart kanshi.'
 fi
