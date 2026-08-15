@@ -16,6 +16,8 @@ pw_loopback_cmd="${PW_LOOPBACK:-pw-loopback}"
 pw_link_cmd="${PW_LINK:-pw-link}"
 wf_recorder_cmd="${WF_RECORDER:-wf-recorder}"
 slurp_cmd="${SLURP:-slurp}"
+pkill_cmd="${PKILL:-pkill}"
+waybar_state_path="${WAYBAR_STATE_PATH:-$HOME/.cache/sway-recording/waybar-state.css}"
 mkdir -p "$recording_dir"
 
 notify() {
@@ -99,6 +101,22 @@ stop_audio_mix() {
     fi
 }
 
+set_waybar_recording_state() {
+    css=""
+    if [ "${1:-}" = on ]; then
+        css='window#waybar {
+    background-color: #6b1c24;
+}
+'
+    fi
+    mkdir -p "$(dirname "$waybar_state_path")"
+    if [ -f "$waybar_state_path" ] && [ "$(cat "$waybar_state_path")" = "$css" ]; then
+        return 0
+    fi
+    printf '%s' "$css" >"$waybar_state_path"
+    "$pkill_cmd" -SIGUSR2 waybar >/dev/null 2>&1 || true
+}
+
 start_audio_mix() {
     stop_audio_mix
 
@@ -143,6 +161,7 @@ stop_recording() {
     fi
     rm -f "$pid_file"
     stop_audio_mix
+    set_waybar_recording_state off
     if [ "$stopped" -eq 0 ]; then
         notify normal "No active screen recording"
     fi
@@ -203,10 +222,12 @@ start_recording() {
     sleep 0.2
     if ! kill -0 "$(cat "$pid_file")" 2>/dev/null; then
         stop_audio_mix
+        set_waybar_recording_state off
         rm -f "$pid_file" "$file"
         notify critical "Screen recording failed" "See $log_file"
         exit 1
     fi
+    set_waybar_recording_state on
 }
 
 recording_status() {
