@@ -19,7 +19,19 @@ from pathlib import Path
 
 DEBOUNCE_SEC = float(os.environ.get("HERDR_WARP_ON_WINDOW_FOCUS_MS", "200")) / 1000.0
 SKIP_AFTER_PANE_MS = int(os.environ.get("HERDR_WARP_SKIP_AFTER_PANE_MS", "250"))
-WARP_DIR = Path(os.environ.get("HERDR_WARP_DIR") or os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "herdr-warp"
+HOLD_MS = int(os.environ.get("HERDR_WARP_HOLD_MS", "2000"))
+
+
+def runtime_dir() -> Path:
+    if os.environ.get("HERDR_WARP_DIR"):
+        return Path(os.environ["HERDR_WARP_DIR"])
+    xdg = os.environ.get("XDG_RUNTIME_DIR")
+    if xdg:
+        return Path(xdg) / "herdr-warp"
+    return Path(f"/run/user/{os.getuid()}") / "herdr-warp"
+
+
+WARP_DIR = runtime_dir()
 PROC_ROOT = Path(os.environ.get("HERDR_WARP_PROC_ROOT") or "/proc")
 SWAYMSG = os.environ.get("HERDR_WARP_SWAYMSG") or "swaymsg"
 WARP_BIN = os.environ.get("HERDR_WARP_ON_FOCUS_BIN") or ""
@@ -62,6 +74,17 @@ def last_pane_warp_ms() -> int | None:
     if raw > 10**15:
         return raw // 1_000_000
     return raw
+
+
+def window_hold_active(now_ms: int | None = None, hold_ms: int = HOLD_MS) -> bool:
+    path = WARP_DIR / "hold-window"
+    try:
+        raw = int(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return False
+    if now_ms is None:
+        now_ms = int(time.time() * 1000)
+    return 0 <= now_ms - raw < hold_ms
 
 
 def recent_pane_warp(now_ms: int | None = None, skip_ms: int = SKIP_AFTER_PANE_MS) -> bool:
@@ -218,6 +241,8 @@ def compute_warp(token: str) -> None:
 
 
 def handle_focused_kitty(pid: int, title: str, token: str) -> str:
+    if window_hold_active():
+        return "skip hold-window"
     if recent_pane_warp():
         return "skip recent-pane"
     action = decide_action(

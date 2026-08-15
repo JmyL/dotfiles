@@ -193,6 +193,14 @@ class OneShotWindowFocusTest(unittest.TestCase):
         self.assertEqual(self.computes, [])
         self.assertIn("not-focused", (MOD.WARP_DIR / "last-run").read_text(encoding="utf-8"))
 
+    def test_skips_when_hold_window_is_fresh(self):
+        os.environ["HERDR_WARP_FOCUSED_PID"] = "99"
+        MOD.kitty_has_herdr = lambda pid: True
+        (MOD.WARP_DIR / "hold-window").write_text(str(int(__import__("time").time() * 1000)), encoding="utf-8")
+        MOD.run_focus_in(99, "herdr")
+        self.assertEqual(self.computes, [])
+        self.assertIn("hold-window", (MOD.WARP_DIR / "last-run").read_text(encoding="utf-8"))
+
     def test_skips_when_pane_just_warped(self):
         os.environ["HERDR_WARP_FOCUSED_PID"] = "99"
         (MOD.WARP_DIR / "last-pane-warp").write_text(str(int(__import__("time").time() * 1000)), encoding="utf-8")

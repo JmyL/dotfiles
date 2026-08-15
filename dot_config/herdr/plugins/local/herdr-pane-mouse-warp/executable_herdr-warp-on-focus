@@ -356,7 +356,7 @@ if ! run_host swaymsg "seat seat0 cursor set ${target_x} ${target_y}" >/dev/null
   exit 0
 fi
 
-warp_dir="${HERDR_WARP_DIR:-${XDG_RUNTIME_DIR:-/tmp}/herdr-warp}"
+warp_dir="${HERDR_WARP_DIR:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/herdr-warp}"
 mkdir -p "$warp_dir"
 if [[ -n "${kitty_pid:-}" && "$kitty_pid" != "0" ]]; then
   printf '%s %s\n%s %s\n' "$target_x" "$target_y" "${win_w:-0}" "${win_h:-0}" >"${warp_dir}/pane-${kitty_pid}"

@@ -7,23 +7,23 @@ from typing import Any
 from kitty.boss import Boss
 from kitty.window import Window
 
-_WARP = Path.home() / ".local/bin/herdr-warp-on-window-focus"
+_HOME_BIN = Path.home() / ".local/bin"
+_CLEAR = _HOME_BIN / "ai-kitty-focus-clear"
+_WARP = _HOME_BIN / "herdr-warp-on-window-focus"
+
+
+def _spawn(argv: list[str]) -> None:
+    try:
+        Popen(argv, stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL)
+    except OSError:
+        return
 
 
 def on_focus_change(boss: Boss, window: Window, data: dict[str, Any]) -> None:
     if not data.get("focused"):
         return
 
-    Popen(
-        ["ai-kitty-focus-clear", str(window.id)],
-        stdin=DEVNULL,
-        stdout=DEVNULL,
-        stderr=DEVNULL,
-    )
+    if _CLEAR.is_file():
+        _spawn([str(_CLEAR), str(window.id)])
     if _WARP.is_file():
-        Popen(
-            [str(_WARP), "--pid", str(os.getpid()), "--title", window.title or ""],
-            stdin=DEVNULL,
-            stdout=DEVNULL,
-            stderr=DEVNULL,
-        )
+        _spawn([str(_WARP), "--pid", str(os.getpid()), "--title", window.title or ""])
