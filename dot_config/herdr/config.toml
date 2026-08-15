@@ -167,6 +167,12 @@ command = "rmarganti.herdr-pluck.pluck"
 description = "pluck visible token"
 
 [[keys.command]]
+key = "alt+f"
+type = "plugin_action"
+command = "rmarganti.herdr-pluck.open-url"
+description = "open visible URL"
+
+[[keys.command]]
 key = "alt+semicolon"
 type = "popup"
 command = "$SHELL"
