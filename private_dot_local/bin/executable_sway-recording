@@ -4,8 +4,9 @@ set -eu
 recording_dir="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
 pid_file="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.pid"
 log_file="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.log"
-# Must match $recording_start_mode in ~/.config/sway/config.
-recording_mode="${SWAY_RECORDING_MODE:-Recording: [a]rea [f]ull [s]top [q]uit}"
+# Must match $recording_start_mode / $recording_stop_mode in ~/.config/sway/config.
+recording_start_mode="${SWAY_RECORDING_START_MODE:-Recording: [a]rea [f]ull [q]uit}"
+recording_stop_mode="${SWAY_RECORDING_STOP_MODE:-Recording: [s]top [q]uit}"
 swaymsg_cmd="${SWAYMSG:-swaymsg}"
 mkdir -p "$recording_dir"
 
@@ -66,13 +67,17 @@ recording_status() {
     fi
 }
 
+enter_mode() {
+    # Quote the mode name inside the command. `swaymsg -- mode $name`
+    # splits on spaces and treats `[a]rea` as a second command.
+    "$swaymsg_cmd" "mode \"$1\""
+}
+
 toggle_recording() {
     if recording_active; then
-        stop_recording
+        enter_mode "$recording_stop_mode"
     else
-        # Quote the mode name inside the command. `swaymsg -- mode $name`
-        # splits on spaces and treats `[a]rea` as a second command.
-        "$swaymsg_cmd" "mode \"$recording_mode\""
+        enter_mode "$recording_start_mode"
     fi
 }
 
