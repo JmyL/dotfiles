@@ -278,15 +278,18 @@ mode "$screenshot_mode" {
 bindsym $mod+c mode "$screenshot_mode"
 
 # Screen recording modes: recordings go to ~/Videos/Recordings.
-set $recording_start_mode Recording: [a]rea [f]ull [q]uit
+# Enter via bindsym (like $mod+c). An unquoted/mismatched swaymsg mode name
+# fails with "Unknown mode" and Waybar shows nothing.
+set $recording_start_mode Recording: [a]rea [f]ull [s]top [q]uit
 mode "$recording_start_mode" {
     bindsym a mode "default", exec ~/.local/bin/sway-recording area
     bindsym f mode "default", exec ~/.local/bin/sway-recording full
+    bindsym s mode "default", exec ~/.local/bin/sway-recording stop
     bindsym Return mode "default"
     bindsym Escape mode "default"
     bindsym q mode "default"
 }
-bindsym $mod+Shift+c exec ~/.local/bin/sway-recording toggle
+bindsym $mod+Shift+c mode "$recording_start_mode"
 
 # Transcription mode: records through dev-launcher, transcribes, and pastes into focus.
 set $transcription_mode Transcription: speak, [q] finish
