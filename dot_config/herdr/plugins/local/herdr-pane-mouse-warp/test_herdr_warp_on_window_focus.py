@@ -130,6 +130,10 @@ class RecentPaneWarpFileTest(unittest.TestCase):
         self.assertTrue(MOD.recent_pane_warp(now_ms=1000, skip_ms=200))
         self.assertFalse(MOD.recent_pane_warp(now_ms=1200, skip_ms=200))
 
+    def test_normalizes_nanosecond_stamp(self):
+        (MOD.WARP_DIR / "last-pane-warp").write_text("1786802984945927748\n", encoding="utf-8")
+        self.assertEqual(MOD.last_pane_warp_ms(), 1786802984945)
+
 
 class KittyHasHerdrTest(unittest.TestCase):
     def setUp(self):
@@ -209,6 +213,7 @@ class OneShotWindowFocusTest(unittest.TestCase):
     def setUp(self):
         self._old_dir = MOD.WARP_DIR
         self._old_debounce = MOD.DEBOUNCE_SEC
+        self._old_replay = MOD.replay_cursor
         self.td = tempfile.TemporaryDirectory()
         MOD.WARP_DIR = Path(self.td.name)
         MOD.DEBOUNCE_SEC = 0
@@ -216,11 +221,13 @@ class OneShotWindowFocusTest(unittest.TestCase):
     def tearDown(self):
         MOD.WARP_DIR = self._old_dir
         MOD.DEBOUNCE_SEC = self._old_debounce
+        MOD.replay_cursor = self._old_replay
+        os.environ.pop("HERDR_WARP_FOCUSED_PID", None)
         self.td.cleanup()
 
-    def test_cancel_bumps_token(self):
+    def test_cancel_is_noop(self):
         self.assertEqual(MOD.main(["--cancel"]), 0)
-        self.assertTrue((MOD.WARP_DIR / "window-pending").read_text(encoding="utf-8").strip())
+        self.assertFalse((MOD.WARP_DIR / "window-pending").exists())
 
     def test_stale_token_skips_after_sleep(self):
         calls: list[tuple] = []
@@ -238,6 +245,23 @@ class OneShotWindowFocusTest(unittest.TestCase):
         finally:
             MOD.time.sleep = original_sleep
         self.assertEqual(calls, [])
+
+    def test_skips_when_sway_focus_left_kitty(self):
+        os.environ["HERDR_WARP_FOCUSED_PID"] = "1"
+        calls: list[tuple] = []
+        MOD.replay_cursor = lambda x, y: calls.append((x, y))
+        (MOD.WARP_DIR / "pane-99").write_text("10 20\n800 600\n", encoding="utf-8")
+        MOD.run_focus_in(99, "herdr")
+        self.assertEqual(calls, [])
+        self.assertIn("not-focused", (MOD.WARP_DIR / "last-run").read_text(encoding="utf-8"))
+
+    def test_replays_when_sway_still_on_kitty(self):
+        os.environ["HERDR_WARP_FOCUSED_PID"] = "99"
+        calls: list[tuple] = []
+        MOD.replay_cursor = lambda x, y: calls.append((x, y))
+        (MOD.WARP_DIR / "pane-99").write_text("10 20\n800 600\n", encoding="utf-8")
+        MOD.run_focus_in(99, "title")
+        self.assertEqual(calls, [(10, 20)])
 
     def test_with_user_bin_prepends_once(self):
         env = {"PATH": "/usr/bin:/bin"}

@@ -361,11 +361,7 @@ mkdir -p "$warp_dir"
 if [[ -n "${kitty_pid:-}" && "$kitty_pid" != "0" ]]; then
   printf '%s %s\n%s %s\n' "$target_x" "$target_y" "${win_w:-0}" "${win_h:-0}" >"${warp_dir}/pane-${kitty_pid}"
 fi
-if stamp=$(date +%s%3N 2>/dev/null) && [[ "$stamp" =~ ^[0-9]+$ ]]; then
-  printf '%s\n' "$stamp" >"${warp_dir}/last-pane-warp"
-else
-  python3 -c 'import time; print(int(time.time() * 1000))' >"${warp_dir}/last-pane-warp"
-fi
+python3 -c 'import time; print(int(time.time() * 1000))' >"${warp_dir}/last-pane-warp"
 # Invalidate an in-flight window-focus compute so it cannot stomp this pane warp.
 if [[ -z "${HERDR_WARP_TOKEN:-}" ]]; then
   printf '%s\n' "pane-focused" >"${warp_dir}/window-pending"

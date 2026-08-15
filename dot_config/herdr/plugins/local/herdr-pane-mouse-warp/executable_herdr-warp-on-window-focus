@@ -11,6 +11,7 @@ in-flight compute cannot overwrite the later target-pane warp.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -78,9 +79,13 @@ def read_cache(pid: int) -> tuple[int, int, int, int] | None:
 
 def last_pane_warp_ms() -> int | None:
     try:
-        return int((WARP_DIR / "last-pane-warp").read_text(encoding="utf-8").strip())
+        raw = int((WARP_DIR / "last-pane-warp").read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
         return None
+    # Older writes used `date +%s%3N`, which is nanoseconds on this host.
+    if raw > 10**15:
+        return raw // 1_000_000
+    return raw
 
 
 def recent_pane_warp(now_ms: int | None = None, skip_ms: int = SKIP_AFTER_PANE_MS) -> bool:
@@ -177,6 +182,43 @@ def decide_action(
     return "skip"
 
 
+def focused_tree_pid(tree: object) -> int | None:
+    if not isinstance(tree, dict):
+        return None
+    if tree.get("focused"):
+        try:
+            pid = int(tree.get("pid") or 0)
+        except (TypeError, ValueError):
+            return None
+        return pid or None
+    for child in list(tree.get("nodes") or []) + list(tree.get("floating_nodes") or []):
+        found = focused_tree_pid(child)
+        if found is not None:
+            return found
+    return None
+
+
+def sway_focused_pid() -> int | None:
+    forced = os.environ.get("HERDR_WARP_FOCUSED_PID")
+    if forced:
+        try:
+            return int(forced)
+        except ValueError:
+            return None
+    proc = run_host([SWAYMSG, "-t", "get_tree"])
+    if proc.returncode != 0 or not proc.stdout:
+        return None
+    try:
+        return focused_tree_pid(json.loads(proc.stdout))
+    except json.JSONDecodeError:
+        return None
+
+
+def write_last_run(message: str) -> None:
+    WARP_DIR.mkdir(parents=True, exist_ok=True)
+    (WARP_DIR / "last-run").write_text(f"{message}\n", encoding="utf-8")
+
+
 def replay_cursor(x: int, y: int) -> None:
     run_host([SWAYMSG, f"seat seat0 cursor set {x} {y}"])
 
@@ -254,8 +296,14 @@ def run_focus_in(pid: int, title: str) -> None:
     token = bump_token()
     time.sleep(DEBOUNCE_SEC)
     if current_token() != token:
+        write_last_run(f"skip stale-token pid={pid}")
+        return
+    focused = sway_focused_pid()
+    if focused != pid:
+        write_last_run(f"skip not-focused pid={pid} focused={focused}")
         return
     handle_focused_kitty({"pid": pid, "name": title}, token=token)
+    write_last_run(f"done pid={pid}")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -275,7 +323,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     args = parse_args(argv)
     if args.cancel:
-        bump_token()
+        # Focus-lost cancel is ignored. Kitty can flicker unfocused while Sway
+        # still has the OS window; leaving is detected after debounce instead.
         return 0
     if args.pid is None or args.pid <= 0:
         return 0

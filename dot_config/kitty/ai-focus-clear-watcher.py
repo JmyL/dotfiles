@@ -12,13 +12,6 @@ _WARP = Path.home() / ".local/bin/herdr-warp-on-window-focus"
 
 def on_focus_change(boss: Boss, window: Window, data: dict[str, Any]) -> None:
     if not data.get("focused"):
-        if _WARP.is_file():
-            Popen(
-                [str(_WARP), "--cancel"],
-                stdin=DEVNULL,
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-            )
         return
 
     Popen(
