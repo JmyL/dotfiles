@@ -195,11 +195,20 @@ def current_token() -> str:
         return ""
 
 
+def with_user_bin(env: dict[str, str]) -> dict[str, str]:
+    user_bin = str(Path.home() / ".local/bin")
+    path = env.get("PATH", "")
+    parts = [part for part in path.split(":") if part]
+    if user_bin not in parts:
+        env["PATH"] = f"{user_bin}:{path}" if path else user_bin
+    return env
+
+
 def compute_warp(token: str) -> None:
     script = warp_script()
     if not script.is_file():
         return
-    env = os.environ.copy()
+    env = with_user_bin(os.environ.copy())
     env.setdefault("HERDR_WARP_DIR", str(WARP_DIR))
     env["HERDR_WARP_TOKEN"] = token
     env["HERDR_WARP_TOKEN_FILE"] = str(WARP_DIR / "window-pending")

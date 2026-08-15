@@ -17,6 +17,16 @@ debug() {
   esac
 }
 
+# Kitty's inherited PATH often omits ~/.local/bin, where herdr lives.
+user_bin="${HERDR_WARP_USER_BIN:-${HOME}/.local/bin}"
+if [[ -d "$user_bin" ]]; then
+  case ":${PATH}:" in
+  *":${user_bin}:"*) ;;
+  *) PATH="${user_bin}:${PATH}" ;;
+  esac
+fi
+herdr_bin="${HERDR_BIN:-herdr}"
+
 # Run compositor/terminal tools on the host when this script is inside a toolbox.
 run_host() {
   if command -v "$1" >/dev/null 2>&1; then
@@ -105,7 +115,12 @@ if ! run_host command -v swaymsg >/dev/null 2>&1; then
   exit 0
 fi
 
-layout_json=$(herdr pane layout --current 2>/dev/null) || {
+if ! command -v "$herdr_bin" >/dev/null 2>&1; then
+  debug "herdr unavailable"
+  exit 0
+fi
+
+layout_json=$("$herdr_bin" pane layout --current 2>/dev/null) || {
   debug "herdr pane layout failed"
   exit 0
 }

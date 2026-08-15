@@ -178,6 +178,32 @@ class WarpOnFocusScriptTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
 
+    def test_finds_herdr_in_user_bin_when_path_is_minimal(self):
+        script = Path(__file__).with_name("herdr-warp-on-focus")
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            user_bin = home / ".local" / "bin"
+            user_bin.mkdir(parents=True)
+            log = home / "herdr.log"
+            (user_bin / "herdr").write_text(
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" >>\"$HERDR_WARP_TEST_LOG\"\nexit 1\n",
+                encoding="utf-8",
+            )
+            (user_bin / "herdr").chmod(0o755)
+            result = subprocess.run(
+                [str(script)],
+                env={
+                    "HOME": str(home),
+                    "PATH": "/usr/bin:/bin",
+                    "HERDR_WARP_ON_FOCUS": "1",
+                    "HERDR_WARP_TEST_LOG": str(log),
+                },
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertTrue(log.is_file())
+            self.assertIn("pane layout --current", log.read_text(encoding="utf-8"))
+
 
 class OneShotWindowFocusTest(unittest.TestCase):
     def setUp(self):
@@ -212,6 +238,14 @@ class OneShotWindowFocusTest(unittest.TestCase):
         finally:
             MOD.time.sleep = original_sleep
         self.assertEqual(calls, [])
+
+    def test_with_user_bin_prepends_once(self):
+        env = {"PATH": "/usr/bin:/bin"}
+        home_bin = str(Path.home() / ".local/bin")
+        out = MOD.with_user_bin(env)
+        self.assertTrue(out["PATH"].startswith(f"{home_bin}:"))
+        again = MOD.with_user_bin(out)
+        self.assertEqual(again["PATH"].count(home_bin), 1)
 
     def test_disable_env_skips_cli(self):
         script = Path(__file__).with_name("herdr-warp-on-window-focus")
