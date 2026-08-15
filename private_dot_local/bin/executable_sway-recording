@@ -104,7 +104,7 @@ set_waybar_recording_state() {
     css=""
     if [ "${1:-}" = on ]; then
         css='window#waybar {
-    background-color: #6b1c24;
+    background-color: #6b1c24 !important;
 }
 '
     fi

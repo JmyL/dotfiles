@@ -11,6 +11,7 @@ window#waybar {
 }
 
 @import url("file://{{ .chezmoi.homeDir }}/.cache/calendar-alert/waybar-state.css");
+@import url("file://{{ .chezmoi.homeDir }}/.cache/sway-recording/waybar-state.css");
 
 window#waybar.hidden {
     opacity: 0.2;
@@ -475,6 +476,3 @@ menuitem:focus {
     background-color: #2b303b;
     color: #ffffff;
 }
-
-/* After the solid-black bar rules so recording can override the window color. */
-@import url("file://{{ .chezmoi.homeDir }}/.cache/sway-recording/waybar-state.css");
