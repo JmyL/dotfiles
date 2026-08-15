@@ -5,6 +5,11 @@ recording_dir="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
 pid_file="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.pid"
 log_file="${XDG_RUNTIME_DIR:-/tmp}/wf-recorder.log"
 mix_pid_file="${XDG_RUNTIME_DIR:-/tmp}/sway-recording-mix.pid"
+rnnoise_pid_file="${XDG_RUNTIME_DIR:-/tmp}/sway-recording-rnnoise.pid"
+rnnoise_conf="${XDG_RUNTIME_DIR:-/tmp}/sway-recording-rnnoise.conf"
+rnnoise_plugin="${SWAY_RECORDING_RNNOISE_PLUGIN:-$HOME/.local/lib/ladspa/librnnoise_ladspa.so}"
+rnnoise_in_name="${SWAY_RECORDING_RNNOISE_IN:-sway-recording-rnnoise-in}"
+rnnoise_out_name="${SWAY_RECORDING_RNNOISE_OUT:-sway-recording-rnnoise}"
 # Must match $recording_start_mode / $recording_stop_mode in ~/.config/sway/config.
 recording_start_mode="${SWAY_RECORDING_START_MODE:-Recording: [a]rea [f]ull [q]uit}"
 recording_stop_mode="${SWAY_RECORDING_STOP_MODE:-Recording: [s]top [q]uit}"
@@ -14,6 +19,7 @@ swaymsg_cmd="${SWAYMSG:-swaymsg}"
 wpctl_cmd="${WPCTL:-wpctl}"
 pw_loopback_cmd="${PW_LOOPBACK:-pw-loopback}"
 pw_link_cmd="${PW_LINK:-pw-link}"
+pipewire_cmd="${PIPEWIRE:-pipewire}"
 wf_recorder_cmd="${WF_RECORDER:-wf-recorder}"
 slurp_cmd="${SLURP:-slurp}"
 waybar_state_path="${WAYBAR_STATE_PATH:-$HOME/.cache/sway-recording/waybar-state.css}"
@@ -54,7 +60,7 @@ ports_with_prefix() {
 
 wait_for_port() {
     i=0
-    while [ "$i" -lt 20 ]; do
+    while [ "$i" -lt 50 ]; do
         if port_exists "$1"; then
             return 0
         fi
@@ -64,14 +70,28 @@ wait_for_port() {
     return 1
 }
 
-link_into_mix() {
+wait_for_node_ports() {
+    i=0
+    while [ "$i" -lt 50 ]; do
+        if [ -n "$(ports_with_prefix "$1" "")" ]; then
+            return 0
+        fi
+        sleep 0.1
+        i=$((i+1))
+    done
+    return 1
+}
+
+link_into() {
     src_node=$1
     src_kind=$2
+    dst_node=$3
+    dst_kind=$4
     linked=0
 
     for src in $(ports_with_prefix "$src_node" "${src_kind}_"); do
         chan=${src##*_}
-        dst="${mix_sink_name}:playback_${chan}"
+        dst="${dst_node}:${dst_kind}_${chan}"
         if port_exists "$dst"; then
             "$pw_link_cmd" "$src" "$dst"
             linked=1
@@ -84,7 +104,7 @@ link_into_mix() {
             mono=$(ports_with_prefix "$src_node" "${src_kind}_" | head -n 1)
         fi
         if [ -n "$mono" ]; then
-            for dst in $(ports_with_prefix "$mix_sink_name" "playback_"); do
+            for dst in $(ports_with_prefix "$dst_node" "${dst_kind}_"); do
                 "$pw_link_cmd" "$mono" "$dst"
                 linked=1
             done
@@ -99,6 +119,65 @@ stop_audio_mix() {
         kill "$(cat "$mix_pid_file")" 2>/dev/null || true
         rm -f "$mix_pid_file"
     fi
+    if [ -s "$rnnoise_pid_file" ]; then
+        kill "$(cat "$rnnoise_pid_file")" 2>/dev/null || true
+        rm -f "$rnnoise_pid_file"
+    fi
+    rm -f "$rnnoise_conf"
+}
+
+write_rnnoise_conf() {
+    cat >"$rnnoise_conf" <<EOF
+context.properties = {
+    log.level = 0
+}
+context.spa-libs = {
+    audio.convert.* = audioconvert/libspa-audioconvert
+    support.* = support/libspa-support
+}
+context.modules = [
+    { name = libpipewire-module-rt
+        flags = [ ifexists nofail ]
+    }
+    { name = libpipewire-module-protocol-native }
+    { name = libpipewire-module-client-node }
+    { name = libpipewire-module-adapter }
+    { name = libpipewire-module-filter-chain
+        args = {
+            node.description = "sway-recording RNNoise"
+            media.name = "sway-recording RNNoise"
+            filter.graph = {
+                nodes = [
+                    {
+                        type = ladspa
+                        name = rnnoise
+                        plugin = "$rnnoise_plugin"
+                        label = noise_suppressor_mono
+                        control = {
+                            "VAD Threshold (%)" = 50.0
+                            "VAD Grace Period (ms)" = 200
+                            "Retroactive VAD Grace (ms)" = 0
+                        }
+                    }
+                ]
+            }
+            capture.props = {
+                node.name = "$rnnoise_in_name"
+                node.passive = true
+                node.autoconnect = false
+                audio.rate = 48000
+            }
+            playback.props = {
+                node.name = "$rnnoise_out_name"
+                media.class = Audio/Source
+                node.autoconnect = false
+                priority.session = 1
+                audio.rate = 48000
+            }
+        }
+    }
+]
+EOF
 }
 
 poke_waybar_style() {
@@ -137,6 +216,10 @@ start_audio_mix() {
         notify critical "Screen recording failed" "Could not find the default microphone or speaker"
         return 1
     fi
+    if [ ! -f "$rnnoise_plugin" ]; then
+        notify critical "Screen recording failed" "RNNoise plugin missing: $rnnoise_plugin"
+        return 1
+    fi
 
     "$pw_loopback_cmd" \
         -n "$mix_source_name" \
@@ -145,18 +228,35 @@ start_audio_mix() {
         >"$log_file" 2>&1 &
     echo $! >"$mix_pid_file"
 
-    if ! wait_for_port "${mix_sink_name}:playback_FL" && ! wait_for_port "${mix_sink_name}:playback_MONO"; then
+    if ! wait_for_node_ports "$mix_sink_name"; then
         stop_audio_mix
         notify critical "Screen recording failed" "Could not create the microphone + system-audio mix"
         return 1
     fi
 
-    if ! link_into_mix "$source_node" capture; then
+    write_rnnoise_conf
+    LADSPA_PATH="$(dirname "$rnnoise_plugin")${LADSPA_PATH:+:$LADSPA_PATH}" \
+        "$pipewire_cmd" -c "$rnnoise_conf" >>"$log_file" 2>&1 &
+    echo $! >"$rnnoise_pid_file"
+
+    if ! wait_for_node_ports "$rnnoise_in_name"; then
+        stop_audio_mix
+        notify critical "Screen recording failed" "Could not start RNNoise"
+        return 1
+    fi
+
+    if ! link_into "$source_node" capture "$rnnoise_in_name" playback \
+        && ! link_into "$source_node" capture "$rnnoise_in_name" input; then
         stop_audio_mix
         notify critical "Screen recording failed" "Could not tap the default microphone"
         return 1
     fi
-    if ! link_into_mix "$sink_node" monitor; then
+    if ! link_into "$rnnoise_out_name" capture "$mix_sink_name" playback; then
+        stop_audio_mix
+        notify critical "Screen recording failed" "Could not route RNNoise into the mix"
+        return 1
+    fi
+    if ! link_into "$sink_node" monitor "$mix_sink_name" playback; then
         stop_audio_mix
         notify critical "Screen recording failed" "Could not tap system audio from the default speaker"
         return 1

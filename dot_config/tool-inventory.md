@@ -121,6 +121,7 @@ Screenshot/recording/clipboard:
 - `wl-clipboard` (`wl-copy`, `wl-paste`)
 - `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`. **autoPaste** on Wayland needs `/dev/uinput` access: run `~/.local/bin/clipse-setup-uinput` on each machine (idempotent; uses sudo). Check with `clipse-setup-uinput --check`. On Fedora Silverblue/toolbox, run it on the **host**. Then **log out and back in** so group `input` is active in the session.
 - `wf-recorder`
+- `librnnoise_ladspa.so` — user-local LADSPA plugin for screen-recording mic denoise (`~/.local/lib/ladspa/librnnoise_ladspa.so`). Not packaged in apt/dnf. From the [noise-suppression-for-voice](https://github.com/werman/noise-suppression-for-voice/releases) `linux-rnnoise.zip` (`linux-rnnoise/ladspa/librnnoise_ladspa.so`). Do not install it as a session-wide PipeWire source; `sway-recording` loads it only while recording.
 - `wtype` — types dictation text into the focused Wayland window
 - `pipewire-utils` (`pw-record`) — microphone capture for dictation
 
@@ -275,6 +276,7 @@ May need separate installation depending on Fedora version/repositories:
   `curl -fsSL https://github.com/savedra1/clipse/releases/download/v1.2.1/clipse_v1.2.1_linux_wayland_amd64.tar.gz | tar -xz -C /tmp && install -m 755 /tmp/clipse-linux-wayland-amd64 ~/.local/bin/clipse`
 - `clipse-setup-uinput` (chezmoi-managed under `~/.local/bin`) after installing clipse:
   `clipse-setup-uinput` then re-login; verify with `clipse-setup-uinput --check`
+- `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa`
 
 ## Ubuntu install command
 
@@ -334,6 +336,7 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
   `curl -fsSL https://github.com/savedra1/clipse/releases/download/v1.2.1/clipse_v1.2.1_linux_wayland_amd64.tar.gz | tar -xz -C /tmp && install -m 755 /tmp/clipse-linux-wayland-amd64 ~/.local/bin/clipse`
 - `clipse-setup-uinput` (chezmoi-managed under `~/.local/bin`) after installing clipse:
   `clipse-setup-uinput` then re-login; verify with `clipse-setup-uinput --check`
+- `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa`
 
 ## Minimal non-desktop/server install
 
