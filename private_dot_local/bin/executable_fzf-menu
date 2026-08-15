@@ -34,9 +34,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if ! command -v foot >/dev/null 2>&1; then
-  echo "fzf-menu: foot not found" >&2
-  exit 127
+# Sway's PATH has no ~/.local/bin; apt foot 1.25 ignores [colors-dark] (alpha).
+foot_bin="${HOME}/.local/bin/foot"
+if [[ ! -x $foot_bin ]]; then
+  if ! foot_bin=$(command -v foot); then
+    echo "fzf-menu: foot not found" >&2
+    exit 127
+  fi
 fi
 if ! command -v fzf >/dev/null 2>&1; then
   echo "fzf-menu: fzf not found" >&2
@@ -55,7 +59,7 @@ if [[ ! -s $input ]]; then
   exit 1
 fi
 
-foot --app-id=fzf-menu \
+"$foot_bin" --app-id=fzf-menu \
   --title="${prompt%%>*}" \
   --window-size-chars="${width}x${height}" \
   bash -c '
