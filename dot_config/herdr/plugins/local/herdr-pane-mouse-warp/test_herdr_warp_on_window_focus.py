@@ -179,5 +179,49 @@ class WarpOnFocusScriptTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
 
 
+class OneShotWindowFocusTest(unittest.TestCase):
+    def setUp(self):
+        self._old_dir = MOD.WARP_DIR
+        self._old_debounce = MOD.DEBOUNCE_SEC
+        self.td = tempfile.TemporaryDirectory()
+        MOD.WARP_DIR = Path(self.td.name)
+        MOD.DEBOUNCE_SEC = 0
+
+    def tearDown(self):
+        MOD.WARP_DIR = self._old_dir
+        MOD.DEBOUNCE_SEC = self._old_debounce
+        self.td.cleanup()
+
+    def test_cancel_bumps_token(self):
+        self.assertEqual(MOD.main(["--cancel"]), 0)
+        self.assertTrue((MOD.WARP_DIR / "window-pending").read_text(encoding="utf-8").strip())
+
+    def test_stale_token_skips_after_sleep(self):
+        calls: list[tuple] = []
+        MOD.replay_cursor = lambda x, y: calls.append((x, y))
+        (MOD.WARP_DIR / f"pane-99").write_text("10 20\n800 600\n", encoding="utf-8")
+
+        original_sleep = MOD.time.sleep
+
+        def sleep_and_cancel(_sec: float) -> None:
+            (MOD.WARP_DIR / "window-pending").write_text("other\n", encoding="utf-8")
+
+        MOD.time.sleep = sleep_and_cancel
+        try:
+            MOD.run_focus_in(99, "herdr")
+        finally:
+            MOD.time.sleep = original_sleep
+        self.assertEqual(calls, [])
+
+    def test_disable_env_skips_cli(self):
+        script = Path(__file__).with_name("herdr-warp-on-window-focus")
+        result = subprocess.run(
+            [str(script), "--pid", "1", "--title", "herdr"],
+            env={**os.environ, "HERDR_WARP_ON_FOCUS": "0"},
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

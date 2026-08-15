@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Warp the pointer into the active Herdr pane when Sway focus returns to Kitty.
+"""One-shot Herdr pane warp after Kitty gains focus.
 
-pane.focused already warps on keyboard pane moves. Returning to Kitty does not
-change the inner pane, so this watcher triggers the same warp on window focus.
+Kitty's on_focus_change launches this. It is not a long-lived subscriber.
 
 The focus-in path is debounced so notification-click (Sway focus, then
 `herdr agent focus`) does not first warp to the old pane — and so a stale
@@ -11,14 +10,12 @@ in-flight compute cannot overwrite the later target-pane warp.
 
 from __future__ import annotations
 
-import fcntl
-import json
+import argparse
 import os
 import re
 import shutil
 import subprocess
 import sys
-import threading
 import time
 from pathlib import Path
 
@@ -26,7 +23,6 @@ DEBOUNCE_SEC = float(os.environ.get("HERDR_WARP_ON_WINDOW_FOCUS_MS", "150")) / 1
 SKIP_AFTER_PANE_MS = int(os.environ.get("HERDR_WARP_SKIP_AFTER_PANE_MS", "200"))
 WARP_DIR = Path(os.environ.get("HERDR_WARP_DIR") or os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "herdr-warp"
 PROC_ROOT = Path(os.environ.get("HERDR_WARP_PROC_ROOT") or "/proc")
-LOCKFILE = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}") / "herdr-warp-on-window-focus.lock"
 SWAYMSG = os.environ.get("HERDR_WARP_SWAYMSG") or "swaymsg"
 WARP_BIN = os.environ.get("HERDR_WARP_ON_FOCUS_BIN") or ""
 
@@ -192,6 +188,13 @@ def bump_token() -> str:
     return token
 
 
+def current_token() -> str:
+    try:
+        return (WARP_DIR / "window-pending").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
 def compute_warp(token: str) -> None:
     script = warp_script()
     if not script.is_file():
@@ -210,7 +213,7 @@ def compute_warp(token: str) -> None:
     )
 
 
-def handle_focused_kitty(container: dict) -> None:
+def handle_focused_kitty(container: dict, token: str | None = None) -> None:
     try:
         pid = int(container.get("pid") or 0)
     except (TypeError, ValueError):
@@ -222,7 +225,7 @@ def handle_focused_kitty(container: dict) -> None:
 
     cache = read_cache(pid)
     action = decide_action(
-        recent_pane=recent_pane_warp(),
+        recent_pane=False,
         cache=cache,
         cache_size_ok=cache_matches_rect(cache, container.get("rect")) if cache else False,
         is_herdr=kitty_has_herdr(pid),
@@ -231,72 +234,48 @@ def handle_focused_kitty(container: dict) -> None:
     if action == "skip":
         return
     if action == "replay" and cache is not None:
+        if token is not None and current_token() != token:
+            return
         replay_cursor(cache[0], cache[1])
         return
-    compute_warp(bump_token())
+    compute_warp(token or bump_token())
 
 
-def main() -> None:
-    if not enabled():
+def run_focus_in(pid: int, title: str) -> None:
+    token = bump_token()
+    time.sleep(DEBOUNCE_SEC)
+    if current_token() != token:
         return
+    handle_focused_kitty({"pid": pid, "name": title}, token=token)
 
-    LOCKFILE.parent.mkdir(parents=True, exist_ok=True)
-    lock_fd = os.open(LOCKFILE, os.O_CREAT | os.O_RDWR, 0o644)
-    try:
-        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        os.close(lock_fd)
-        return
 
-    proc = subprocess.Popen(
-        [SWAYMSG, "-t", "subscribe", "-m", '["window"]'],
-        text=True,
-        stdout=subprocess.PIPE,
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pid", type=int, help="Kitty OS process id that gained focus")
+    parser.add_argument("--title", default="", help="Kitty window title")
+    parser.add_argument(
+        "--cancel",
+        action="store_true",
+        help="Invalidate an in-flight focus-in warp (Kitty lost focus)",
     )
-    assert proc.stdout is not None
+    return parser.parse_args(argv)
 
-    lock = threading.Lock()
-    timer: threading.Timer | None = None
 
-    def flush(container: dict) -> None:
-        nonlocal timer
-        with lock:
-            timer = None
-        handle_focused_kitty(container)
-
-    def schedule(container: dict | None) -> None:
-        nonlocal timer
+def main(argv: list[str] | None = None) -> int:
+    if not enabled():
+        return 0
+    args = parse_args(argv)
+    if args.cancel:
         bump_token()
-        with lock:
-            if timer is not None:
-                timer.cancel()
-                timer = None
-            if container is None:
-                return
-            timer = threading.Timer(DEBOUNCE_SEC, flush, args=(container,))
-            timer.daemon = True
-            timer.start()
-
-    for line in proc.stdout:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if event.get("change") != "focus":
-            continue
-        container = event.get("container") or {}
-        app_id = (container.get("app_id") or "").lower()
-        if app_id != "kitty":
-            schedule(None)
-            continue
-        schedule(container)
+        return 0
+    if args.pid is None or args.pid <= 0:
+        return 0
+    run_focus_in(args.pid, args.title)
+    return 0
 
 
 if __name__ == "__main__":
     try:
-        main()
+        raise SystemExit(main())
     except KeyboardInterrupt:
         sys.exit(0)
