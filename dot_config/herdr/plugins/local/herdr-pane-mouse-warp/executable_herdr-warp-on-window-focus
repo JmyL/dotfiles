@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""Warp the pointer into the active Herdr pane when Sway focus returns to Kitty.
+
+pane.focused already warps on keyboard pane moves. Returning to Kitty does not
+change the inner pane, so this watcher triggers the same warp on window focus.
+
+The focus-in path is debounced so notification-click (Sway focus, then
+`herdr agent focus`) does not first warp to the old pane — and so a stale
+in-flight compute cannot overwrite the later target-pane warp.
+"""
+
+from __future__ import annotations
+
+import fcntl
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+
+DEBOUNCE_SEC = float(os.environ.get("HERDR_WARP_ON_WINDOW_FOCUS_MS", "150")) / 1000.0
+SKIP_AFTER_PANE_MS = int(os.environ.get("HERDR_WARP_SKIP_AFTER_PANE_MS", "200"))
+WARP_DIR = Path(os.environ.get("HERDR_WARP_DIR") or os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "herdr-warp"
+PROC_ROOT = Path(os.environ.get("HERDR_WARP_PROC_ROOT") or "/proc")
+LOCKFILE = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}") / "herdr-warp-on-window-focus.lock"
+SWAYMSG = os.environ.get("HERDR_WARP_SWAYMSG") or "swaymsg"
+WARP_BIN = os.environ.get("HERDR_WARP_ON_FOCUS_BIN") or ""
+
+
+def enabled() -> bool:
+    return os.environ.get("HERDR_WARP_ON_FOCUS", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def warp_script() -> Path:
+    if WARP_BIN:
+        return Path(WARP_BIN)
+    sibling = Path(__file__).resolve().parent / "herdr-warp-on-focus"
+    if sibling.is_file():
+        return sibling
+    return Path.home() / ".local/bin/herdr-warp-on-focus"
+
+
+def run_host(args: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+    kwargs.setdefault("text", True)
+    kwargs.setdefault("capture_output", True)
+    kwargs.setdefault("check", False)
+    if shutil.which(args[0]):
+        return subprocess.run(args, **kwargs)
+    if Path("/run/.containerenv").is_file() and shutil.which("flatpak-spawn"):
+        return subprocess.run(["flatpak-spawn", "--host", *args], **kwargs)
+    return subprocess.run(args, **kwargs)
+
+
+def parse_cache(text: str) -> tuple[int, int, int, int] | None:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) < 2:
+        return None
+    try:
+        x_s, y_s = lines[0].split()
+        w_s, h_s = lines[1].split()
+        return int(x_s), int(y_s), int(w_s), int(h_s)
+    except (TypeError, ValueError):
+        return None
+
+
+def read_cache(pid: int) -> tuple[int, int, int, int] | None:
+    path = WARP_DIR / f"pane-{pid}"
+    try:
+        return parse_cache(path.read_text(encoding="utf-8"))
+    except OSError:
+        return None
+
+
+def last_pane_warp_ms() -> int | None:
+    try:
+        return int((WARP_DIR / "last-pane-warp").read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+
+
+def recent_pane_warp(now_ms: int | None = None, skip_ms: int = SKIP_AFTER_PANE_MS) -> bool:
+    last = last_pane_warp_ms()
+    if last is None:
+        return False
+    if now_ms is None:
+        now_ms = int(time.time() * 1000)
+    return 0 <= now_ms - last < skip_ms
+
+
+def cache_matches_rect(cache: tuple[int, int, int, int], rect: dict | None) -> bool:
+    if not rect:
+        return True
+    try:
+        ww, wh = int(rect["width"]), int(rect["height"])
+    except (KeyError, TypeError, ValueError):
+        return True
+    return cache[2] == ww and cache[3] == wh
+
+
+def comm(pid: int) -> str:
+    try:
+        return (PROC_ROOT / str(pid) / "comm").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def cmdline(pid: int) -> str:
+    try:
+        raw = (PROC_ROOT / str(pid) / "cmdline").read_bytes()
+    except OSError:
+        return ""
+    return raw.replace(b"\0", b" ").decode("utf-8", "replace")
+
+
+def children(pid: int) -> list[int]:
+    out: list[int] = []
+    task = PROC_ROOT / str(pid) / "task"
+    try:
+        tids = list(task.iterdir())
+    except OSError:
+        return out
+    for tid in tids:
+        try:
+            text = (tid / "children").read_text(encoding="utf-8")
+        except OSError:
+            continue
+        out.extend(int(part) for part in text.split() if part.isdigit())
+    return out
+
+
+def looks_like_herdr(pid: int) -> bool:
+    name = comm(pid).lower()
+    if name == "herdr" or name.startswith("herdr"):
+        return True
+    return re.search(r"(^|[/\s])herdr(\s|$)", cmdline(pid)) is not None
+
+
+def kitty_has_herdr(pid: int, depth: int = 3) -> bool:
+    seen: set[int] = set()
+    queue: list[tuple[int, int]] = [(child, 1) for child in children(pid)]
+    while queue:
+        current, level = queue.pop()
+        if current in seen or level > depth:
+            continue
+        seen.add(current)
+        if looks_like_herdr(current):
+            return True
+        if level < depth:
+            queue.extend((child, level + 1) for child in children(current))
+    return False
+
+
+def title_has_herdr(title: str) -> bool:
+    return "herdr" in (title or "").lower()
+
+
+def decide_action(
+    *,
+    recent_pane: bool,
+    cache: tuple[int, int, int, int] | None,
+    cache_size_ok: bool,
+    is_herdr: bool,
+    title_herdr: bool,
+) -> str:
+    """Return skip, replay, or compute."""
+    if recent_pane:
+        return "skip"
+    if cache is not None and cache_size_ok:
+        return "replay"
+    if cache is not None or is_herdr or title_herdr:
+        return "compute"
+    return "skip"
+
+
+def replay_cursor(x: int, y: int) -> None:
+    run_host([SWAYMSG, f"seat seat0 cursor set {x} {y}"])
+
+
+def bump_token() -> str:
+    WARP_DIR.mkdir(parents=True, exist_ok=True)
+    token = str(time.time_ns())
+    (WARP_DIR / "window-pending").write_text(f"{token}\n", encoding="utf-8")
+    return token
+
+
+def compute_warp(token: str) -> None:
+    script = warp_script()
+    if not script.is_file():
+        return
+    env = os.environ.copy()
+    env.setdefault("HERDR_WARP_DIR", str(WARP_DIR))
+    env["HERDR_WARP_TOKEN"] = token
+    env["HERDR_WARP_TOKEN_FILE"] = str(WARP_DIR / "window-pending")
+    subprocess.Popen(
+        [str(script)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=env,
+        start_new_session=True,
+    )
+
+
+def handle_focused_kitty(container: dict) -> None:
+    try:
+        pid = int(container.get("pid") or 0)
+    except (TypeError, ValueError):
+        return
+    if pid <= 0:
+        return
+    if recent_pane_warp():
+        return
+
+    cache = read_cache(pid)
+    action = decide_action(
+        recent_pane=recent_pane_warp(),
+        cache=cache,
+        cache_size_ok=cache_matches_rect(cache, container.get("rect")) if cache else False,
+        is_herdr=kitty_has_herdr(pid),
+        title_herdr=title_has_herdr(container.get("name") or ""),
+    )
+    if action == "skip":
+        return
+    if action == "replay" and cache is not None:
+        replay_cursor(cache[0], cache[1])
+        return
+    compute_warp(bump_token())
+
+
+def main() -> None:
+    if not enabled():
+        return
+
+    LOCKFILE.parent.mkdir(parents=True, exist_ok=True)
+    lock_fd = os.open(LOCKFILE, os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(lock_fd)
+        return
+
+    proc = subprocess.Popen(
+        [SWAYMSG, "-t", "subscribe", "-m", '["window"]'],
+        text=True,
+        stdout=subprocess.PIPE,
+    )
+    assert proc.stdout is not None
+
+    lock = threading.Lock()
+    timer: threading.Timer | None = None
+
+    def flush(container: dict) -> None:
+        nonlocal timer
+        with lock:
+            timer = None
+        handle_focused_kitty(container)
+
+    def schedule(container: dict | None) -> None:
+        nonlocal timer
+        bump_token()
+        with lock:
+            if timer is not None:
+                timer.cancel()
+                timer = None
+            if container is None:
+                return
+            timer = threading.Timer(DEBOUNCE_SEC, flush, args=(container,))
+            timer.daemon = True
+            timer.start()
+
+    for line in proc.stdout:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("change") != "focus":
+            continue
+        container = event.get("container") or {}
+        app_id = (container.get("app_id") or "").lower()
+        if app_id != "kitty":
+            schedule(None)
+            continue
+        schedule(container)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)

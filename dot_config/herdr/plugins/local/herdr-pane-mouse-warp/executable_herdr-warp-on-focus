@@ -124,12 +124,12 @@ fi
 
 kitty_conf="${KITTY_CONFIG_DIRECTORY:-${XDG_CONFIG_HOME:-$HOME/.config}/kitty}/kitty.conf"
 
-read -r target_x target_y status < <(LAYOUT_JSON="$layout_json" TREE_JSON="$tree_json" OUTPUTS_JSON="$outputs_json" KITTY_JSON="$kitty_json" KITTY_CONF="$kitty_conf" python3 - <<'PY'
+read -r target_x target_y status win_w win_h kitty_pid < <(LAYOUT_JSON="$layout_json" TREE_JSON="$tree_json" OUTPUTS_JSON="$outputs_json" KITTY_JSON="$kitty_json" KITTY_CONF="$kitty_conf" python3 - <<'PY'
 import json
 import os
 
 def die(msg: str) -> None:
-  print(f"0 0 {msg}", flush=True)
+  print(f"0 0 {msg} 0 0 0", flush=True)
   raise SystemExit(0)
 
 layout_raw = os.environ.get("LAYOUT_JSON", "")
@@ -312,7 +312,11 @@ pane_bottom = origin_y + (py + ph) * cell_h
 margin = max(cell_w * 0.25, 1.0)
 x = int(min(max(x, pane_left + margin), pane_right - margin))
 y = int(min(max(y, pane_top + margin), pane_bottom - margin))
-print(f"{x} {y} ok")
+try:
+  kitty_pid = int(focused.get("pid") or 0)
+except (TypeError, ValueError):
+  kitty_pid = 0
+print(f"{x} {y} ok {ww} {wh} {kitty_pid}")
 PY
 ) || {
   debug "coordinate calc failed"
@@ -324,9 +328,32 @@ if [[ "$status" != "ok" ]]; then
   exit 0
 fi
 
+if [[ -n "${HERDR_WARP_TOKEN:-}" && -n "${HERDR_WARP_TOKEN_FILE:-}" ]]; then
+  token_now=$(cat "${HERDR_WARP_TOKEN_FILE}" 2>/dev/null || true)
+  if [[ "$token_now" != "$HERDR_WARP_TOKEN" ]]; then
+    debug "stale token; skip cursor set"
+    exit 0
+  fi
+fi
+
 if ! run_host swaymsg "seat seat0 cursor set ${target_x} ${target_y}" >/dev/null 2>&1; then
   debug "cursor set failed (${target_x},${target_y})"
   exit 0
+fi
+
+warp_dir="${HERDR_WARP_DIR:-${XDG_RUNTIME_DIR:-/tmp}/herdr-warp}"
+mkdir -p "$warp_dir"
+if [[ -n "${kitty_pid:-}" && "$kitty_pid" != "0" ]]; then
+  printf '%s %s\n%s %s\n' "$target_x" "$target_y" "${win_w:-0}" "${win_h:-0}" >"${warp_dir}/pane-${kitty_pid}"
+fi
+if stamp=$(date +%s%3N 2>/dev/null) && [[ "$stamp" =~ ^[0-9]+$ ]]; then
+  printf '%s\n' "$stamp" >"${warp_dir}/last-pane-warp"
+else
+  python3 -c 'import time; print(int(time.time() * 1000))' >"${warp_dir}/last-pane-warp"
+fi
+# Invalidate an in-flight window-focus compute so it cannot stomp this pane warp.
+if [[ -z "${HERDR_WARP_TOKEN:-}" ]]; then
+  printf '%s\n' "pane-focused" >"${warp_dir}/window-pending"
 fi
 
 debug "warped to ${target_x},${target_y}"
