@@ -20,28 +20,6 @@ waybar_state_path="${WAYBAR_STATE_PATH:-$HOME/.cache/sway-recording/waybar-state
 waybar_style_path="${WAYBAR_STYLE_PATH:-$HOME/.config/waybar/style.css}"
 mkdir -p "$recording_dir"
 
-# #region agent log
-agent_dbg() {
-    AGENT_HYP="$1" AGENT_MSG="$2" AGENT_DATA="${3:-{}}" python3 - <<'PY' >>/home/sungsik/.config/.cursor/debug-8edd05.log 2>/dev/null || true
-import json, os, time
-raw = os.environ.get("AGENT_DATA") or "{}"
-try:
-    data = json.loads(raw)
-except json.JSONDecodeError:
-    data = {"raw": raw}
-print(json.dumps({
-    "sessionId": "8edd05",
-    "timestamp": int(time.time() * 1000),
-    "location": "sway-recording",
-    "message": os.environ.get("AGENT_MSG", ""),
-    "data": data,
-    "hypothesisId": os.environ.get("AGENT_HYP", ""),
-    "runId": "pre-fix",
-}, separators=(",", ":")))
-PY
-}
-# #endregion
-
 notify() {
     urgency=$1
     shift
@@ -143,43 +121,11 @@ set_waybar_recording_state() {
 }
 "
     mkdir -p "$(dirname "$waybar_state_path")"
-    skipped=0
     if [ -f "$waybar_state_path" ] && [ "$(cat "$waybar_state_path")" = "$css" ]; then
-        skipped=1
-    else
-        printf '%s' "$css" >"$waybar_state_path"
-        poke_waybar_style
+        return 0
     fi
-    # #region agent log
-    agent_dbg A "set_waybar_recording_state" "$(python3 -c "
-import json, os, subprocess
-path = '''$waybar_state_path'''
-style = os.path.expanduser('~/.config/waybar/style.css')
-try:
-    content = open(path).read()
-except OSError:
-    content = ''
-try:
-    style_txt = open(style).read()
-except OSError:
-    style_txt = ''
-waybar_n = 0
-try:
-    waybar_n = len(subprocess.check_output(['pgrep', '-x', 'waybar']).splitlines())
-except Exception:
-    pass
-print(json.dumps({
-    'requested': '''${1:-}''',
-    'color': '''$color''',
-    'skipped_unchanged': $skipped,
-    'path': path,
-    'written': content,
-    'import_in_style': 'sway-recording/waybar-state.css' in style_txt,
-    'uses_named_color': '@sway-recording-bar-bg' in style_txt,
-    'waybar_procs': waybar_n,
-}))
-")"
-    # #endregion
+    printf '%s' "$css" >"$waybar_state_path"
+    poke_waybar_style
 }
 
 start_audio_mix() {
@@ -286,18 +232,12 @@ start_recording() {
     echo $! >"$pid_file"
     sleep 0.2
     if ! kill -0 "$(cat "$pid_file")" 2>/dev/null; then
-        # #region agent log
-        agent_dbg A "start_recording failed after launch" "{\"file\":\"$file\"}"
-        # #endregion
         stop_audio_mix
         set_waybar_recording_state off
         rm -f "$pid_file" "$file"
         notify critical "Screen recording failed" "See $log_file"
         exit 1
     fi
-    # #region agent log
-    agent_dbg A "start_recording succeeded" "{\"file\":\"$file\"}"
-    # #endregion
     set_waybar_recording_state on
 }
 
@@ -326,10 +266,8 @@ area | full) start_recording "$1" ;;
 stop) stop_recording ;;
 status) recording_status ;;
 toggle) toggle_recording ;;
-bar-on) set_waybar_recording_state on ;;
-bar-off) set_waybar_recording_state off ;;
 *)
-    echo "Usage: $0 {area|full|stop|status|toggle|bar-on|bar-off}" >&2
+    echo "Usage: $0 {area|full|stop|status|toggle}" >&2
     exit 2
     ;;
 esac
