@@ -21,7 +21,9 @@ sway_exec_open() {
   for arg in "$XDG_OPEN" "$@"; do
     quoted+=("$(printf '%q' "$arg")")
   done
-  "$SWAYMSG" "exec -- ${quoted[*]}" >/dev/null
+  # Sway's exec has no "--"; that token is treated as the command name
+  # and the real opener never runs (IPC still returns success).
+  "$SWAYMSG" "exec ${quoted[*]}" >/dev/null
 }
 
 sway_focus() {
