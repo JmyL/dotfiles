@@ -317,7 +317,7 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     # Toggle notification center
     bindsym $mod+n exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -t -sw'
     # Clear all notifications
-    bindsym $mod+Shift+n exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -C'
+    bindsym $mod+Shift+BackSpace exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -C'
     # Close the latest notification
     bindsym $mod+BackSpace exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" --close-latest -sw'
     # Activate (click) the latest notification's default action
