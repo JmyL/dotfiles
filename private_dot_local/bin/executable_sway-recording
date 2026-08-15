@@ -101,13 +101,14 @@ stop_audio_mix() {
 }
 
 set_waybar_recording_state() {
-    css=""
+    color="#000000"
     if [ "${1:-}" = on ]; then
-        css='window#waybar {
-    background-color: #6b1c24 !important;
-}
-'
+        color="#6b1c24"
     fi
+    # GTK/Waybar rejects !important and ignores late @import. A named color
+    # defined in this top-level import is what the bar background uses.
+    css="@define-color sway-recording-bar-bg ${color};
+"
     mkdir -p "$(dirname "$waybar_state_path")"
     if [ -f "$waybar_state_path" ] && [ "$(cat "$waybar_state_path")" = "$css" ]; then
         return 0
