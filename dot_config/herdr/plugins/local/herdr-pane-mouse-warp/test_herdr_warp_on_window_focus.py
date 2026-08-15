@@ -153,18 +153,15 @@ class WarpOnFocusScriptTest(unittest.TestCase):
 class OneShotWindowFocusTest(unittest.TestCase):
     def setUp(self):
         self._old_dir = MOD.WARP_DIR
-        self._old_debounce = MOD.DEBOUNCE_SEC
         self._old_compute = MOD.compute_warp
         self._old_has_herdr = MOD.kitty_has_herdr
         self.td = tempfile.TemporaryDirectory()
         MOD.WARP_DIR = Path(self.td.name)
-        MOD.DEBOUNCE_SEC = 0
         self.computes: list[str] = []
         MOD.compute_warp = lambda token: self.computes.append(token)
 
     def tearDown(self):
         MOD.WARP_DIR = self._old_dir
-        MOD.DEBOUNCE_SEC = self._old_debounce
         MOD.compute_warp = self._old_compute
         MOD.kitty_has_herdr = self._old_has_herdr
         os.environ.pop("HERDR_WARP_FOCUSED_PID", None)
@@ -174,17 +171,12 @@ class OneShotWindowFocusTest(unittest.TestCase):
         self.assertEqual(MOD.main(["--cancel"]), 0)
         self.assertFalse((MOD.WARP_DIR / "window-pending").exists())
 
-    def test_stale_token_skips_after_sleep(self):
-        original_sleep = MOD.time.sleep
-
-        def sleep_and_cancel(_sec: float) -> None:
-            (MOD.WARP_DIR / "window-pending").write_text("other\n", encoding="utf-8")
-
-        MOD.time.sleep = sleep_and_cancel
-        try:
-            MOD.run_focus_in(99, "herdr")
-        finally:
-            MOD.time.sleep = original_sleep
+    def test_stale_token_skips_compute(self):
+        os.environ["HERDR_WARP_FOCUSED_PID"] = "99"
+        MOD.kitty_has_herdr = lambda pid: True
+        token = MOD.bump_token()
+        (MOD.WARP_DIR / "window-pending").write_text("other\n", encoding="utf-8")
+        self.assertEqual(MOD.handle_focused_kitty(99, "herdr", token), "skip stale-token")
         self.assertEqual(self.computes, [])
 
     def test_skips_when_sway_focus_left_kitty(self):

@@ -1,6 +1,6 @@
 id = "herdr-pane-mouse-warp"
 name = "Herdr Pane Mouse Warp"
-version = "0.3.5"
+version = "0.3.6"
 min_herdr_version = "0.7.3"
 description = "Warp the Sway pointer into the focused Herdr pane (alt+space), including when focus returns to Kitty."
 platforms = ["linux"]
