@@ -67,6 +67,36 @@ def find_builtin(nodes, prefer, avoid):
     return None
 
 
+def default_node_id(kind):
+    try:
+        out = run("wpctl", "inspect", f"@DEFAULT_AUDIO_{kind}@").stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    for line in out.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("id "):
+            token = stripped.split(",", 1)[0].split()
+            if len(token) >= 2 and token[1].isdigit():
+                return int(token[1])
+            return None
+    return None
+
+
+def labels_current_first(profiles, default_sink_id, default_source_id):
+    by_sink = [
+        label
+        for label, (sink_id, _source_id) in profiles.items()
+        if default_sink_id is not None and sink_id == default_sink_id
+    ]
+    current = by_sink or [
+        label
+        for label, (_sink_id, source_id) in profiles.items()
+        if default_source_id is not None and source_id == default_source_id
+    ]
+    rest = [label for label in profiles if label not in current]
+    return current + rest
+
+
 def bluetooth_devices(sinks, sources):
     # Bluetooth sink/source nodes share the same parent device.id, so group by
     # that rather than just grabbing the first match -- otherwise a second
@@ -94,7 +124,10 @@ def main():
             label = f"{label} [{device_id}]"
         profiles[label] = (device.get("sink"), device.get("source"))
 
-    choice = pick("Audio", list(profiles))
+    labels = labels_current_first(
+        profiles, default_node_id("SINK"), default_node_id("SOURCE")
+    )
+    choice = pick("Audio", labels)
     if choice is None:
         return 0
 
