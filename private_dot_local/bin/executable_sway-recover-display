@@ -8,24 +8,28 @@
 # --quiet: skip the notification (used by swayidle after-resume).
 set -euo pipefail
 
+swaymsg_bin="${SWAYMSG:-swaymsg}"
+pkill_bin="${PKILL:-pkill}"
+
 quiet=0
 if [[ "${1:-}" == --quiet ]]; then
   quiet=1
 fi
 
-pkill -x kanshi 2>/dev/null || true
+"$pkill_bin" -x kanshi 2>/dev/null || true
 
-mapfile -t outputs < <(swaymsg -t get_outputs -r | jq -r '.[].name')
+mapfile -t outputs < <("$swaymsg_bin" -t get_outputs -r | jq -r '.[].name')
 
 for name in "${outputs[@]}"; do
   if [[ "$name" == eDP-* ]]; then
-    swaymsg output "$name" enable power on position 0,0 || true
+    # Sway wants "position 0 0"; kanshi's "0,0" is a parse error here.
+    "$swaymsg_bin" output "$name" enable power on position 0 0 || true
   else
-    swaymsg output "$name" disable || true
+    "$swaymsg_bin" output "$name" disable || true
   fi
 done
 
-swaymsg 'output * power on' || true
+"$swaymsg_bin" 'output * power on' || true
 
 if ((quiet == 0)) && command -v notify-send >/dev/null 2>&1; then
   notify-send 'Display recovery' \
