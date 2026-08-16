@@ -122,6 +122,7 @@ Screenshot/recording/clipboard:
 - `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`. **autoPaste** on Wayland needs `/dev/uinput` access: run `~/.local/bin/clipse-setup-uinput` on each machine (idempotent; uses sudo). Check with `clipse-setup-uinput --check`. On Fedora Silverblue/toolbox, run it on the **host**. Then **log out and back in** so group `input` is active in the session.
 - `wf-recorder`
 - `seekey` — Wayland keystroke OSD bubbles (`~/.local/bin/seekey`). Not packaged in apt/dnf; build [Seekey](https://github.com/Nakanomk/Seekey) (`v0.2.3`) with `./install.sh --user --no-input`. Needs `input` group read access to `/dev/input/event*` (same as `clipse-setup-uinput`). Not autostarted.
+- `showmethekey` — GTK keystroke overlay (`showmethekey-gtk`). Not packaged in apt; Fedora COPR `pesader/showmethekey`, otherwise build [v1.21.0](https://github.com/AlynxZhou/showmethekey) to `/usr/local`. In the `input` group it runs `showmethekey-cli` without pkexec. Sway window rules live in `~/.config/sway/config.d/20-showmethekey.conf`. Not autostarted.
 - `librnnoise_ladspa.so` — user-local LADSPA plugin for screen-recording mic denoise (`~/.local/lib/ladspa/librnnoise_ladspa.so`). Not packaged in apt/dnf. From the [noise-suppression-for-voice](https://github.com/werman/noise-suppression-for-voice/releases) `linux-rnnoise.zip` (`linux-rnnoise/ladspa/librnnoise_ladspa.so`). Do not install it as a session-wide PipeWire source; `sway-recording` loads it only while recording.
 - `wtype` — types dictation text into the focused Wayland window
 - `pipewire-utils` (`pw-record`) — microphone capture for dictation
@@ -279,7 +280,9 @@ May need separate installation depending on Fedora version/repositories:
   `clipse-setup-uinput` then re-login; verify with `clipse-setup-uinput --check`
 - `seekey` (`v0.2.3` → `~/.local/bin/seekey`):
   `sudo dnf install gtk4-devel libevdev-devel ncurses-devel json-glib-devel gtk4-layer-shell-devel gettext pkgconf-pkg-config gcc make && git clone --depth 1 --branch v0.2.3 https://github.com/Nakanomk/Seekey.git /tmp/Seekey && /tmp/Seekey/install.sh --user --no-input`
-- `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa`
+- `showmethekey`:
+  `sudo dnf copr enable pesader/showmethekey && sudo dnf install showmethekey`
+- `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa
 
 ## Ubuntu install command
 
@@ -341,6 +344,8 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
   `clipse-setup-uinput` then re-login; verify with `clipse-setup-uinput --check`
 - `seekey` (`v0.2.3` → `~/.local/bin/seekey`):
   `sudo apt install libgtk-4-dev libevdev-dev libncurses-dev libjson-glib-dev libgtk4-layer-shell-dev gettext pkg-config build-essential && git clone --depth 1 --branch v0.2.3 https://github.com/Nakanomk/Seekey.git /tmp/Seekey && /tmp/Seekey/install.sh --user --no-input`
+- `showmethekey` (`v1.21.0` → `/usr/local/bin/showmethekey-gtk`):
+  `sudo apt install meson ninja-build libgtk-4-dev libadwaita-1-dev libevdev-dev libinput-dev libjson-glib-dev libxkbcommon-dev libxkbregistry-dev && git clone --depth 1 --branch v1.21.0 https://github.com/AlynxZhou/showmethekey.git /tmp/showmethekey && meson setup --prefix=/usr/local --buildtype=release /tmp/showmethekey/build && meson compile -C /tmp/showmethekey/build && sudo meson install -C /tmp/showmethekey/build`
 - `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa`
 
 ## Minimal non-desktop/server install
