@@ -62,9 +62,9 @@ output * bg $wallpaper fill
 # or Mod+Shift+a. Inhibit blocks idle timeouts, but still allows an explicit
 # suspend via keybinding or systemctl. Super+Shift+x locks and blanks via
 # sway-lock-blank; that path skips this idle suspend until unlock.
-# After suspend, power on eDP and the external for the lock screen, but do
-# not start kanshi yet (it would disable eDP). After unlock, start kanshi
-# only if the external is actually active.
+# After suspend, leave a working external-only layout alone. If HDMI/DP is
+# inactive, power on eDP (and the external) for the lock screen and start
+# kanshi after unlock only if the external is actually active.
 # Idle DPMS resume is unchanged. Super+Ctrl+m still forces eDP-only.
 exec ~/.local/bin/idle-inhibit on
 exec ~/.local/bin/cycle-power-profile balanced

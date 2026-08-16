@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# After suspend: laptop panel first, then restore the external once unlocked.
-#
-# kanshi docked profiles disable eDP. HDMI modeset often fails on resume, so
-# immediately re-applying docked-hdmi can leave no usable output. Force eDP
-# on (and stop kanshi) and power the external on too so it can wake during
-# the lock screen. After unlock, start kanshi only if that output is
-# actually active, or if nothing external is plugged in (laptop profile).
+# After suspend: leave a healthy external alone. If Sway already has HDMI/DP
+# active, do not kill kanshi or enable eDP (that mirrored the lock screen).
+# Only when no external is active, force eDP on and retry the external after
+# unlock, then start kanshi if that output comes back (or nothing is plugged).
 set -euo pipefail
 
 swaymsg_bin="${SWAYMSG:-swaymsg}"
@@ -81,6 +78,10 @@ restore_after_unlock() {
 
 if [[ "${1:-}" == --after-unlock ]]; then
   restore_after_unlock
+  exit 0
+fi
+
+if external_active; then
   exit 0
 fi
 

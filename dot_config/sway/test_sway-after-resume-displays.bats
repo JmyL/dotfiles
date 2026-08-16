@@ -74,6 +74,14 @@ write_outputs() {
   grep -Fqx -- 'exec kanshi' "$SWAYMSG_LOG"
 }
 
+@test "resume entry leaves a healthy HDMI layout alone" {
+  write_outputs '[{"name":"HDMI-A-1","active":true},{"name":"eDP-1","active":false}]'
+  run "$script"
+  [ "$status" -eq 0 ]
+  [ ! -f "$RECOVER_LOG" ]
+  ! grep -F -- '--after-unlock' "$SWAYMSG_LOG"
+}
+
 @test "resume entry recovers then execs the unlock waiter" {
   write_outputs '[]'
   run "$script"
