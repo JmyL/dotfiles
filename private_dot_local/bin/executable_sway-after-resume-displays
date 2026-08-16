@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# After suspend: laptop panel first, then restore the external once unlocked.
+#
+# kanshi docked profiles disable eDP. HDMI modeset often fails on resume, so
+# immediately re-applying docked-hdmi can leave no usable output. Force eDP
+# on (and stop kanshi) for the lock screen, then after swaylock exits try
+# the external again. Start kanshi only if that output is actually active,
+# or if nothing external is plugged in (laptop profile).
+set -euo pipefail
+
+swaymsg_bin="${SWAYMSG:-swaymsg}"
+pgrep_bin="${PGREP:-pgrep}"
+recover_bin="${RECOVER_DISPLAY:-$HOME/.local/bin/sway-recover-display}"
+drm_dir="${DRM_DIR:-/sys/class/drm}"
+poll_s="${SWAY_AFTER_RESUME_POLL:-0.3}"
+tries="${SWAY_AFTER_RESUME_ENABLE_TRIES:-5}"
+self="${BASH_SOURCE[0]:-$0}"
+
+outputs_json() {
+  "$swaymsg_bin" -t get_outputs -r
+}
+
+external_connected() {
+  local status
+  shopt -s nullglob
+  for status in "$drm_dir"/card*-HDMI-A-*/status "$drm_dir"/card*-DP-*/status; do
+    if [[ "$(cat "$status" 2>/dev/null || true)" == connected ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+external_active() {
+  outputs_json | jq -e '
+    [.[] | select((.name | startswith("eDP-") | not) and .active == true)]
+    | length > 0
+  ' >/dev/null
+}
+
+enable_externals() {
+  local name
+  mapfile -t names < <(outputs_json | jq -r '.[] | select((.name | startswith("eDP-")) | not) | .name')
+  for name in "${names[@]}"; do
+    "$swaymsg_bin" output "$name" enable power on || true
+  done
+}
+
+start_kanshi() {
+  "$swaymsg_bin" exec kanshi || true
+}
+
+wait_for_unlock() {
+  if ! "$pgrep_bin" -x swaylock >/dev/null 2>&1; then
+    return 0
+  fi
+  while "$pgrep_bin" -x swaylock >/dev/null 2>&1; do
+    sleep "$poll_s"
+  done
+}
+
+restore_after_unlock() {
+  local i
+  wait_for_unlock
+  for ((i=0; i<tries; i++)); do
+    enable_externals
+    if external_active; then
+      start_kanshi
+      return 0
+    fi
+    sleep "$poll_s"
+  done
+  if ! external_connected; then
+    start_kanshi
+  fi
+}
+
+if [[ "${1:-}" == --after-unlock ]]; then
+  restore_after_unlock
+  exit 0
+fi
+
+"$recover_bin" --quiet
+"$swaymsg_bin" exec -- "$self" --after-unlock
