@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Place the Show Me The Key overlay at the bottom-center of an output.
+set -euo pipefail
+
+title='Floating Window - Show Me The Key'
+width="${SHOWMETHEKEY_WIDTH:-800}"
+height="${SHOWMETHEKEY_HEIGHT:-100}"
+margin="${SHOWMETHEKEY_MARGIN:-24}"
+swaymsg_cmd="${SWAYMSG:-swaymsg}"
+
+bottom_center() {
+  local ox="$1" oy="$2" ow="$3" oh="$4" ww="$5" wh="$6" gap="$7"
+  local x y
+  x=$((ox + (ow - ww) / 2))
+  y=$((oy + oh - wh - gap))
+  printf '%s %s\n' "$x" "$y"
+}
+
+if [[ "${1:-}" == --compute ]]; then
+  bottom_center "${2:?}" "${3:?}" "${4:?}" "${5:?}" "${6:?}" "${7:?}" "${8:?}"
+  exit 0
+fi
+
+criteria="[title=\"${title}\"]"
+"$swaymsg_cmd" "${criteria} resize set ${width} ${height}" >/dev/null
+
+read -r ox oy ow oh < <(
+  "$swaymsg_cmd" -t get_outputs | jq -r '
+    [.[] | select(.focused == true)][0] // [.[] | select(.active == true)][0]
+    | "\(.rect.x) \(.rect.y) \(.rect.width) \(.rect.height)"
+  '
+)
+
+# Sway's non-absolute move is workspace-relative and sits below the bar.
+read -r x y < <(bottom_center "$ox" "$oy" "$ow" "$oh" "$width" "$height" "$margin")
+"$swaymsg_cmd" "${criteria} move absolute position ${x}px ${y}px" >/dev/null
