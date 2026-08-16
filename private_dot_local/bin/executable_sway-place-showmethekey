@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Place the Show Me The Key overlay at the bottom-center of an output.
+# Place a floating overlay at the bottom-center of an output.
 set -euo pipefail
 
 title='Floating Window - Show Me The Key'
+app_id=''
 width="${SHOWMETHEKEY_WIDTH:-800}"
 height="${SHOWMETHEKEY_HEIGHT:-100}"
 margin="${SHOWMETHEKEY_MARGIN:-24}"
@@ -21,7 +22,41 @@ if [[ "${1:-}" == --compute ]]; then
   exit 0
 fi
 
-criteria="[title=\"${title}\"]"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --title)
+    title="${2:?}"
+    shift 2
+    ;;
+  --app-id)
+    app_id="${2:?}"
+    shift 2
+    ;;
+  --width)
+    width="${2:?}"
+    shift 2
+    ;;
+  --height)
+    height="${2:?}"
+    shift 2
+    ;;
+  --margin)
+    margin="${2:?}"
+    shift 2
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    exit 2
+    ;;
+  esac
+done
+
+if [[ -n "$app_id" ]]; then
+  criteria="[app_id=\"${app_id}\"]"
+else
+  criteria="[title=\"${title}\"]"
+fi
+
 "$swaymsg_cmd" "${criteria} resize set ${width} ${height}" >/dev/null
 
 read -r ox oy ow oh < <(
