@@ -79,5 +79,6 @@ write_outputs() {
   run "$script"
   [ "$status" -eq 0 ]
   grep -Fqx -- '--quiet' "$RECOVER_LOG"
+  grep -Fqx -- '--blank-externals' "$RECOVER_LOG"
   grep -F -- '--after-unlock' "$SWAYMSG_LOG"
 }

@@ -49,6 +49,14 @@ teardown() {
   [ ! -f "$NOTIFY_LOG" ]
 }
 
+@test "blank-externals powers off HDMI instead of disabling it" {
+  run "$script" --quiet --blank-externals
+  [ "$status" -eq 0 ]
+  grep -Fqx -- 'output HDMI-A-1 enable power off' "$SWAYMSG_LOG"
+  ! grep -Fqx -- 'output HDMI-A-1 disable' "$SWAYMSG_LOG"
+  ! grep -Fqx -- 'output * power on' "$SWAYMSG_LOG"
+}
+
 @test "notifies unless --quiet" {
   run "$script"
   [ "$status" -eq 0 ]
