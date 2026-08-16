@@ -47,12 +47,12 @@ write_outputs() {
   printf '%s\n' "$1" >"$SWAY_OUTPUTS_JSON"
 }
 
-@test "after unlock starts kanshi when HDMI becomes active" {
+@test "after unlock starts kanshi immediately when HDMI is already active" {
   write_outputs '[{"name":"eDP-1","active":true},{"name":"HDMI-A-1","active":true}]'
   run "$script" --after-unlock
   [ "$status" -eq 0 ]
-  grep -Fqx -- 'output HDMI-A-1 enable power on' "$SWAYMSG_LOG"
   grep -Fqx -- 'exec kanshi' "$SWAYMSG_LOG"
+  ! grep -F -- 'output HDMI-A-1 enable' "$SWAYMSG_LOG"
 }
 
 @test "after unlock skips kanshi when HDMI is plugged but stays inactive" {
@@ -79,6 +79,6 @@ write_outputs() {
   run "$script"
   [ "$status" -eq 0 ]
   grep -Fqx -- '--quiet' "$RECOVER_LOG"
-  grep -Fqx -- '--blank-externals' "$RECOVER_LOG"
+  grep -Fqx -- '--power-on-externals' "$RECOVER_LOG"
   grep -F -- '--after-unlock' "$SWAYMSG_LOG"
 }

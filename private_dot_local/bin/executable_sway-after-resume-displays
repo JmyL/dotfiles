@@ -3,10 +3,9 @@
 #
 # kanshi docked profiles disable eDP. HDMI modeset often fails on resume, so
 # immediately re-applying docked-hdmi can leave no usable output. Force eDP
-# on (and stop kanshi) for the lock screen, blank externals with power off
-# rather than disable, then after swaylock exits power them back on. Start
-# kanshi only if that output is actually active, or if nothing external is
-# plugged in (laptop profile).
+# on (and stop kanshi) and power the external on too so it can wake during
+# the lock screen. After unlock, start kanshi only if that output is
+# actually active, or if nothing external is plugged in (laptop profile).
 set -euo pipefail
 
 swaymsg_bin="${SWAYMSG:-swaymsg}"
@@ -63,6 +62,10 @@ wait_for_unlock() {
 restore_after_unlock() {
   local i
   wait_for_unlock
+  if external_active; then
+    start_kanshi
+    return 0
+  fi
   for ((i=0; i<tries; i++)); do
     enable_externals
     if external_active; then
@@ -81,5 +84,5 @@ if [[ "${1:-}" == --after-unlock ]]; then
   exit 0
 fi
 
-"$recover_bin" --quiet --blank-externals
+"$recover_bin" --quiet --power-on-externals
 "$swaymsg_bin" exec -- "$self" --after-unlock

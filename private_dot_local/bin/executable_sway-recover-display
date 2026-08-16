@@ -6,8 +6,8 @@
 # then force the internal panel on and disable externals.
 #
 # --quiet: skip the notification (used by swayidle after-resume).
-# --blank-externals: power off HDMI/DP instead of disable, so the monitor
-#   may not drop to no-signal during the lock screen.
+# --blank-externals: power off HDMI/DP instead of disable.
+# --power-on-externals: keep HDMI/DP enabled and on (lock screen on both).
 set -euo pipefail
 
 swaymsg_bin="${SWAYMSG:-swaymsg}"
@@ -15,10 +15,12 @@ pkill_bin="${PKILL:-pkill}"
 
 quiet=0
 blank_externals=0
+power_on_externals=0
 for arg in "$@"; do
   case $arg in
   --quiet) quiet=1 ;;
   --blank-externals) blank_externals=1 ;;
+  --power-on-externals) power_on_externals=1 ;;
   esac
 done
 
@@ -30,6 +32,8 @@ for name in "${outputs[@]}"; do
   if [[ "$name" == eDP-* ]]; then
     # Sway wants "position 0 0"; kanshi's "0,0" is a parse error here.
     "$swaymsg_bin" output "$name" enable power on position 0 0 || true
+  elif ((power_on_externals)); then
+    "$swaymsg_bin" output "$name" enable power on || true
   elif ((blank_externals)); then
     "$swaymsg_bin" output "$name" enable power off || true
   else
@@ -37,7 +41,7 @@ for name in "${outputs[@]}"; do
   fi
 done
 
-if ((blank_externals == 0)); then
+if ((blank_externals == 0 && power_on_externals == 0)); then
   "$swaymsg_bin" 'output * power on' || true
 fi
 
