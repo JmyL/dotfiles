@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Manual lock: swaylock plus output blanking, without idle-suspend.
+#
+# Super+Shift+x uses this. Nested swayidle blanks after 10s of no input and
+# wakes on activity (same timer for the first blank and later re-blanks).
+# While this process is alive, manual-lock-active is true so the session
+# swayidle 30-minute suspend is skipped. Lid close and Super+Shift+s still
+# suspend. Idle 5/10/30 timers are unchanged.
+set -euo pipefail
+
+swaylock_bin="${SWAYLOCK:-swaylock}"
+swayidle_bin="${SWAYIDLE:-swayidle}"
+swaymsg_bin="${SWAYMSG:-swaymsg}"
+wallpaper="${SWAY_LOCK_WALLPAPER:-$HOME/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg}"
+blank_timeout="${SWAY_LOCK_BLANK_TIMEOUT:-10}"
+flag="${SWAY_LOCK_FLAG:-${XDG_RUNTIME_DIR:-/tmp}/manual-lock.pid}"
+
+idle_pid=""
+
+cleanup() {
+  if [[ -n "${idle_pid}" ]]; then
+    kill "${idle_pid}" 2>/dev/null || true
+    wait "${idle_pid}" 2>/dev/null || true
+    idle_pid=""
+  fi
+  "$swaymsg_bin" 'output * power on' || true
+  rm -f "$flag"
+}
+
+if [[ -f "$flag" ]]; then
+  old_pid="$(cat "$flag" 2>/dev/null || true)"
+  if [[ -n "${old_pid:-}" ]] && kill -0 "$old_pid" 2>/dev/null; then
+    exit 0
+  fi
+  rm -f "$flag"
+fi
+
+printf '%s\n' "$$" >"$flag"
+trap cleanup EXIT
+
+"$swayidle_bin" -w \
+  timeout "$blank_timeout" "${swaymsg_bin} \"output * power off\"" \
+  resume "${swaymsg_bin} \"output * power on\"" &
+idle_pid=$!
+
+if [[ -f "$wallpaper" ]]; then
+  "$swaylock_bin" -i "$wallpaper" -s fill
+else
+  "$swaylock_bin"
+fi
