@@ -232,11 +232,11 @@
 			"warning": 30,
 			"critical": 15
 		},
-		"format": "<span foreground=\"#69db8b\">{icon}</span> {capacity}%",
-		"format-full": "<span foreground=\"#69db8b\">{icon}</span> {capacity}%",
-		"format-charging": "<span foreground=\"#69db8b\"></span> {capacity}%",
-		"format-plugged": "<span foreground=\"#69db8b\"></span> {capacity}%",
-		"format-alt": "<span foreground=\"#69db8b\">{icon}</span> {time}",
+		"format": "<span foreground=\"#72b7f2\">{icon}</span> {capacity}%",
+		"format-full": "<span foreground=\"#72b7f2\">{icon}</span> {capacity}%",
+		"format-charging": "<span foreground=\"#72b7f2\"></span> {capacity}%",
+		"format-plugged": "<span foreground=\"#72b7f2\"></span> {capacity}%",
+		"format-alt": "<span foreground=\"#72b7f2\">{icon}</span> {time}",
 		// "format-good": "", // An empty format will hide the module
 		// "format-full": "",
 		"format-icons": [
