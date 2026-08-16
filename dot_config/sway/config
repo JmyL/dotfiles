@@ -60,8 +60,7 @@ output * bg $wallpaper fill
 # Lock after 5 minutes, turn displays off after 10 minutes, and suspend after
 # 30 minutes. Sessions start with idle inhibit on (Awake); toggle via Waybar
 # or Mod+Shift+a. Inhibit blocks idle timeouts, but still allows an explicit
-# suspend via keybinding or systemctl. Super+Shift+x locks and blanks via
-# sway-lock-blank; that path skips this idle suspend until unlock.
+# suspend via keybinding or systemctl.
 # After suspend, leave a working external-only layout alone. If HDMI/DP is
 # inactive, power on eDP (and the external) for the lock screen and start
 # kanshi after unlock only if the external is actually active.
@@ -71,7 +70,7 @@ exec ~/.local/bin/cycle-power-profile balanced
 exec swayidle -w \
          timeout 300 '~/.local/bin/idle-inhibited || $lock' \
          timeout 600 '~/.local/bin/idle-inhibited || swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
-         timeout 1800 '~/.local/bin/idle-inhibited || ~/.local/bin/manual-lock-active || systemctl suspend' \
+         timeout 1800 '~/.local/bin/idle-inhibited || systemctl suspend' \
          before-sleep '$lock' \
          after-resume '~/.local/bin/sway-after-resume-displays'
 
@@ -345,8 +344,8 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     bindsym $mod+Shift+a exec ~/.local/bin/idle-inhibit toggle
     # Cycle available power profiles
     bindsym $mod+Shift+m exec ~/.local/bin/cycle-power-profile
-    # Lock screen and blank outputs (no idle suspend while locked)
-    bindsym $mod+Shift+x exec ~/.local/bin/sway-lock-blank
+    # Lock screen
+    bindsym $mod+Shift+x exec $lock
 
 include /etc/sway/config.d/*
 

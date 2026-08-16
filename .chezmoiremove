@@ -5,3 +5,6 @@
 .config/sway/config.d/20-cliphist.conf
 .config/plans/Work Gmail khal-accd337f.plan.md
 .config/sway/config.d/20-herdr-mouse-warp.conf
+.local/bin/sway-lock-blank
+.local/bin/manual-lock-active
+.config/sway/test_sway-lock-blank.bats
