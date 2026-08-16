@@ -135,10 +135,10 @@ class HerdrOpenProjectTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.herdr_calls(),
-            ["workspace list", "pane list", "workspace focus w1K"],
+            ["workspace list", "workspace focus w1K"],
         )
 
-    def test_focuses_project_workspace_at_same_cwd(self):
+    def test_ignores_other_project_at_same_cwd(self):
         self.write_state(
             [{"workspace_id": "w2", "label": "project: other"}],
             [
@@ -151,7 +151,9 @@ class HerdrOpenProjectTest(unittest.TestCase):
         )
         result = self.run_script("dotfiles")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("workspace focus w2", self.herdr_calls())
+        calls = self.herdr_calls()
+        self.assertNotIn("workspace focus w2", calls)
+        self.assertTrue(any(c.startswith("workspace create") for c in calls))
 
     def test_creates_missing_project_and_applies_tabs(self):
         self.write_state([])
@@ -159,6 +161,7 @@ class HerdrOpenProjectTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         calls = self.herdr_calls()
         self.assertIn("workspace list", calls)
+        self.assertNotIn("pane list", calls)
         self.assertTrue(any(c.startswith("workspace create") for c in calls))
         self.assertIn("tab rename w9:t1 dotfiles", calls)
         self.assertIn("pane split w9:p0 --direction right --no-focus", calls)

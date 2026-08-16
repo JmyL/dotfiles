@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Focus or create a Herdr Plus project the same way Herdr Navigator does:
-# reuse an existing "project: <name>" workspace, otherwise create one and apply tabs.
+# Focus an existing "project: <name>" workspace, or create one like Navigator.
 set -euo pipefail
 
 herdr_bin="${HERDR:-herdr}"
@@ -98,45 +97,12 @@ PY
 
 find_existing_workspace() {
   local name="$1"
-  local cwd="$2"
-  local ws_json pane_json
-  ws_json="$(herdr_cmd workspace list)"
-  pane_json="$(herdr_cmd pane list)"
-  HERDR_WS_JSON="$ws_json" HERDR_PANE_JSON="$pane_json" python3 - "$name" "$cwd" <<'PY'
-import json
-import os
-import sys
-
-name = sys.argv[1]
-wanted_cwd = os.path.realpath(sys.argv[2])
-workspaces = json.loads(os.environ["HERDR_WS_JSON"]).get("result", {}).get("workspaces") or []
-panes = json.loads(os.environ["HERDR_PANE_JSON"]).get("result", {}).get("panes") or []
-
-cwd_by_ws = {}
-for pane in panes:
-    ws = pane.get("workspace_id")
-    if not ws or ws in cwd_by_ws:
-        continue
-    cwd = pane.get("foreground_cwd") or pane.get("cwd") or ""
-    if cwd:
-        cwd_by_ws[ws] = os.path.realpath(cwd)
-
-label = f"project: {name}"
-for workspace in workspaces:
-    if workspace.get("label") == label:
-        print(workspace.get("workspace_id") or "")
-        raise SystemExit(0)
-
-for workspace in workspaces:
-    ws_id = workspace.get("workspace_id") or ""
-    ws_label = str(workspace.get("label") or "")
-    if not ws_label.lower().startswith("project:"):
-        continue
-    cwd = cwd_by_ws.get(ws_id)
-    if cwd == wanted_cwd:
-        print(ws_id)
-        raise SystemExit(0)
-PY
+  herdr_cmd workspace list |
+    jq -r --arg label "project: $name" '
+      .result.workspaces[]?
+      | select(.label == $label)
+      | .workspace_id' |
+    head -n 1
 }
 
 bootstrap_tabs() {
@@ -213,6 +179,12 @@ PY
 [[ $# -eq 1 && -n "${1// /}" ]] || usage
 name="$1"
 
+existing="$(find_existing_workspace "$name")"
+if [[ -n "$existing" ]]; then
+  herdr_cmd workspace focus "$existing"
+  exit 0
+fi
+
 project_json="$(resolve_project "$name")"
 working_dir="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["working_dir"])' "$project_json")"
 working_dir="$(expand_working_dir "$working_dir")"
@@ -222,12 +194,6 @@ if [[ ! -d "$working_dir" ]]; then
 fi
 working_dir="$(realpath "$working_dir")"
 name="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["name"])' "$project_json")"
-
-existing="$(find_existing_workspace "$name" "$working_dir")"
-if [[ -n "$existing" ]]; then
-  herdr_cmd workspace focus "$existing"
-  exit 0
-fi
 
 created="$(
   herdr_cmd workspace create \
