@@ -1,0 +1,244 @@
+#!/usr/bin/env bash
+# Focus or create a Herdr Plus project the same way Herdr Navigator does:
+# reuse an existing "project: <name>" workspace, otherwise create one and apply tabs.
+set -euo pipefail
+
+herdr_bin="${HERDR:-herdr}"
+projects_dir="${HERDR_PLUS_PROJECTS_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/plugins/config/cloudmanic.herdr-plus/projects}"
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: herdr-open-project <project-name>
+EOF
+  exit 2
+}
+
+herdr_cmd() {
+  "$herdr_bin" "$@"
+}
+
+expand_working_dir() {
+  local path="$1"
+  case "$path" in
+  "")
+    printf '%s\n' "$HOME"
+    ;;
+  '~')
+    printf '%s\n' "$HOME"
+    ;;
+  '~/'*)
+    printf '%s\n' "$HOME/${path#"~/"}"
+    ;;
+  *)
+    printf '%s\n' "${path//\$HOME/$HOME}"
+    ;;
+  esac
+}
+
+resolve_project() {
+  local name="$1"
+  python3 - "$projects_dir" "$name" <<'PY'
+import json
+import sys
+import tomllib
+from pathlib import Path
+
+projects_dir = Path(sys.argv[1])
+wanted = sys.argv[2]
+if not projects_dir.is_dir():
+    print(f"herdr-plus projects directory not found: {projects_dir}", file=sys.stderr)
+    raise SystemExit(1)
+
+projects = []
+for path in sorted(projects_dir.glob("*.toml")):
+    try:
+        data = tomllib.loads(path.read_text())
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        print(f"failed to read {path}: {error}", file=sys.stderr)
+        raise SystemExit(1)
+    name = str(data.get("name") or "").strip()
+    if not name:
+        continue
+    tabs = []
+    for tab in data.get("tabs") or []:
+        panes = list(tab.get("panes") or [])
+        if not panes:
+            panes = [{"command": tab.get("command"), "split": None, "label": None}]
+        tabs.append(
+            {
+                "name": str(tab.get("name") or name),
+                "panes": [
+                    {
+                        "command": pane.get("command"),
+                        "split": pane.get("split"),
+                        "label": pane.get("label"),
+                    }
+                    for pane in panes
+                ],
+            }
+        )
+    projects.append(
+        {
+            "name": name,
+            "working_dir": str(data.get("working_dir") or ""),
+            "tabs": tabs,
+        }
+    )
+
+chosen = next((p for p in projects if p["name"] == wanted), None)
+if chosen is None:
+    chosen = next((p for p in projects if p["name"].lower() == wanted.lower()), None)
+if chosen is None:
+    names = ", ".join(p["name"] for p in projects) or "(none)"
+    print(f"no project named {wanted!r}; available: {names}", file=sys.stderr)
+    raise SystemExit(1)
+print(json.dumps(chosen))
+PY
+}
+
+find_existing_workspace() {
+  local name="$1"
+  local cwd="$2"
+  local ws_json pane_json
+  ws_json="$(herdr_cmd workspace list)"
+  pane_json="$(herdr_cmd pane list)"
+  HERDR_WS_JSON="$ws_json" HERDR_PANE_JSON="$pane_json" python3 - "$name" "$cwd" <<'PY'
+import json
+import os
+import sys
+
+name = sys.argv[1]
+wanted_cwd = os.path.realpath(sys.argv[2])
+workspaces = json.loads(os.environ["HERDR_WS_JSON"]).get("result", {}).get("workspaces") or []
+panes = json.loads(os.environ["HERDR_PANE_JSON"]).get("result", {}).get("panes") or []
+
+cwd_by_ws = {}
+for pane in panes:
+    ws = pane.get("workspace_id")
+    if not ws or ws in cwd_by_ws:
+        continue
+    cwd = pane.get("foreground_cwd") or pane.get("cwd") or ""
+    if cwd:
+        cwd_by_ws[ws] = os.path.realpath(cwd)
+
+label = f"project: {name}"
+for workspace in workspaces:
+    if workspace.get("label") == label:
+        print(workspace.get("workspace_id") or "")
+        raise SystemExit(0)
+
+for workspace in workspaces:
+    ws_id = workspace.get("workspace_id") or ""
+    ws_label = str(workspace.get("label") or "")
+    if not ws_label.lower().startswith("project:"):
+        continue
+    cwd = cwd_by_ws.get(ws_id)
+    if cwd == wanted_cwd:
+        print(ws_id)
+        raise SystemExit(0)
+PY
+}
+
+bootstrap_tabs() {
+  local workspace_id="$1"
+  local root_pane="$2"
+  local cwd="$3"
+  local project_json="$4"
+  HERDR_PROJECT_JSON="$project_json" python3 - "$herdr_bin" "$workspace_id" "$root_pane" "$cwd" <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+herdr, workspace_id, root_pane, cwd = sys.argv[1:5]
+project = json.loads(os.environ["HERDR_PROJECT_JSON"])
+
+
+def run(*args):
+    subprocess.run([herdr, *args], check=True)
+
+
+def herdr_json(*args):
+    out = subprocess.check_output([herdr, *args])
+    return json.loads(out)
+
+
+for tab_index, tab in enumerate(project.get("tabs") or []):
+    if tab_index == 0:
+        run("tab", "rename", f"{workspace_id}:t1", tab["name"])
+        tab_root = root_pane
+    else:
+        created = herdr_json(
+            "tab",
+            "create",
+            "--workspace",
+            workspace_id,
+            "--cwd",
+            cwd,
+            "--label",
+            tab["name"],
+            "--no-focus",
+        )
+        tab_root = created["result"]["root_pane"]["pane_id"]
+
+    previous = tab_root
+    runs = []
+    for pane_index, pane in enumerate(tab.get("panes") or []):
+        if pane_index == 0:
+            pane_id = tab_root
+        else:
+            direction = pane.get("split") or "down"
+            split = herdr_json(
+                "pane",
+                "split",
+                previous,
+                "--direction",
+                direction,
+                "--no-focus",
+            )
+            pane_id = split["result"]["pane"]["pane_id"]
+        label = (pane.get("label") or "").strip()
+        if label:
+            run("pane", "rename", pane_id, label)
+        command = (pane.get("command") or "").strip()
+        if command:
+            runs.append((pane_id, command))
+        previous = pane_id
+
+    for pane_id, command in runs:
+        run("pane", "run", pane_id, command)
+PY
+}
+
+[[ $# -eq 1 && -n "${1// /}" ]] || usage
+name="$1"
+
+project_json="$(resolve_project "$name")"
+working_dir="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["working_dir"])' "$project_json")"
+working_dir="$(expand_working_dir "$working_dir")"
+if [[ ! -d "$working_dir" ]]; then
+  printf 'working directory does not exist: %s\n' "$working_dir" >&2
+  exit 1
+fi
+working_dir="$(realpath "$working_dir")"
+name="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["name"])' "$project_json")"
+
+existing="$(find_existing_workspace "$name" "$working_dir")"
+if [[ -n "$existing" ]]; then
+  herdr_cmd workspace focus "$existing"
+  exit 0
+fi
+
+created="$(
+  herdr_cmd workspace create \
+    --cwd "$working_dir" \
+    --label "project: $name" \
+    --focus
+)"
+workspace_id="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["result"]["workspace"]["workspace_id"])' "$created")"
+root_pane="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["result"]["root_pane"]["pane_id"])' "$created")"
+if [[ -z "$workspace_id" || "$workspace_id" == null || -z "$root_pane" || "$root_pane" == null ]]; then
+  printf 'workspace create did not return ids: %s\n' "$created" >&2
+  exit 1
+fi
+bootstrap_tabs "$workspace_id" "$root_pane" "$working_dir" "$project_json"

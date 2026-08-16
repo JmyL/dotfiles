@@ -134,6 +134,12 @@ command = "herdr-navigator.open"
 description = "jump to anything"
 
 [[keys.command]]
+key = "alt+comma"
+type = "shell"
+command = "herdr-open-project dotfiles"
+description = "open project: dotfiles"
+
+[[keys.command]]
 key = "alt+p"
 type = "plugin_action"
 command = "herdr-navigator.jump-back"
