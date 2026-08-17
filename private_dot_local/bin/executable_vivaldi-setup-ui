@@ -4,7 +4,7 @@ set -euo pipefail
 # Apply chezmoi-managed Vivaldi UI bits into Preferences:
 # - Custom UI Modifications directory (~/.config/vivaldi-ui/*.css)
 # - layout.json (toolbar composition, hidden extension icons, bar positions,
-#   address-bar auto-hide, …)
+#   hidden side panel, …)
 # Prefer running while Vivaldi is quit so Preferences is not overwritten on exit.
 
 ui_dir="${XDG_CONFIG_HOME:-$HOME/.config}/vivaldi-ui"
@@ -66,6 +66,8 @@ if "windows" in layout:
   deep_merge(vivaldi.setdefault("windows", {}), layout["windows"])
 if "downloads" in layout:
   deep_merge(vivaldi.setdefault("downloads", {}), layout["downloads"])
+if "panels" in layout:
+  deep_merge(vivaldi.setdefault("panels", {}), layout["panels"])
 if "auto_hide" in layout:
   deep_merge(vivaldi.setdefault("auto_hide", {}), layout["auto_hide"])
 
@@ -97,7 +99,10 @@ print(f"toolbars.navigation: {vivaldi.get('toolbars', {}).get('navigation')}")
 print(f"tabs.bar.position: {vivaldi.get('tabs', {}).get('bar', {}).get('position')}")
 print(f"address_bar.position: {vivaldi.get('address_bar', {}).get('position')}")
 print(f"downloads.open_panel_on_new: {vivaldi.get('downloads', {}).get('open_panel_on_new')}")
-print(f"auto_hide: {vivaldi.get('auto_hide')}")
+print(f"panels.barVisible: {(vivaldi.get('panels') or {}).get('window_defaults', {}).get('barVisible')}")
+ah = vivaldi.get("auto_hide")
+if ah is not None:
+  print(f"auto_hide: {ah}")
 if color_pos:
   print(f"theme_color_position: {color_pos}")
 PY

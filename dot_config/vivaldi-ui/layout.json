@@ -30,13 +30,11 @@
   "downloads": {
     "open_panel_on_new": false
   },
-  "auto_hide": {
-    "enabled": true,
-    "address_bar": true,
-    "tab_bar": false,
-    "status_bar": false,
-    "bookmarks_bar": false,
-    "panel": false
+  "panels": {
+    "window_defaults": {
+      "barVisible": false,
+      "contentVisible": false
+    }
   },
   "theme_color_position": "addressbar",
   "_comments": {
@@ -45,7 +43,7 @@
     "tabs.bar.position": "3 = bottom",
     "address_bar.position": "1 = bottom",
     "downloads.open_panel_on_new": "false = do not open left Downloads panel on each download",
-    "auto_hide": "address bar only — hover the bar edge or Ctrl+L to show it",
+    "panels.window_defaults.barVisible": "false = hide the side panel icon strip; F4 still toggles it",
     "theme_color_position": "not Unified — avoids thick window frame"
   }
 }
