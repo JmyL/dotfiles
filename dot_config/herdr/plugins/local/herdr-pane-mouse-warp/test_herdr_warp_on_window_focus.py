@@ -150,6 +150,46 @@ class WarpOnFocusScriptTest(unittest.TestCase):
             self.assertIn("pane layout --current", log.read_text(encoding="utf-8"))
 
 
+class CursorNudgeTest(unittest.TestCase):
+    def _run(self, x: int, y: int) -> tuple[int, str]:
+        script = Path(__file__).with_name("herdr-warp-on-focus")
+        with tempfile.TemporaryDirectory() as raw:
+            td = Path(raw)
+            log = td / "sway.log"
+            sway = td / "swaymsg"
+            sway.write_text(
+                '#!/bin/sh\nprintf \'%s\\n\' "$*" >>"$HERDR_WARP_TEST_LOG"\n',
+                encoding="utf-8",
+            )
+            sway.chmod(0o755)
+            result = subprocess.run(
+                [str(script), "--cursor-only", str(x), str(y)],
+                env={
+                    "HOME": str(td),
+                    "PATH": f"{td}:/usr/bin:/bin",
+                    "HERDR_WARP_ON_FOCUS": "1",
+                    "HERDR_WARP_TEST_LOG": str(log),
+                },
+                check=False,
+            )
+            text = log.read_text(encoding="utf-8") if log.is_file() else ""
+            return result.returncode, text
+
+    def test_sets_one_pixel_left_then_moves_right(self):
+        code, log = self._run(100, 200)
+        self.assertEqual(code, 0)
+        self.assertIn("seat seat0 cursor set 99 200", log)
+        self.assertIn("seat seat0 cursor move 1 0", log)
+        self.assertNotIn("cursor set 100 200", log)
+
+    def test_avoids_sway_zero_axis_then_nudges_vertically(self):
+        code, log = self._run(1, 200)
+        self.assertEqual(code, 0)
+        self.assertIn("seat seat0 cursor set 1 200", log)
+        self.assertIn("seat seat0 cursor move 0 1", log)
+        self.assertNotIn("cursor set 0 ", log)
+
+
 class OneShotWindowFocusTest(unittest.TestCase):
     def setUp(self):
         self._old_dir = MOD.WARP_DIR

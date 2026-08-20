@@ -38,6 +38,31 @@ run_host() {
   fi
 }
 
+# `cursor set` often moves the compositor pointer without a motion event, so
+# Herdr keeps scrolling the old pane. Set one pixel left, then `move 1 0` so
+# the client sees motion and we still land on (x, y). Sway treats 0 as "leave
+# this axis unchanged", so skip the left step when x-1 would be 0.
+warp_seat_cursor() {
+  local target_x="$1" target_y="$2" set_x
+  set_x=$((target_x - 1))
+  if ((set_x >= 1)); then
+    if ! run_host swaymsg "seat seat0 cursor set ${set_x} ${target_y}" >/dev/null 2>&1; then
+      return 1
+    fi
+    run_host swaymsg "seat seat0 cursor move 1 0" >/dev/null 2>&1 || true
+    return 0
+  fi
+  if ! run_host swaymsg "seat seat0 cursor set ${target_x} ${target_y}" >/dev/null 2>&1; then
+    return 1
+  fi
+  run_host swaymsg "seat seat0 cursor move 0 1" >/dev/null 2>&1 || true
+}
+
+if [[ "${1:-}" == "--cursor-only" ]]; then
+  warp_seat_cursor "${2:-}" "${3:-}" || exit 0
+  exit 0
+fi
+
 host_socket_exists() {
   local path="$1"
   if [[ -S "$path" ]]; then
@@ -351,7 +376,7 @@ if [[ -n "${HERDR_WARP_TOKEN:-}" && -n "${HERDR_WARP_TOKEN_FILE:-}" ]]; then
   fi
 fi
 
-if ! run_host swaymsg "seat seat0 cursor set ${target_x} ${target_y}" >/dev/null 2>&1; then
+if ! warp_seat_cursor "$target_x" "$target_y"; then
   debug "cursor set failed (${target_x},${target_y})"
   exit 0
 fi
