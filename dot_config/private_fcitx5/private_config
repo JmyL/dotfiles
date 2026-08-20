@@ -21,7 +21,6 @@ ModifierOnlyKeyTimeout=250
 0=Hangul_Hanja
 
 [Hotkey/DeactivateKeys]
-0=Escape
 
 [Hotkey/AltTriggerKeys]
 0=Shift_L

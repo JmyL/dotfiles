@@ -149,6 +149,7 @@ Display/input extras:
 - `kanshi`
 - `fcitx5`
 - `fcitx5-hangul` — Hangul input engine; without it fcitx5 silently drops the Hangul entry from `~/.config/fcitx5/profile` on startup
+- `fcitx5-vi-escape` — Esc / Ctrl-[ deactivates Hangul and still forwards the key; not in distro repos, build from https://github.com/anyakichi/fcitx5-vi-escape. Requires `DeactivateKeys` not to include Escape.
 
 Fonts/integrations:
 
@@ -280,6 +281,8 @@ May need separate installation depending on Fedora version/repositories:
   `clipse-setup-uinput` then re-login; verify with `clipse-setup-uinput --check`
 - `seekey` (`v0.2.3` → `~/.local/bin/seekey`):
   `sudo dnf install gtk4-devel libevdev-devel ncurses-devel json-glib-devel gtk4-layer-shell-devel gettext pkgconf-pkg-config gcc make && git clone --depth 1 --branch v0.2.3 https://github.com/Nakanomk/Seekey.git /tmp/Seekey && /tmp/Seekey/install.sh --user --no-input`
+- `fcitx5-vi-escape` (source → `/usr`):
+  `sudo dnf install cmake extra-cmake-modules gcc-c++ fcitx5-devel && git clone https://github.com/anyakichi/fcitx5-vi-escape.git /tmp/fcitx5-vi-escape && cmake -S /tmp/fcitx5-vi-escape -B /tmp/fcitx5-vi-escape/build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release && cmake --build /tmp/fcitx5-vi-escape/build && sudo cmake --install /tmp/fcitx5-vi-escape/build`
 - `showmethekey`:
   `sudo dnf copr enable pesader/showmethekey && sudo dnf install showmethekey`
 - `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa
@@ -344,6 +347,8 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
   `clipse-setup-uinput` then re-login; verify with `clipse-setup-uinput --check`
 - `seekey` (`v0.2.3` → `~/.local/bin/seekey`):
   `sudo apt install libgtk-4-dev libevdev-dev libncurses-dev libjson-glib-dev libgtk4-layer-shell-dev gettext pkg-config build-essential && git clone --depth 1 --branch v0.2.3 https://github.com/Nakanomk/Seekey.git /tmp/Seekey && /tmp/Seekey/install.sh --user --no-input`
+- `fcitx5-vi-escape` (source → `/usr`):
+  `sudo apt install cmake extra-cmake-modules g++ pkg-config libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev fcitx5-modules-dev && git clone https://github.com/anyakichi/fcitx5-vi-escape.git /tmp/fcitx5-vi-escape && cmake -S /tmp/fcitx5-vi-escape -B /tmp/fcitx5-vi-escape/build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release && cmake --build /tmp/fcitx5-vi-escape/build && sudo cmake --install /tmp/fcitx5-vi-escape/build`
 - `showmethekey` (`v1.21.0` → `/usr/local/bin/showmethekey-gtk`):
   `sudo apt install meson ninja-build libgtk-4-dev libadwaita-1-dev libevdev-dev libinput-dev libjson-glib-dev libxkbcommon-dev libxkbregistry-dev && git clone --depth 1 --branch v1.21.0 https://github.com/AlynxZhou/showmethekey.git /tmp/showmethekey && meson setup --prefix=/usr/local --buildtype=release /tmp/showmethekey/build && meson compile -C /tmp/showmethekey/build && sudo meson install -C /tmp/showmethekey/build`
 - `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa`
