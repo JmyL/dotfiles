@@ -2,8 +2,8 @@
 """Run the same warp as alt+space after Kitty gains focus.
 
 Not a long-lived subscriber. Skip hover and click-to-focus (no recent
-Sway keyboard binding), notification clicks (hold-window), and when
-pane.focused already warped.
+Sway keyboard binding), notification clicks (hold-window; those warp via
+herdr-warp-on-focus after agent focus), and when pane.focused already warped.
 """
 
 from __future__ import annotations

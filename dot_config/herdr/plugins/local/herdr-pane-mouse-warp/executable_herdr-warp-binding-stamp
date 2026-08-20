@@ -2,8 +2,8 @@
 """Stamp Sway keyboard focus bindings for Kitty window-focus warp.
 
 Hover and click-to-focus do not emit a binding event, so
-herdr-warp-on-window-focus can skip those. Notification clicks still warp
-via pane.focused after herdr agent focus.
+herdr-warp-on-window-focus can skip those. Notification clicks warp via
+herdr-warp-on-focus after herdr agent focus, not this window-focus path.
 """
 
 from __future__ import annotations
