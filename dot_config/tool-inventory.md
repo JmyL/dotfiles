@@ -38,9 +38,10 @@ These are expected by shell, tmux, vifm, aerc, or general workflows:
 
 ## Shell-specific expectations
 
-Config: `~/.bashrc`, `~/.bashrc.d/browser`
+Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`
 
 - `nvim` is exported as `VISUAL` and `EDITOR`.
+- `bash-completion` is required for `apt install <TAB>` package-name completion on Ubuntu (Fedora already loads it from `/etc/bashrc`).
 - `git` uses `delta` as pager (`core.pager` in `~/.gitconfig`).
 - `starship` is initialized with `starship init bash`.
 - `zoxide` is initialized with `zoxide init bash`.
@@ -294,7 +295,7 @@ Test/package names may vary by Ubuntu release. This is aimed at recent Ubuntu ve
 ```sh
 sudo apt update
 sudo apt install \
-  aerc atuin bat binutils blueman catdoc curl direnv docx2txt eza fcitx5 fcitx5-hangul \
+  aerc atuin bash-completion bat binutils blueman catdoc curl direnv docx2txt eza fcitx5 fcitx5-hangul \
   fd-find ffmpeg flatpak foot fzf git git-delta gnupg grim isync jq kanshi kitty less \
   libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
   p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
@@ -369,7 +370,7 @@ sudo dnf install \
 # Ubuntu
 sudo apt update
 sudo apt install \
-  aerc bat binutils curl direnv eza fd-find fzf git git-delta gnupg isync jq kitty \
+  aerc bash-completion bat binutils curl direnv eza fd-find fzf git git-delta gnupg isync jq kitty \
   less man-db neovim notmuch p7zip-full pandoc pass poppler-utils ripgrep \
   starship tmux vifm wl-clipboard xdg-utils zathura khal khard vdirsyncer \
   zip zoxide go

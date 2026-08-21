@@ -1,0 +1,9 @@
+# Programmable completion. Ubuntu leaves this commented out in
+# /etc/bash.bashrc; Fedora already loads it via /etc/bashrc.
+if [[ $- == *i* ]] && ! shopt -oq posix && [[ -z ${BASH_COMPLETION_VERSINFO:-} ]]; then
+  if [[ -f /usr/share/bash-completion/bash_completion ]]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [[ -f /etc/bash_completion ]]; then
+    . /etc/bash_completion
+  fi
+fi
