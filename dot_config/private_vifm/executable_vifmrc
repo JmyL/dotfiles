@@ -216,7 +216,7 @@ fileviewer *.avi,*.mp4,*.wmv,*.dat,*.3gp,*.ogv,*.mkv,*.mpg,*.mpeg,*.vob,
 " Web
 filextype *.html,*.htm
         \ {Open with vivaldi}
-        \ vivaldi %f %i &,
+        \ xdg-open %f %i &,
 filetype *.html,*.htm links, lynx
 
 " Object
