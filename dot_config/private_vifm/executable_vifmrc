@@ -215,8 +215,8 @@ fileviewer *.avi,*.mp4,*.wmv,*.dat,*.3gp,*.ogv,*.mkv,*.mpg,*.mpeg,*.vob,
 
 " Web
 filextype *.html,*.htm
-        \ {Open with brave}
-        \ brave-browser %f &,
+        \ {Open with vivaldi}
+        \ vivaldi %f %i &,
 filetype *.html,*.htm links, lynx
 
 " Object
