@@ -339,7 +339,7 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     # Activate the latest notification's first action (e.g. COPY 2FA code)
     bindsym $mod+y exec sh -c 'c="$HOME/.local/bin/swaync-client"; [ -x "$c" ] || c=swaync-client; exec "$c" -a 0 -sw'
     # Clipboard history (clipse TUI in floating foot; auto-pastes on choose)
-    bindsym $mod+v exec ~/.local/bin/foot --app-id=clipse --window-size-chars=100x32 ~/.local/bin/clipse
+    bindsym $mod+v exec sh -c 'c="$HOME/.local/bin/foot"; [ -x "$c" ] || c=foot; exec "$c" --app-id=clipse --window-size-chars=100x32 "$HOME/.local/bin/clipse"'
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/idle-inhibit toggle
     # Cycle available power profiles
