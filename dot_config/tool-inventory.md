@@ -111,6 +111,9 @@ Vivaldi UI checklist (new machine):
 4. Themes: prefer a **user copy** of Dark; Coloring mode **not Unified** (`layout.json` sets `theme_color_position=addressbar` on the scheduled theme). Stock theme edits can reset on update.
 5. Side panel: hidden (`layout.json` `panels.window_defaults.barVisible=false`). F4 still toggles it. Unified + Auto-Hide can leave a frame; leave Auto-Hide off.
 6. Confirm `vivaldi://extensions` has Slack stay-in-browser; shortcuts: Alt+S for Slack tab focus. Hidden toolbar icons (Show Tab Numbers, Slack stay-in-browser) still run in the background.
+
+Audio:
+
 - `wireplumber` (`wpctl`) and `pipewire-bin`/`pipewire-utils` (`pw-dump`) — used by `sway-audio-switch` to list/switch default audio devices
 
 Screenshot/recording/clipboard:
@@ -236,6 +239,12 @@ These are useful for reproducing the full environment but may be installed by th
 ## Fedora install command
 
 This is the broad workstation-oriented install set. Some packages may vary by Fedora release or repositories.
+On Fedora Silverblue, run this broad `dnf install` inside the toolbox/dev
+container for CLI and build tools. Do not treat it as a host setup command.
+Host-session tools that Sway starts directly (`sway`, `waybar`, `vivaldi-stable`,
+`1password`, `twingate`, `swaync-client`, `swayosd-client`, `showmethekey`,
+input-device helpers) must be installed on the host via Flatpak, rpm-ostree, or
+user-local upstream installers as noted below.
 
 ```sh
 sudo dnf install \
@@ -258,6 +267,27 @@ git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 # Brave browser, if using the Flatpak app expected by sway config
 flatpak install flathub com.brave.Browser
 ```
+
+Fedora Silverblue host notes:
+
+- `atuin`: install it wherever interactive shells run. For toolbox shells,
+  `sudo dnf install atuin` inside the toolbox is enough; for host shells, prefer
+  Atuin's user install under `~/.atuin/bin` or layer the Fedora package with
+  `rpm-ostree install atuin`.
+- `vivaldi-stable`: current Sway config starts `/usr/bin/vivaldi-stable`, so on
+  Silverblue this must be a host binary, not only a toolbox package. Install the
+  Vivaldi RPM/repository on the host with rpm-ostree, or change the Sway binding
+  before using a Flatpak/browser alternative.
+- `1password` browser integration needs the host file
+  `/etc/1password/custom_allowed_browsers` to include `vivaldi-bin`; make that
+  change on the host, then restart 1Password.
+- `seekey`, `showmethekey`, `clipse-setup-uinput`, and `fcitx5-vi-escape` touch
+  host input devices or host input-method paths. Build/install them from a
+  matching toolbox if useful, but run the final install/setup step against the
+  host and log out/in after group or udev changes.
+- `herdr-install-plugins` can run from the toolbox because Herdr plugin files
+  live under the shared home directory. Local plugin actions that call `swaymsg`
+  use `flatpak-spawn --host` fallback when they are invoked from a toolbox.
 
 May need separate installation depending on Fedora version/repositories:
 
@@ -286,7 +316,7 @@ May need separate installation depending on Fedora version/repositories:
   `sudo dnf install cmake extra-cmake-modules gcc-c++ fcitx5-devel && git clone https://github.com/anyakichi/fcitx5-vi-escape.git /tmp/fcitx5-vi-escape && cmake -S /tmp/fcitx5-vi-escape -B /tmp/fcitx5-vi-escape/build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release && cmake --build /tmp/fcitx5-vi-escape/build && sudo cmake --install /tmp/fcitx5-vi-escape/build`
 - `showmethekey`:
   `sudo dnf copr enable pesader/showmethekey && sudo dnf install showmethekey`
-- `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa
+- `librnnoise_ladspa.so` — `mkdir -p ~/.local/lib/ladspa && curl -fsSL https://github.com/werman/noise-suppression-for-voice/releases/download/v1.10/linux-rnnoise.zip -o /tmp/linux-rnnoise.zip && unzip -jo /tmp/linux-rnnoise.zip 'linux-rnnoise/ladspa/librnnoise_ladspa.so' -d ~/.local/lib/ladspa`
 
 ## Ubuntu install command
 
