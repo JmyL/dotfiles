@@ -12,6 +12,15 @@ set -euo pipefail
 waybar_bin="$(command -v waybar)" || exit 1
 pidfile="${XDG_RUNTIME_DIR:-/tmp}/waybar-sway-bar.pid"
 
+# Waybar treats missing @import targets as fatal. These files are runtime state
+# written by helper scripts, so seed empty defaults before the first launch.
+for state in \
+  "$HOME/.cache/calendar-alert/waybar-state.css" \
+  "$HOME/.cache/sway-recording/waybar-state.css"; do
+  mkdir -p "$(dirname "$state")"
+  [[ -e "$state" ]] || : >"$state"
+done
+
 # Replace a leftover wrapper (e.g. after killall waybar) so reload cannot
 # stack a second bar client.
 if [[ -f "$pidfile" ]]; then

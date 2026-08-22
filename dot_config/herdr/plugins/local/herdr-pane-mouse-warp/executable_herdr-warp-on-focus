@@ -135,11 +135,6 @@ kitty_ls_json() {
   run_host env -u KITTY_LISTEN_ON kitty @ --to "$to" ls
 }
 
-if ! run_host command -v swaymsg >/dev/null 2>&1; then
-  debug "swaymsg unavailable"
-  exit 0
-fi
-
 if ! command -v "$herdr_bin" >/dev/null 2>&1; then
   debug "herdr unavailable"
   exit 0
@@ -157,10 +152,7 @@ tree_json=$(run_host swaymsg -t get_tree 2>/dev/null) || {
 
 outputs_json=$(run_host swaymsg -t get_outputs 2>/dev/null || true)
 
-kitty_json=""
-if run_host command -v kitty >/dev/null 2>&1; then
-  kitty_json=$(kitty_ls_json 2>/dev/null || true)
-fi
+kitty_json=$(kitty_ls_json 2>/dev/null || true)
 
 kitty_conf="${KITTY_CONFIG_DIRECTORY:-${XDG_CONFIG_HOME:-$HOME/.config}/kitty}/kitty.conf"
 
