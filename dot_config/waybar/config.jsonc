@@ -136,6 +136,7 @@
 		"tooltip-format-disconnected": "MPD (disconnected)"
 	},
 	"custom/ree-vpn": {
+		"exec-if": "test -x \"$HOME/.local/bin/work/ree-vpn-status\"",
 		"exec": "$HOME/.local/bin/work/ree-vpn-status",
 		"return-type": "json",
 		"interval": 60,
@@ -143,6 +144,7 @@
 		"on-click": "$HOME/.local/bin/work/ree-goodmorning-launch"
 	},
 	"custom/ree-testbed": {
+		"exec-if": "test -x \"$HOME/.local/bin/work/ree-testbed-status\"",
 		"exec": "$HOME/.local/bin/work/ree-testbed-status",
 		"return-type": "json",
 		"markup": true,
@@ -310,7 +312,7 @@
 			"dnd-inhibited-notification": "󰂛"
 		},
 		"return-type": "json",
-		"exec-if": "which swaync-client",
+		"exec-if": "test -x \"$HOME/.local/bin/swaync-client\" || command -v swaync-client",
 		"exec": "$HOME/.local/bin/swaync-client -swb",
 		"on-click": "sleep 0.1 && sh -c 'c=\"$HOME/.local/bin/swaync-client\"; [ -x \"$c\" ] || c=swaync-client; exec \"$c\" -t -sw'",
 		"on-click-right": "sleep 0.1 && sh -c 'c=\"$HOME/.local/bin/swaync-client\"; [ -x \"$c\" ] || c=swaync-client; exec \"$c\" -d -sw'",
