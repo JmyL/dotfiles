@@ -218,7 +218,8 @@ description = "swap pane right"
 
 [ui]
 agent_panel_sort = "spaces"
-tab_bar_position = "bottom"
+# Herdr stable 0.7.5 does not accept tab_bar_position yet.
+# tab_bar_position = "bottom"
 sidebar_start_collapsed = true
 sidebar_collapsed_mode = "hidden"
 # hide_tab_bar_when_single_tab = true
