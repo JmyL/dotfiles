@@ -8,3 +8,6 @@
 .local/bin/sway-lock-blank
 .local/bin/manual-lock-active
 .config/sway/test_sway-lock-blank.bats
+.local/bin/herdr-warp-binding-stamp
+.local/bin/herdr-warp-on-focus
+.local/bin/herdr-warp-on-window-focus

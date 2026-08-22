@@ -8,6 +8,10 @@ from kitty.boss import Boss
 from kitty.window import Window
 
 _LAUNCHER = Path.home() / ".local/bin/dev-launcher"
+_HERDR_WARP_ON_WINDOW_FOCUS = (
+    Path.home()
+    / ".config/herdr/plugins/local/herdr-pane-mouse-warp/herdr-warp-on-window-focus"
+)
 
 
 def _spawn(argv: list[str]) -> None:
@@ -25,10 +29,11 @@ def on_focus_change(boss: Boss, window: Window, data: dict[str, Any]) -> None:
 
     launcher = str(_LAUNCHER)
     _spawn([launcher, "ai-kitty-focus-clear", str(window.id)])
+    if not _HERDR_WARP_ON_WINDOW_FOCUS.is_file():
+        return
     _spawn(
         [
-            launcher,
-            "herdr-warp-on-window-focus",
+            str(_HERDR_WARP_ON_WINDOW_FOCUS),
             "--pid",
             str(os.getpid()),
             "--title",
