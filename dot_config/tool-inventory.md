@@ -225,7 +225,7 @@ These are useful for reproducing the full environment but may be installed by th
 
 - `pi`
 - `herdr`
-- `bun` (needed by some Herdr plugins, e.g. `danbuhler/herdr-pane-topic-sync`)
+- `bun` (needed by some Herdr plugins, e.g. `rjyo/herdr-window-title-sync`)
 - `uv`, `uvx`
 - `gh`
 - `gh` extension `dlvhdr/gh-dash` (`gh extension install dlvhdr/gh-dash`)
@@ -286,7 +286,7 @@ Fedora Silverblue host notes:
   matching toolbox if useful, but run the final install/setup step against the
   host and log out/in after group or udev changes.
 - `herdr-install-plugins` can run from the toolbox because Herdr plugin files
-  live under the shared home directory. Local plugin actions that call `swaymsg`
+  live under the shared home directory. Herdr plugin actions that call `swaymsg`
   use `flatpak-spawn --host` fallback when they are invoked from a toolbox.
 
 May need separate installation depending on Fedora version/repositories:
