@@ -26,8 +26,9 @@ if [[ ! -f "$prefs" ]]; then
 fi
 
 if pgrep -x vivaldi-bin >/dev/null 2>&1; then
-  printf 'Warning: Vivaldi is running; it may overwrite Preferences on quit.\n' >&2
+  printf 'Vivaldi is running and may overwrite Preferences on quit.\n' >&2
   printf 'Quit Vivaldi, re-run this script, then start Vivaldi again.\n' >&2
+  exit 1
 fi
 
 python3 - "$prefs" "$ui_dir" "$layout" <<'PY'
