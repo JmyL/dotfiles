@@ -25,7 +25,15 @@ if [[ ! -f "$prefs" ]]; then
   exit 1
 fi
 
+vivaldi_running=false
 if pgrep -x vivaldi-bin >/dev/null 2>&1; then
+  vivaldi_running=true
+elif command -v flatpak-spawn >/dev/null 2>&1 &&
+  flatpak-spawn --host pgrep -x vivaldi-bin >/dev/null 2>&1; then
+  vivaldi_running=true
+fi
+
+if [[ "$vivaldi_running" == true ]]; then
   printf 'Vivaldi is running and may overwrite Preferences on quit.\n' >&2
   printf 'Quit Vivaldi, re-run this script, then start Vivaldi again.\n' >&2
   exit 1
