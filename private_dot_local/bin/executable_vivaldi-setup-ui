@@ -82,19 +82,10 @@ if "auto_hide" in layout:
 
 color_pos = layout.get("theme_color_position")
 if color_pos:
-  schedule = (vivaldi.get("theme") or {}).get("schedule") or {}
-  ids = set()
-  for bucket in schedule.values():
-    if isinstance(bucket, dict):
-      ids.update(v for v in bucket.values() if isinstance(v, str))
-  current = (vivaldi.get("themes") or {}).get("current")
-  if isinstance(current, str):
-    ids.add(current)
   themes = vivaldi.setdefault("themes", {})
   for bucket_name in ("system", "user"):
     for theme in themes.get(bucket_name) or []:
-      if theme.get("id") in ids:
-        theme["colorPosition"] = color_pos
+      theme["colorPosition"] = color_pos
 
 prefs_path.write_text(json.dumps(data, separators=(",", ":"), ensure_ascii=False) + "\n")
 print(f"css_ui_mods_directory: {old_css!r} -> {ui_dir!r}")
