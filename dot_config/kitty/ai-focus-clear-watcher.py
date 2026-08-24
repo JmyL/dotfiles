@@ -47,13 +47,8 @@ def on_focus_change(boss: Boss, window: Window, data: dict[str, Any]) -> None:
     _spawn([launcher, "ai-kitty-focus-clear", str(window.id)])
     warp = _plugin_script("herdr-pane-mouse-warp", "herdr-warp-on-window-focus")
     if warp is None or not warp.is_file():
+        fallback = Path.home() / ".local/bin/herdr-warp-on-window-focus"
+        warp = fallback if fallback.is_file() else None
+    if warp is None:
         return
-    _spawn(
-        [
-            str(warp),
-            "--pid",
-            str(os.getpid()),
-            "--title",
-            window.title or "",
-        ]
-    )
+    _spawn([str(warp), "--pid", str(os.getpid()), "--title", window.title or ""])

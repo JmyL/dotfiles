@@ -10,7 +10,6 @@
 .config/sway/test_sway-lock-blank.bats
 .local/bin/herdr-warp-binding-stamp
 .local/bin/herdr-warp-on-focus
-.local/bin/herdr-warp-on-window-focus
 .config/herdr/plugins/config/dan.pane-topic-sync/config.toml
 .config/herdr/plugins/local/herdr-pane-mouse-warp
 .config/vivaldi-ui/active-tab.css

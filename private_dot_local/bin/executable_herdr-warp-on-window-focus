@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Kitty watchers loaded before the plugin moved to GitHub still call this
+# PATH name via dev-launcher. Resolve the installed plugin script each run
+# so hashed GitHub plugin dirs stay current.
+plugins_json="${XDG_CONFIG_HOME:-$HOME/.config}/herdr/plugins.json"
+script="$(
+  python3 - "$plugins_json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    plugins = json.loads(path.read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError):
+    raise SystemExit(0)
+if not isinstance(plugins, list):
+    raise SystemExit(0)
+for plugin in plugins:
+    if not isinstance(plugin, dict):
+        continue
+    if plugin.get("plugin_id") != "herdr-pane-mouse-warp":
+        continue
+    if not plugin.get("enabled", True):
+        continue
+    root = plugin.get("plugin_root")
+    if not isinstance(root, str) or not root:
+        continue
+    candidate = Path(root) / "herdr-warp-on-window-focus"
+    if candidate.is_file():
+        print(candidate)
+        raise SystemExit(0)
+raise SystemExit(0)
+PY
+)"
+
+[[ -n "${script:-}" && -f "$script" ]] || exit 0
+exec "$script" "$@"
