@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Apply chezmoi-managed Vivaldi UI bits into Preferences:
-# - Custom UI Modifications directory (~/.config/vivaldi-ui/*.css)
+# - Clear Custom UI Modifications (no tracked CSS)
 # - layout.json (toolbar composition, hidden extension icons, bar positions,
 #   hidden side panel, …)
 # Prefer running while Vivaldi is quit so Preferences is not overwritten on exit.
@@ -39,14 +39,13 @@ if [[ "$vivaldi_running" == true ]]; then
   exit 1
 fi
 
-python3 - "$prefs" "$ui_dir" "$layout" <<'PY'
+python3 - "$prefs" "$layout" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 prefs_path = Path(sys.argv[1])
-ui_dir = str(Path(sys.argv[2]).resolve())
-layout = json.loads(Path(sys.argv[3]).read_text())
+layout = json.loads(Path(sys.argv[2]).read_text())
 data = json.loads(prefs_path.read_text())
 vivaldi = data.setdefault("vivaldi", {})
 
@@ -61,7 +60,7 @@ def deep_merge(dst, src):
 
 appearance = vivaldi.setdefault("appearance", {})
 old_css = appearance.get("css_ui_mods_directory")
-appearance["css_ui_mods_directory"] = ui_dir
+appearance["css_ui_mods_directory"] = ""
 
 if "appearance" in layout:
   deep_merge(appearance, layout["appearance"])
@@ -88,7 +87,7 @@ if color_pos:
       theme["colorPosition"] = color_pos
 
 prefs_path.write_text(json.dumps(data, separators=(",", ":"), ensure_ascii=False) + "\n")
-print(f"css_ui_mods_directory: {old_css!r} -> {ui_dir!r}")
+print(f"css_ui_mods_directory: {old_css!r} -> {appearance.get('css_ui_mods_directory')!r}")
 hidden = (
   vivaldi.get("address_bar", {})
   .get("extensions", {})
@@ -107,4 +106,4 @@ if color_pos:
   print(f"theme_color_position: {color_pos}")
 PY
 
-printf 'Done. Restart Vivaldi to load CSS from %s.\n' "$ui_dir"
+printf 'Done. Restart Vivaldi to apply layout.json (custom CSS is disabled).\n'
