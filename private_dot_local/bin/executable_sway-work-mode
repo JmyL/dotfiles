@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Enter the Sway work mode when work tools are installed. Keep this out of
+# sway config: $HOME is an unset Sway variable there, and [g] in mode names
+# is parsed as window criteria unless quoted inside swaymsg.
+
+launcher="${SWAY_WORK_LAUNCHER:-$HOME/.local/bin/work/ree-goodmorning-launch}"
+mode="${SWAY_WORK_MODE:-Work: [g]oodmorning [r]eservation [d]eploy [s]ession [o]pen [c]opy [q]uit}"
+swaymsg_cmd="${SWAYMSG:-swaymsg}"
+notify_cmd="${NOTIFY_SEND:-notify-send}"
+
+if [[ -x "$launcher" ]]; then
+  # Quote the mode name inside the command. `swaymsg mode $name` splits on
+  # spaces and treats `[g]oodmorning` as a second command.
+  exec "$swaymsg_cmd" "mode \"$mode\""
+fi
+
+exec "$notify_cmd" "Work tools not installed" "${launcher%/*} is unavailable"
