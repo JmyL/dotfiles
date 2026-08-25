@@ -15,3 +15,4 @@
 .config/herdr/plugins/local/herdr-pane-mouse-warp
 .config/vivaldi-ui/active-tab.css
 .config/vivaldi-ui/no-side-gutter.css
+.config/sway/config.d/20-teleport-workspaces.conf
