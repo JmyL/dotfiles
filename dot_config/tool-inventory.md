@@ -235,6 +235,7 @@ These are useful for reproducing the full environment but may be installed by th
 - `zellij`
 - `tuxedo`
 - `pop-launcher`
+- `playwright-cli` (`@playwright/cli`) — coding-agent browser automation (CLI + skill, not Playwright MCP). User-global: `npm install -g @playwright/cli@latest --prefix ~/.npm-global`. Then `playwright-cli install-browser` and `playwright-cli install --skills=claude --global`. Cursor also needs `ln -sfn ../../.claude/skills/playwright-cli ~/.cursor/skills/playwright-cli`. Default browser is bundled Chromium via `~/.playwright/cli.config.json` (no Google Chrome at `/opt/google/chrome`; Ubuntu AppArmor needs `chromiumSandbox: false`).
 
 ## Fedora install command
 
@@ -304,6 +305,7 @@ May need separate installation depending on Fedora version/repositories:
 - `uv`
 - `gh` extension `dlvhdr/gh-dash`: `gh extension install dlvhdr/gh-dash`
 - `gh-review`: `cargo install gh-review`
+- `playwright-cli`: `npm install -g @playwright/cli@latest --prefix ~/.npm-global && playwright-cli install-browser && playwright-cli install --skills=claude --global && ln -sfn ../../.claude/skills/playwright-cli ~/.cursor/skills/playwright-cli`
 - `JetBrainsMonoNL Nerd Font Mono`
 - `JetBrainsMonoNL Nerd Font` — Waybar (`curl -fsSL https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz | tar -xJ -C ~/.local/share/fonts --wildcards 'JetBrainsMonoNLNerdFont-*.ttf' && fc-cache -f ~/.local/share/fonts`)
 - `clipse` (Wayland release tarball → `~/.local/bin/clipse`):
@@ -366,6 +368,7 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `uv`
 - `gh` extension `dlvhdr/gh-dash`: `gh extension install dlvhdr/gh-dash`
 - `gh-review`: `cargo install gh-review`
+- `playwright-cli`: `npm install -g @playwright/cli@latest --prefix ~/.npm-global && playwright-cli install-browser && playwright-cli install --skills=claude --global && ln -sfn ../../.claude/skills/playwright-cli ~/.cursor/skills/playwright-cli`
 - `dumptorrent`
 - `tudu`
 - `JetBrainsMonoNL Nerd Font Mono`
