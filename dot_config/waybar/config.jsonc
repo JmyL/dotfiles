@@ -69,10 +69,9 @@
 		]
 	},
 	// Modules configuration
-	// Show every workspace on each bar so Mod+6..9 (laptop) still updates the
-	// focused highlight on the external monitor's bar immediately.
+	// Per-output: external bar shows 1-5, laptop bar shows 6-10.
 	"sway/workspaces": {
-		"all-outputs": true
+		"all-outputs": false
 	},
 	"keyboard-state": {
 		"numlock": true,
