@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Called from tmux when a nav key hits a pane edge.
+# If this client was attached from Herdr, move to the neighboring Herdr pane.
+# Outside Herdr this is a no-op, so the same tmux binds work in both places.
+set -euo pipefail
+
+dir="${1:?usage: herdr-tmux-edge <left|down|up|right>}"
+case "$dir" in
+left | down | up | right) ;;
+*)
+  echo "herdr-tmux-edge: unknown direction: $dir" >&2
+  exit 2
+  ;;
+esac
+
+if [ "${HERDR_ENV:-}" != 1 ]; then
+  exit 0
+fi
+
+herdr="${HERDR_BIN_PATH:-herdr}"
+
+# Stay in a zoomed Herdr pane when unzoom_on_nav is off (same as herdr-nav.sh).
+unzoom=1
+config_path="${HERDR_SPLITS_CONFIG:-${HERDR_PLUGIN_CONFIG_DIR:-$HOME/.config/herdr/plugins/config/herdr-splits}/herdr-splits.conf}"
+if [ -r "$config_path" ] && grep -Eq '^[[:space:]]*unzoom_on_nav[[:space:]]*=[[:space:]]*false' "$config_path"; then
+  unzoom=0
+fi
+
+edges_out=$("$herdr" pane edges --current 2>/dev/null || true)
+if printf '%s' "$edges_out" | grep -q '"zoomed"[[:space:]]*:[[:space:]]*true'; then
+  if [ "$unzoom" -eq 0 ]; then
+    exit 0
+  fi
+  "$herdr" pane zoom --off --current 2>/dev/null || true
+fi
+
+exec "$herdr" pane focus --direction "$dir" --current
