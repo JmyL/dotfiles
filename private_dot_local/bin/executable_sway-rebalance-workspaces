@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Assign workspaces to main (external) vs secondary (eDP) when both are active.
 
-Main (external): 1-5, 10
-Secondary (laptop): 6-9
+Main (external): 1-5
+Secondary (laptop): 6-10
 
 No-op when only one output is active.
 
@@ -16,8 +16,8 @@ import json
 import subprocess
 import sys
 
-MAIN_WORKSPACES = (1, 2, 3, 4, 5, 10)
-SECONDARY_WORKSPACES = (6, 7, 8, 9)
+MAIN_WORKSPACES = (1, 2, 3, 4, 5)
+SECONDARY_WORKSPACES = (6, 7, 8, 9, 10)
 SEED_SECONDARY = 6
 
 

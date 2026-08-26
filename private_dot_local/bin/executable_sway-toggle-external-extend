@@ -64,7 +64,7 @@ def main():
         width = logical_width(internal)
         subprocess.run(["swaymsg", "output", internal_name, "enable", "position", "0", "0"], check=True)
         subprocess.run(["swaymsg", "output", external_name, "enable", "position", str(width), "0"], check=True)
-        # Main=external (1-5,10), secondary=eDP (6-9) only while both are on.
+        # Main=external (1-5), secondary=eDP (6-10) only while both are on.
         subprocess.run(
             [os.path.expanduser("~/.local/bin/sway-rebalance-workspaces")],
             check=False,
