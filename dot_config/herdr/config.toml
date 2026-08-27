@@ -179,6 +179,12 @@ command = "rmarganti.herdr-pluck.open-url"
 description = "open visible URL"
 
 [[keys.command]]
+key = "alt+shift+f"
+type = "plugin_action"
+command = "rmarganti.herdr-pluck.open-url-and-focus"
+description = "open visible URL and focus browser"
+
+[[keys.command]]
 key = "alt+semicolon"
 type = "popup"
 command = "$SHELL"

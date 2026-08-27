@@ -2,6 +2,7 @@
 # PATH wrapper: open http(s) and local HTML via the real xdg-open with a Sway
 # activation token, then focus the Vivaldi window that became urgent (the one
 # that accepted the tab). reeplay.reeinfra.net goes to Firefox instead (HEVC).
+# Set XDG_OPEN_FOCUS=0 to open without moving focus (Herdr Pluck alt+f).
 # Other schemes pass through unchanged.
 set -euo pipefail
 
@@ -89,6 +90,15 @@ focus_browser() {
   fi
 }
 
+xdg_open_should_focus() {
+  case "${XDG_OPEN_FOCUS:-1}" in
+  0 | false | no | off)
+    return 1
+    ;;
+  esac
+  return 0
+}
+
 xdg_open_main() {
   if ! is_browser_target "${1:-}"; then
     exec "$XDG_OPEN" "$@"
@@ -103,7 +113,9 @@ xdg_open_main() {
       exec "$FIREFOX" "$target" "$@"
     fi
     sway_exec_cmd "$FIREFOX" "$target" "$@"
-    focus_browser "$FIREFOX_APP_ID"
+    if xdg_open_should_focus; then
+      focus_browser "$FIREFOX_APP_ID"
+    fi
     return 0
   fi
 
@@ -112,7 +124,9 @@ xdg_open_main() {
   fi
 
   sway_exec_cmd "$XDG_OPEN" "$target" "$@"
-  focus_browser "$BROWSER_APP_ID"
+  if xdg_open_should_focus; then
+    focus_browser "$BROWSER_APP_ID"
+  fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
