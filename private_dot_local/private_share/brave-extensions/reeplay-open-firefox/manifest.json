@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Reeplay open in Firefox",
+  "version": "1.0.0",
+  "description": "Open reeplay.reeinfra.net in Firefox (Linux Chromium cannot decode the HEVC HLS stream).",
+  "permissions": ["nativeMessaging", "tabs", "webNavigation"],
+  "host_permissions": ["*://reeplay.reeinfra.net/*"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

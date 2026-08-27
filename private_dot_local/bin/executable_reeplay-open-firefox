@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# Open an https://reeplay.reeinfra.net URL in Firefox.
+# CLI: reeplay-open-firefox <url>
+# Native messaging (no args): Chrome/Vivaldi length-prefixed JSON {"url":"..."}.
+set -euo pipefail
+
+FIREFOX="${FIREFOX:-firefox}"
+SWAYMSG="${SWAYMSG:-swaymsg}"
+FIREFOX_APP_ID="${FIREFOX_APP_ID:-firefox_firefox}"
+URGENT_POLL_COUNT="${URGENT_POLL_COUNT:-12}"
+URGENT_POLL_INTERVAL="${URGENT_POLL_INTERVAL:-0.05}"
+
+is_reeplay_url() {
+  local target="${1:-}"
+  case "$target" in
+  http://reeplay.reeinfra.net | https://reeplay.reeinfra.net) return 0 ;;
+  http://reeplay.reeinfra.net[/?#]* | https://reeplay.reeinfra.net[/?#]*) return 0 ;;
+  esac
+  return 1
+}
+
+sway_exec_cmd() {
+  local -a quoted=()
+  local arg
+  for arg in "$@"; do
+    quoted+=("$(printf '%q' "$arg")")
+  done
+  "$SWAYMSG" "exec ${quoted[*]}" >/dev/null
+}
+
+sway_focus() {
+  "$SWAYMSG" "$1" >/dev/null
+}
+
+focus_firefox() {
+  local i
+  for ((i=0; i<URGENT_POLL_COUNT; i++)); do
+    if sway_focus "[app_id=\"${FIREFOX_APP_ID}\" urgent=latest] focus"; then
+      return 0
+    fi
+    sleep "$URGENT_POLL_INTERVAL"
+  done
+  sway_focus "[app_id=\"${FIREFOX_APP_ID}\"] focus" || true
+}
+
+open_in_firefox() {
+  local url="$1"
+  if ! is_reeplay_url "$url"; then
+    printf 'not a reeplay.reeinfra.net URL: %s\n' "$url" >&2
+    return 1
+  fi
+  if command -v "$SWAYMSG" >/dev/null 2>&1; then
+    sway_exec_cmd "$FIREFOX" "$url"
+    focus_firefox
+    return 0
+  fi
+  exec "$FIREFOX" "$url"
+}
+
+native_read_url() {
+  # -c keeps stdin as the native-messaging pipe (a heredoc would consume it).
+  python3 -c '
+import json
+import struct
+import sys
+
+raw = sys.stdin.buffer.read(4)
+if len(raw) != 4:
+    print("missing native message length", file=sys.stderr)
+    sys.exit(2)
+length = struct.unpack("<I", raw)[0]
+payload = sys.stdin.buffer.read(length)
+if len(payload) != length:
+    print("truncated native message", file=sys.stderr)
+    sys.exit(2)
+try:
+    msg = json.loads(payload)
+except json.JSONDecodeError as exc:
+    print(exc, file=sys.stderr)
+    sys.exit(2)
+url = msg.get("url") if isinstance(msg, dict) else None
+if not isinstance(url, str) or not url:
+    print("native message missing url", file=sys.stderr)
+    sys.exit(2)
+sys.stdout.write(url)
+'
+}
+
+native_write_reply() {
+  local ok="$1"
+  local error="${2:-}"
+  python3 - "$ok" "$error" <<'PY'
+import json
+import struct
+import sys
+
+ok = sys.argv[1] == "1"
+error = sys.argv[2]
+msg = {"ok": ok}
+if error:
+    msg["error"] = error
+data = json.dumps(msg, separators=(",", ":")).encode()
+sys.stdout.buffer.write(struct.pack("<I", len(data)))
+sys.stdout.buffer.write(data)
+sys.stdout.buffer.flush()
+PY
+}
+
+native_host_main() {
+  local url
+  if ! url="$(native_read_url)"; then
+    native_write_reply 0 "invalid native message"
+    return 1
+  fi
+  if ! open_in_firefox "$url"; then
+    native_write_reply 0 "rejected url"
+    return 1
+  fi
+  native_write_reply 1
+}
+
+cli_main() {
+  if [[ $# -lt 1 ]]; then
+    printf 'usage: reeplay-open-firefox <url>\n' >&2
+    return 2
+  fi
+  open_in_firefox "$1"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  if [[ $# -eq 0 ]]; then
+    if [[ -t 0 ]]; then
+      printf 'usage: reeplay-open-firefox <url>\n' >&2
+      exit 2
+    fi
+    native_host_main
+  else
+    cli_main "$@"
+  fi
+fi

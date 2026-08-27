@@ -10,7 +10,10 @@ setup() {
   export URGENT_POLL_COUNT=1
   export URGENT_POLL_INTERVAL=0
   export BROWSER_APP_ID=vivaldi-stable
+  export FIREFOX="$tmp/firefox"
+  export FIREFOX_APP_ID=firefox_firefox
   export XDG_OPEN_LOG="$tmp/xdg-open.log"
+  export FIREFOX_LOG="$tmp/firefox.log"
   export SWAYMSG_LOG="$tmp/swaymsg.log"
 
   cat >"$tmp/real-xdg-open" <<'EOF'
@@ -18,6 +21,12 @@ setup() {
 printf '%s\n' "$@" >>"${XDG_OPEN_LOG:?}"
 EOF
   chmod +x "$tmp/real-xdg-open"
+
+  cat >"$tmp/firefox" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >>"${FIREFOX_LOG:?}"
+EOF
+  chmod +x "$tmp/firefox"
 
   cat >"$tmp/swaymsg" <<'EOF'
 #!/usr/bin/env bash
@@ -86,5 +95,29 @@ teardown() {
   run "$script" 'https://example.com/'
   [ "$status" -eq 0 ]
   [ "$(cat "$XDG_OPEN_LOG")" = "https://example.com/" ]
+  [ ! -s "$SWAYMSG_LOG" ]
+}
+
+@test "reeplay URLs exec Firefox and focus the Firefox window" {
+  run "$script" 'https://reeplay.reeinfra.net/index-v2.html?session_id=abc'
+  [ "$status" -eq 0 ]
+  [ ! -s "$XDG_OPEN_LOG" ]
+  [ "$(sed -n '1p' "$SWAYMSG_LOG")" = "exec $tmp/firefox https://reeplay.reeinfra.net/index-v2.html\\?session_id=abc" ]
+  [ "$(sed -n '2p' "$SWAYMSG_LOG")" = '[app_id="firefox_firefox" urgent=latest] focus' ]
+}
+
+@test "reeplay lookalike hosts stay on the default browser" {
+  run "$script" 'https://reeplay.reeinfra.net.evil.com/'
+  [ "$status" -eq 0 ]
+  [ "$(sed -n '1p' "$SWAYMSG_LOG")" = "exec $tmp/real-xdg-open https://reeplay.reeinfra.net.evil.com/" ]
+  [ "$(sed -n '2p' "$SWAYMSG_LOG")" = '[app_id="vivaldi-stable" urgent=latest] focus' ]
+}
+
+@test "missing swaymsg opens reeplay URLs in Firefox" {
+  export SWAYMSG=missing-swaymsg
+  run "$script" 'https://reeplay.reeinfra.net/'
+  [ "$status" -eq 0 ]
+  [ "$(cat "$FIREFOX_LOG")" = "https://reeplay.reeinfra.net/" ]
+  [ ! -s "$XDG_OPEN_LOG" ]
   [ ! -s "$SWAYMSG_LOG" ]
 }

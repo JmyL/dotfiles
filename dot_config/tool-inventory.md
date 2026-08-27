@@ -96,21 +96,23 @@ Core desktop tools:
 - `flatpak`
 - Brave Browser as Flatpak app `com.brave.Browser`, or equivalent browser setup (still used for packing local extensions / optional browsing)
 - Vivaldi (`vivaldi-stable`) — Sway `$mod+Shift+i` default browser on this setup
+- Firefox (`firefox`, snap `firefox` on Ubuntu) — required for `reeplay.reeinfra.net` playback (HEVC HLS). `xdg-open` and the Reeplay-open-in-Firefox extension launch it; Sway `app_id` is `firefox_firefox` for the snap.
 - 1Password desktop (`1password`) + CLI (`op`) — `ree-goodmorning` / `vay-token-update` TOTP. Linux Vivaldi needs `/etc/1password/custom_allowed_browsers` to contain `vivaldi-bin` (uncomment; restart 1Password) so the extension shares the app lock
 - Twingate CLI (`twingate`) — `ree-goodmorning` / Waybar VPN status (`Berlin_Testbeds_ALL`)
 - AWS CLI (`aws`) + `~/projects/vay-aws-mfa` — `vay-token-update` writes `~/.aws/vay_aws_mfa_cache.env`
 - Vivaldi UI pack: `~/.config/vivaldi-ui/` (chezmoi) — `layout.json` only (toolbar composition, hidden extension toolbar icons, tab/address bar bottom, native window, hidden side panel bar, no auto Downloads panel). No custom CSS. Apply with `vivaldi-setup-ui` while Vivaldi is quit (clears Custom UI Modifications + merges `layout.json` into Preferences; refuses to run while Vivaldi is open). Do **not** track `~/.config/vivaldi/` profile state.
 - Tampermonkey (Brave/Chrome/Vivaldi extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
 - Local Chromium extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+S focuses an open Slack tab (`vivaldi://extensions/shortcuts` / `brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON for both Brave and Vivaldi). Restart the browser fully after installing or upgrading on a new machine.
+- Local Chromium extension `~/.local/share/brave-extensions/reeplay-open-firefox` — intercepts `reeplay.reeinfra.net` navigations and hands them to `~/.local/bin/reeplay-open-firefox` (native messaging host `com.sungsik.reeplay_open_firefox`). Same installer writes the host manifest under Vivaldi/Brave `NativeMessagingHosts/`. `~/.local/bin/xdg-open` also sends that host to Firefox so terminal/Slack/Herdr links match. Restart the browser fully after installing.
 
 Vivaldi UI checklist (new machine):
 
-1. Install `vivaldi-stable`, then once: `brave-install-local-extensions` and fully restart Vivaldi (Slack stay-in-browser).
+1. Install `vivaldi-stable` and Firefox, then once: `brave-install-local-extensions` and fully restart Vivaldi (Slack stay-in-browser + Reeplay open in Firefox).
 2. Quit Vivaldi, run `vivaldi-setup-ui`, start Vivaldi — toolbar/hidden icons + bar positions from `vivaldi-ui/layout.json`. Custom CSS is left off.
 3. After changing toolbars, “Hide button” on an extension icon, or Downloads settings in the UI, copy the new `toolbars.*` / `address_bar.extensions.hidden_extensions` / `downloads.*` values into `~/.config/vivaldi-ui/layout.json`, then `chezmoi add` that file. `downloads.open_panel_on_new=false` keeps the left Downloads panel from opening on each download.
 4. Themes: prefer a **user copy** of Dark; Coloring mode **not Unified** (`layout.json` sets `theme_color_position=addressbar` on the scheduled theme). Stock theme edits can reset on update.
 5. Side panel: hidden (`layout.json` `panels.window_defaults.barVisible=false`). F4 still toggles it. Unified + Auto-Hide can leave a frame; leave Auto-Hide off.
-6. Confirm `vivaldi://extensions` has Slack stay-in-browser; shortcuts: Alt+S for Slack tab focus. Hidden toolbar icons (Show Tab Numbers, Slack stay-in-browser) still run in the background.
+6. Confirm `vivaldi://extensions` has Slack stay-in-browser and Reeplay open in Firefox; shortcuts: Alt+S for Slack tab focus. Hidden toolbar icons (Show Tab Numbers, Slack stay-in-browser, Reeplay open in Firefox) still run in the background.
 
 Audio:
 
@@ -279,6 +281,10 @@ Fedora Silverblue host notes:
   Silverblue this must be a host binary, not only a toolbox package. Install the
   Vivaldi RPM/repository on the host with rpm-ostree, or change the Sway binding
   before using a Flatpak/browser alternative.
+- `firefox`: host browser for `reeplay.reeinfra.net` (HEVC). Flatpak
+  `org.mozilla.firefox` or an rpm-ostree Firefox is fine; set `FIREFOX` /
+  `FIREFOX_APP_ID` if the binary or Sway `app_id` is not `firefox` /
+  `firefox_firefox`.
 - `1password` browser integration needs the host file
   `/etc/1password/custom_allowed_browsers` to include `vivaldi-bin`; make that
   change on the host, then restart 1Password.
@@ -354,6 +360,7 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - npm install -g @mermaid-js/mermaid-cli
 - brave-browser (still used to pack local `.crx` via `brave-install-local-extensions`)
 - vivaldi-stable (Sway `$mod+Shift+i`; install from Vivaldi’s apt repo or package)
+- `firefox` (snap `firefox` on Ubuntu; HEVC playback for `reeplay.reeinfra.net`)
 - `grimshot` may come from `sway-contrib` or need a manual install depending on release.
 - `swayosd-client`
 - `swaync-client`

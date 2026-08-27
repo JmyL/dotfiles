@@ -35,6 +35,33 @@ manifest_version() {
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$manifest"
 }
 
+write_native_messaging_manifest() {
+  local out=$1
+  local host_path=$2
+  local ext_id=$3
+  python3 - "$out" "$host_path" "$ext_id" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+out, host_path, ext_id = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+out.parent.mkdir(parents=True, exist_ok=True)
+out.write_text(
+    json.dumps(
+        {
+            "name": "com.sungsik.reeplay_open_firefox",
+            "description": "Open reeplay.reeinfra.net URLs in Firefox",
+            "path": str(host_path.resolve()),
+            "type": "stdio",
+            "allowed_origins": [f"chrome-extension://{ext_id}/"],
+        },
+        indent=2,
+    )
+    + "\n"
+)
+PY
+}
+
 write_external_json() {
   local out=$1
   local crx=$2
@@ -127,4 +154,27 @@ if [[ ! -x "$brave_bin" ]]; then
   exit 1
 fi
 
+install_reeplay_native_host() {
+  local pem="${state_dir}/reeplay-open-firefox.pem"
+  local host="${HOME}/.local/bin/reeplay-open-firefox"
+  local ext_id
+  if [[ ! -x "$host" ]]; then
+    printf 'Native host not found: %s\n' "$host" >&2
+    return 1
+  fi
+  ext_id=$(extension_id_from_pem "$pem")
+  local native_dirs=(
+    "${HOME}/.config/vivaldi/NativeMessagingHosts"
+    "${HOME}/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts"
+  )
+  local native_dir
+  for native_dir in "${native_dirs[@]}"; do
+    write_native_messaging_manifest \
+      "${native_dir}/com.sungsik.reeplay_open_firefox.json" "$host" "$ext_id"
+    printf '  native:   %s/com.sungsik.reeplay_open_firefox.json\n' "$native_dir"
+  done
+}
+
 pack_one slack-stay-in-browser
+pack_one reeplay-open-firefox
+install_reeplay_native_host
