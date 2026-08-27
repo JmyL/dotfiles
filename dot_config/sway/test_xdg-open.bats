@@ -58,13 +58,12 @@ teardown() {
   [ "$(sed -n '2p' "$SWAYMSG_LOG")" = '[app_id="vivaldi-stable" urgent=latest] focus' ]
 }
 
-@test "XDG_OPEN_FOCUS=0 opens http URLs without focusing the browser" {
+@test "XDG_OPEN_FOCUS=0 opens http URLs without a Sway activation token" {
   export XDG_OPEN_FOCUS=0
   run "$script" 'https://example.com/page'
   [ "$status" -eq 0 ]
-  [ ! -s "$XDG_OPEN_LOG" ]
-  [ "$(sed -n '1p' "$SWAYMSG_LOG")" = "exec $tmp/real-xdg-open https://example.com/page" ]
-  [ "$(wc -l <"$SWAYMSG_LOG")" -eq 1 ]
+  [ "$(cat "$XDG_OPEN_LOG")" = "https://example.com/page" ]
+  [ ! -s "$SWAYMSG_LOG" ]
 }
 
 @test "local HTML files exec through Sway with an absolute path" {
@@ -115,12 +114,12 @@ teardown() {
   [ "$(sed -n '2p' "$SWAYMSG_LOG")" = '[app_id="firefox_firefox" urgent=latest] focus' ]
 }
 
-@test "XDG_OPEN_FOCUS=0 opens reeplay URLs without focusing Firefox" {
+@test "XDG_OPEN_FOCUS=0 opens reeplay URLs without a Sway activation token" {
   export XDG_OPEN_FOCUS=0
   run "$script" 'https://reeplay.reeinfra.net/'
   [ "$status" -eq 0 ]
-  [ "$(sed -n '1p' "$SWAYMSG_LOG")" = "exec $tmp/firefox https://reeplay.reeinfra.net/" ]
-  [ "$(wc -l <"$SWAYMSG_LOG")" -eq 1 ]
+  [ "$(cat "$FIREFOX_LOG")" = "https://reeplay.reeinfra.net/" ]
+  [ ! -s "$SWAYMSG_LOG" ]
 }
 
 @test "reeplay lookalike hosts stay on the default browser" {
