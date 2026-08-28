@@ -1,0 +1,6 @@
+# Ensure ~/.Xauthority exists for local Xwayland clients (e.g. vdrive_remote_desktop).
+# Dummy cookie only; Sway/Xwayland uses xhost, not this cookie. Skip SSH/X forwarding.
+if [[ "${DISPLAY:-}" == :0* && ! -f "${XAUTHORITY:-$HOME/.Xauthority}" ]] &&
+  command -v xauth >/dev/null && command -v mcookie >/dev/null; then
+  xauth add "$(hostname)/unix:0" MIT-MAGIC-COOKIE-1 "$(mcookie)" >/dev/null 2>&1 || true
+fi

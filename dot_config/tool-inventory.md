@@ -38,10 +38,11 @@ These are expected by shell, tmux, vifm, aerc, or general workflows:
 
 ## Shell-specific expectations
 
-Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`, `~/.bashrc.d/lnav`
+Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`, `~/.bashrc.d/lnav`, `~/.bashrc.d/xauthority`
 
 - `nvim` is exported as `VISUAL` and `EDITOR`.
 - `lnav` defaults to `TZ=UTC`; `lnavl` uses the system timezone.
+- `~/.bashrc.d/xauthority` creates `~/.Xauthority` when missing on local `:0` (Sway/Xwayland). Needs `xauth` and `mcookie`.
 - `bash-completion` is required for `apt install <TAB>` package-name completion on Ubuntu (Fedora already loads it from `/etc/bashrc`).
 - `git` uses `delta` as pager (`core.pager` in `~/.gitconfig`).
 - `starship` is initialized with `starship init bash`.
@@ -259,7 +260,7 @@ sudo dnf install \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
   khal khard vdirsyncer \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
-  wl-clipboard wtype xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils
+  wl-clipboard wtype xorg-x11-xauth xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils
 ```
 
 Fedora follow-ups:
@@ -341,7 +342,7 @@ sudo apt install \
   khal khard vdirsyncer \
   slurp sox starship swappy sway swayidle swaylock swayosd thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
-  wtype xclip xdg-utils xterm zathura zip zoxide grimshot build-essential libreadline-dev unzip \
+  wtype xauth xclip xdg-utils xterm zathura zip zoxide grimshot build-essential libreadline-dev unzip \
   python3-venv python3-gi imagemagick lazygit luarocks wireplumber pipewire-bin
 ```
 
