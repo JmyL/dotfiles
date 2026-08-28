@@ -342,6 +342,8 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     bindsym $mod+v exec sh -c 'c="$HOME/.local/bin/foot"; [ -x "$c" ] || c=foot; exec "$c" --app-id=clipse --window-size-chars=100x32 "$HOME/.local/bin/clipse"'
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/idle-inhibit toggle
+    # Toggle light/dark (kitty, swaync, Herdr, Neovim via darkman)
+    bindsym $mod+Shift+t exec ~/.local/bin/darkman toggle
     # Cycle available power profiles
     bindsym $mod+Shift+m exec ~/.local/bin/cycle-power-profile
     # Lock screen
