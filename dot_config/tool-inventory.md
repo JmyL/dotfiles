@@ -38,9 +38,10 @@ These are expected by shell, tmux, vifm, aerc, or general workflows:
 
 ## Shell-specific expectations
 
-Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`
+Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`, `~/.bashrc.d/lnav`
 
 - `nvim` is exported as `VISUAL` and `EDITOR`.
+- `lnav` defaults to `TZ=UTC`; `lnavl` uses the system timezone.
 - `bash-completion` is required for `apt install <TAB>` package-name completion on Ubuntu (Fedora already loads it from `/etc/bashrc`).
 - `git` uses `delta` as pager (`core.pager` in `~/.gitconfig`).
 - `starship` is initialized with `starship init bash`.

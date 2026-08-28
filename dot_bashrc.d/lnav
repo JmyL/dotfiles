@@ -1,0 +1,8 @@
+# Default lnav to UTC. Override: TZ=Asia/Seoul lnav …  or  lnavl for system local.
+lnav() {
+  TZ="${TZ:-UTC}" command lnav "$@"
+}
+
+lnavl() {
+  env -u TZ command lnav "$@"
+}
