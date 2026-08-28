@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Apply a Catppuccin flavor to swaync's live style.css, then reload.
+# Used by darkman light-mode.d / dark-mode.d hooks.
+
+flavor=${1:-}
+config_dir=${SWAYNC_CONFIG_DIR:-$HOME/.config/swaync}
+reload=${SWAYNC_RELOAD:-1}
+client=${SWAYNC_CLIENT:-}
+
+usage() {
+  echo "usage: ${0##*/} latte|macchiato" >&2
+}
+
+case $flavor in
+latte | macchiato) ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
+
+src=$config_dir/themes/catppuccin-${flavor}.css
+dest=$config_dir/style.css
+
+if [[ ! -f $src ]]; then
+  echo "${0##*/}: missing theme file: $src" >&2
+  exit 1
+fi
+
+mkdir -p "$config_dir"
+cp -- "$src" "$dest"
+
+if [[ $reload != 1 ]]; then
+  exit 0
+fi
+
+if [[ -z $client ]]; then
+  if [[ -x ${HOME}/.local/bin/swaync-client ]]; then
+    client=${HOME}/.local/bin/swaync-client
+  else
+    client=swaync-client
+  fi
+fi
+
+# CSS is already in place; a missing/dead daemon should not fail darkman.
+"$client" -R -rs -sw >/dev/null 2>&1 || true
