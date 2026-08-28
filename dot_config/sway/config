@@ -111,8 +111,9 @@ seat * hide_cursor when-typing enable
     # Start a terminal
     bindsym $mod+i exec $term
 
-    # Start Vivaldi (Slack stay-in-browser via External Extensions)
-    bindsym $mod+Shift+i exec /usr/bin/vivaldi-stable
+    # Start Vivaldi (Slack stay-in-browser via External Extensions;
+    # localhost CDP for darkman Dark/Zen)
+    bindsym $mod+Shift+i exec $HOME/.local/bin/vivaldi-stable
 
     # Start file browser
     bindsym $mod+e exec thunar

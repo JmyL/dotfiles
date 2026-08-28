@@ -2,9 +2,10 @@
 set -euo pipefail
 
 # Persist Vivaldi/Dark Reader light/dark for the native-messaging host.
-# Publishes GNOME color-scheme and GTK prefer-dark so Vivaldi 8.1 can
-# follow Theme Schedule → Operating System (portal + GTK). Mapping is
-# Dark (Vivaldi2) ↔ Zen (VivaldiZen) in vivaldi-ui/layout.json.
+# GTK/gsettings follow darkman. Vivaldi chrome Dark/Zen is set over
+# localhost CDP by vivaldi-darkman-host --apply-chrome (Linux OS schedule
+# does not apply portal changes live; debugger permission made Vivaldi
+# disable the extension).
 # Used by darkman light-mode.d / dark-mode.d hooks.
 
 theme=${1:-}
@@ -14,6 +15,8 @@ gsettings_bin=${GSETTINGS_BIN:-gsettings}
 config_home=${XDG_CONFIG_HOME:-$HOME/.config}
 gtk3_file=${GTK3_SETTINGS_FILE:-$config_home/gtk-3.0/settings.ini}
 gtk4_file=${GTK4_SETTINGS_FILE:-$config_home/gtk-4.0/settings.ini}
+apply_chrome=${VIVALDI_APPLY_CHROME:-1}
+host=${VIVALDI_DARKMAN_HOST:-$HOME/.local/bin/vivaldi-darkman-host}
 
 usage() {
   echo "usage: ${0##*/} light|dark" >&2
@@ -73,4 +76,10 @@ if command -v "$gsettings_bin" >/dev/null; then
     fi
     "$gsettings_bin" set org.gnome.desktop.interface gtk-theme "$next" >/dev/null 2>&1 || true
   fi
+fi
+
+# Linux OS theme schedule does not apply portal changes live. Set Dark/Zen
+# through Vivaldi's localhost CDP (see ~/.local/bin/vivaldi-stable).
+if [[ $apply_chrome == 1 && -x $host ]]; then
+  "$host" --apply-chrome "$theme" >/dev/null 2>&1 || true
 fi

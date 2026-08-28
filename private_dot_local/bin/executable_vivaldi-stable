@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Start Vivaldi with a localhost DevTools port so vivaldi-darkman-host
+# can set Dark/Zen without the debugger extension permission (that
+# permission made Vivaldi disable the extension).
+
+port=${VIVALDI_CDP_PORT:-19222}
+bin=${VIVALDI_BIN:-/usr/bin/vivaldi-stable}
+
+if [[ ! -x $bin ]]; then
+  printf 'vivaldi-stable not found: %s\n' "$bin" >&2
+  exit 127
+fi
+
+exec "$bin" \
+  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-port="$port" \
+  --remote-allow-origins="http://127.0.0.1:${port}" \
+  "$@"

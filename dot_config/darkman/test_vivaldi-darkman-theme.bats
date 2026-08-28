@@ -9,6 +9,7 @@ setup() {
   export GTK3_SETTINGS_FILE="$tmp/gtk-3.0/settings.ini"
   export GTK4_SETTINGS_FILE="$tmp/gtk-4.0/settings.ini"
   export GSETTINGS_GTK_THEME="'Yaru-dark'"
+  export VIVALDI_APPLY_CHROME=0
   script="$BATS_TEST_DIRNAME/../../.local/bin/vivaldi-darkman-theme"
   host="$BATS_TEST_DIRNAME/../../.local/bin/vivaldi-darkman-host"
 
@@ -89,4 +90,59 @@ teardown() {
 @test "host --json-once fails when the state file is missing" {
   run "$host" --json-once
   [ "$status" -eq 1 ]
+}
+
+@test "host --apply-chrome rejects unknown themes" {
+  run "$host" --apply-chrome zen
+  [ "$status" -eq 2 ]
+}
+
+@test "host --apply-chrome exits 0 when CDP is down" {
+  export VIVALDI_CDP_PORT=1
+  export VIVALDI_CDP_TIMEOUT=0.05
+  run "$host" --apply-chrome light
+  [ "$status" -eq 0 ]
+}
+
+@test "calls host --apply-chrome when VIVALDI_APPLY_CHROME=1" {
+  export VIVALDI_APPLY_CHROME=1
+  export VIVALDI_DARKMAN_HOST="$tmp/fake-host"
+  cat >"$tmp/fake-host" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >"$tmp/host.args"
+EOF
+  chmod +x "$tmp/fake-host"
+  run "$script" light
+  [ "$status" -eq 0 ]
+  [ "$(cat "$tmp/host.args")" = "--apply-chrome light" ]
+}
+
+@test "skips apply-chrome when the host is missing" {
+  export VIVALDI_APPLY_CHROME=1
+  export VIVALDI_DARKMAN_HOST="$tmp/no-such-host"
+  run "$script" dark
+  [ "$status" -eq 0 ]
+  [ "$(cat "$VIVALDI_DARKMAN_THEME_FILE")" = "dark" ]
+}
+
+@test "vivaldi-stable wrapper adds localhost CDP flags" {
+  cat >"$tmp/vivaldi" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >"$tmp/vivaldi.args"
+EOF
+  chmod +x "$tmp/vivaldi"
+  wrapper="$BATS_TEST_DIRNAME/../../.local/bin/vivaldi-stable"
+  run env VIVALDI_BIN="$tmp/vivaldi" VIVALDI_CDP_PORT=19222 "$wrapper" --foo
+  [ "$status" -eq 0 ]
+  grep -F -- "--remote-debugging-address=127.0.0.1" "$tmp/vivaldi.args"
+  grep -F -- "--remote-debugging-port=19222" "$tmp/vivaldi.args"
+  grep -F -- "--remote-allow-origins=http://127.0.0.1:19222" "$tmp/vivaldi.args"
+  grep -F -- "--foo" "$tmp/vivaldi.args"
+}
+
+@test "vivaldi-stable wrapper exits 127 when the binary is missing" {
+  wrapper="$BATS_TEST_DIRNAME/../../.local/bin/vivaldi-stable"
+  status=0
+  VIVALDI_BIN="$tmp/no-such-vivaldi" "$wrapper" || status=$?
+  [ "$status" -eq 127 ]
 }

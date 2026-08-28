@@ -89,7 +89,7 @@ Core desktop tools:
 - `sway`
 - `waybar`
 - `kitty`
-- `darkman` — session dark/light preference via xdg-desktop-portal (`org.freedesktop.appearance color-scheme`). Kitty follows it with `light-theme.auto.conf` / `dark-theme.auto.conf`. Vivaldi chrome is set to Dark (`Vivaldi2`) / Zen (`VivaldiZen`) by the local `vivaldi-darkman` extension (Linux OS theme schedule does not apply portal changes live). Dark Reader is enabled in dark and disabled in light. GTK/`gsettings` still follow via `~/.local/bin/vivaldi-darkman-theme`. Manual only (`darkman set light` / `darkman set dark` / `darkman toggle`); geoclue/sun times are off. User systemd unit `darkman.service`.
+- `darkman` — session dark/light preference via xdg-desktop-portal (`org.freedesktop.appearance color-scheme`). Kitty follows it with `light-theme.auto.conf` / `dark-theme.auto.conf`. Vivaldi chrome Dark (`Vivaldi2`) / Zen (`VivaldiZen`) is set by `vivaldi-darkman-host --apply-chrome` over localhost CDP; start Vivaldi via `~/.local/bin/vivaldi-stable` (`$mod+Shift+i`) so `--remote-debugging-port=19222` is on. Do not give the local extension the `debugger` permission — Vivaldi disables it. Dark Reader on/off is still the `vivaldi-darkman` extension (nativeMessaging + management only). GTK/`gsettings` follow via `~/.local/bin/vivaldi-darkman-theme`. Manual only (`darkman set light` / `darkman set dark` / `darkman toggle`); geoclue/sun times are off. User systemd unit `darkman.service`.
 - `foot` — fast floating terminal for `fzf-menu` / `fzf-drun` / `clipse` (font matched to kitty). Ubuntu 26.04 apt is 1.25 (no `[colors-dark]`); build ≥1.26 to `~/.local` from https://codeberg.org/dnkl/foot/releases
 - `fzf` — used by floating `fzf-menu` / `fzf-drun` pickers (replaces fuzzel)
 - `swayidle`
@@ -107,7 +107,7 @@ Core desktop tools:
 - Tampermonkey (Brave/Chrome/Vivaldi extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
 - Local Chromium extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+S focuses an open Slack tab (`vivaldi://extensions/shortcuts` / `brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON for both Brave and Vivaldi). Restart the browser fully after installing or upgrading on a new machine.
 - Local Chromium extension `~/.local/share/brave-extensions/reeplay-open-firefox` — intercepts `reeplay.reeinfra.net` navigations and hands them to `~/.local/bin/reeplay-open-firefox` (native messaging host `com.sungsik.reeplay_open_firefox`). Same installer writes the host manifest under Vivaldi/Brave `NativeMessagingHosts/`. `~/.local/bin/xdg-open` also sends that host to Firefox so terminal/Slack/Herdr links match. Restart the browser fully after installing.
-- Local Chromium extension `~/.local/share/brave-extensions/vivaldi-darkman` — native host `~/.local/bin/vivaldi-darkman-host` (`com.sungsik.vivaldi_darkman`) enables Dark Reader when darkman is dark and disables it when light, and sets the Vivaldi chrome to Dark (`Vivaldi2`) / Zen (`VivaldiZen`) via `chrome.debugger` (Linux OS theme schedule does not follow portal changes live). Restart the browser fully after installing or upgrading; the new `debugger` permission must be allowed.
+- Local Chromium extension `~/.local/share/brave-extensions/vivaldi-darkman` — native host `~/.local/bin/vivaldi-darkman-host` (`com.sungsik.vivaldi_darkman`) enables Dark Reader when darkman is dark and disables it when light. Vivaldi chrome Dark/Zen is applied by the same host over localhost CDP, not `chrome.debugger` (that permission made Vivaldi disable the extension). Start Vivaldi with `~/.local/bin/vivaldi-stable`. Restart the browser fully after installing or upgrading.
 
 Vivaldi UI checklist (new machine):
 
@@ -281,10 +281,12 @@ Fedora Silverblue host notes:
   `sudo dnf install atuin` inside the toolbox is enough; for host shells, prefer
   Atuin's user install under `~/.atuin/bin` or layer the Fedora package with
   `rpm-ostree install atuin`.
-- `vivaldi-stable`: current Sway config starts `/usr/bin/vivaldi-stable`, so on
-  Silverblue this must be a host binary, not only a toolbox package. Install the
-  Vivaldi RPM/repository on the host with rpm-ostree, or change the Sway binding
-  before using a Flatpak/browser alternative.
+- `vivaldi-stable`: Sway `$mod+Shift+i` starts `$HOME/.local/bin/vivaldi-stable`,
+  which execs `/usr/bin/vivaldi-stable` with a localhost CDP port for darkman
+  Dark/Zen. On Silverblue the real binary must still be a host install, not only
+  a toolbox package. Install the Vivaldi RPM/repository on the host with
+  rpm-ostree, or change the Sway binding before using a Flatpak/browser
+  alternative.
 - `firefox`: host browser for `reeplay.reeinfra.net` (HEVC). Flatpak
   `org.mozilla.firefox` or an rpm-ostree Firefox is fine; set `FIREFOX` /
   `FIREFOX_APP_ID` if the binary or Sway `app_id` is not `firefox` /

@@ -1,75 +1,284 @@
 #!/usr/bin/env python3
-"""Native-messaging host: watch the darkman theme file and notify Vivaldi."""
+"""Native-messaging host plus CDP helper to set the Vivaldi chrome theme."""
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import select
+import socket
 import struct
 import sys
-import time
+import urllib.error
+import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 POLL_SECONDS = 0.2
+THEME_IDS = {"dark": "Vivaldi2", "light": "VivaldiZen"}
+VIVALDI_APP = "mpognobbkildjkofajifpdfhcoklimli"
 
 
 def theme_file() -> Path:
-    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
-    default = Path(runtime_dir) / "vivaldi-darkman-theme"
-    return Path(os.environ.get("VIVALDI_DARKMAN_THEME_FILE", default))
+  runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+  default = Path(runtime_dir) / "vivaldi-darkman-theme"
+  return Path(os.environ.get("VIVALDI_DARKMAN_THEME_FILE", default))
 
 
 def read_theme() -> str | None:
-    path = theme_file()
-    try:
-        text = path.read_text(encoding="utf-8").strip()
-    except OSError:
-        return None
-    if text in ("dark", "light"):
-        return text
+  path = theme_file()
+  try:
+    text = path.read_text(encoding="utf-8").strip()
+  except OSError:
     return None
+  if text in ("dark", "light"):
+    return text
+  return None
 
 
 def emit_json(theme: str) -> None:
-    print(json.dumps({"theme": theme}), flush=True)
+  print(json.dumps({"theme": theme}), flush=True)
 
 
 def native_write(theme: str) -> None:
-    payload = json.dumps({"theme": theme}).encode("utf-8")
-    sys.stdout.buffer.write(struct.pack("<I", len(payload)))
-    sys.stdout.buffer.write(payload)
-    sys.stdout.buffer.flush()
+  payload = json.dumps({"theme": theme}).encode("utf-8")
+  sys.stdout.buffer.write(struct.pack("<I", len(payload)))
+  sys.stdout.buffer.write(payload)
+  sys.stdout.buffer.flush()
 
 
 def watch() -> int:
-    stdin_fd = sys.stdin.fileno()
-    last: str | None = None
+  stdin_fd = sys.stdin.fileno()
+  last: str | None = None
+  while True:
+    ready, _, _ = select.select([stdin_fd], [], [], POLL_SECONDS)
+    if ready:
+      chunk = os.read(stdin_fd, 65536)
+      if not chunk:
+        return 0
+    theme = read_theme()
+    if theme is None or theme == last:
+      continue
+    last = theme
+    native_write(theme)
+
+
+def _cdp_timeout() -> float:
+  return float(os.environ.get("VIVALDI_CDP_TIMEOUT", "0.4"))
+
+
+def _cdp_base() -> str:
+  host = os.environ.get("VIVALDI_CDP_HOST", "127.0.0.1")
+  port = os.environ.get("VIVALDI_CDP_PORT", "19222")
+  return f"http://{host}:{port}"
+
+
+def _http_json(url: str, timeout: float):
+  parsed = urlparse(url)
+  req = urllib.request.Request(
+    url,
+    headers={
+      "Host": parsed.netloc,
+      "Origin": f"{parsed.scheme}://{parsed.netloc}",
+    },
+  )
+  with urllib.request.urlopen(req, timeout=timeout) as resp:
+    return json.loads(resp.read().decode("utf-8"))
+
+
+def _recvexact(sock: socket.socket, n: int) -> bytes:
+  buf = b""
+  while len(buf) < n:
+    chunk = sock.recv(n - len(buf))
+    if not chunk:
+      raise OSError("cdp websocket closed")
+    buf += chunk
+  return buf
+
+
+def _ws_connect(ws_url: str, timeout: float) -> socket.socket:
+  parsed = urlparse(ws_url)
+  host = parsed.hostname or "127.0.0.1"
+  port = parsed.port or 80
+  path = parsed.path or "/"
+  if parsed.query:
+    path = f"{path}?{parsed.query}"
+  sock = socket.create_connection((host, port), timeout=timeout)
+  sock.settimeout(timeout)
+  key = base64.b64encode(os.urandom(16)).decode("ascii")
+  req = (
+    f"GET {path} HTTP/1.1\r\n"
+    f"Host: {host}:{port}\r\n"
+    "Upgrade: websocket\r\n"
+    "Connection: Upgrade\r\n"
+    f"Sec-WebSocket-Key: {key}\r\n"
+    "Sec-WebSocket-Version: 13\r\n"
+    f"Origin: http://{host}:{port}\r\n"
+    "\r\n"
+  )
+  sock.sendall(req.encode("ascii"))
+  buf = b""
+  while b"\r\n\r\n" not in buf:
+    chunk = sock.recv(4096)
+    if not chunk:
+      sock.close()
+      raise OSError("cdp websocket handshake closed")
+    buf += chunk
+  status = buf.split(b"\r\n", 1)[0]
+  if b" 101 " not in status:
+    sock.close()
+    raise OSError(f"cdp websocket handshake failed: {status!r}")
+  return sock
+
+
+def _ws_send_text(sock: socket.socket, payload: bytes) -> None:
+  mask = os.urandom(4)
+  masked = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+  header = bytearray([0x81])
+  n = len(payload)
+  if n < 126:
+    header.append(0x80 | n)
+  elif n < 65536:
+    header.append(0x80 | 126)
+    header.extend(n.to_bytes(2, "big"))
+  else:
+    header.append(0x80 | 127)
+    header.extend(n.to_bytes(8, "big"))
+  sock.sendall(header + mask + masked)
+
+
+def _ws_recv_text(sock: socket.socket) -> bytes:
+  while True:
+    hdr = _recvexact(sock, 2)
+    opcode = hdr[0] & 0x0F
+    length = hdr[1] & 0x7F
+    masked = bool(hdr[1] & 0x80)
+    if length == 126:
+      length = int.from_bytes(_recvexact(sock, 2), "big")
+    elif length == 127:
+      length = int.from_bytes(_recvexact(sock, 8), "big")
+    mask = _recvexact(sock, 4) if masked else b""
+    data = _recvexact(sock, length)
+    if mask:
+      data = bytes(b ^ mask[i % 4] for i, b in enumerate(data))
+    if opcode == 0x8:
+      return b""
+    if opcode in (0x9, 0xA):
+      continue
+    return data
+
+
+def _prefs_expression(theme_id: str) -> str:
+  return (
+    "(function () {"
+    f" const id = {json.dumps(theme_id)};"
+    " const prefs = typeof vivaldi !== 'undefined' ? vivaldi.prefs : null;"
+    " if (!prefs || typeof prefs.set !== 'function') {"
+    "  return {ok: false, reason: 'no-vivaldi-prefs'};"
+    " }"
+    " prefs.set({path: 'vivaldi.theme.schedule.enabled', value: 'off'});"
+    " prefs.set({path: 'vivaldi.themes.current', value: id});"
+    " return {ok: true, id: id};"
+    "})()"
+  )
+
+
+def _is_ui_target(target: dict) -> bool:
+  url = target.get("url") or ""
+  return (
+    VIVALDI_APP in url
+    or "browser.html" in url
+    or "window.html" in url
+    or "main.html" in url
+  )
+
+
+def _evaluate(ws_url: str, expression: str, timeout: float) -> bool:
+  sock = _ws_connect(ws_url, timeout)
+  try:
+    msg_id = 1
+    _ws_send_text(
+      sock,
+      json.dumps(
+        {
+          "id": msg_id,
+          "method": "Runtime.evaluate",
+          "params": {
+            "expression": expression,
+            "returnByValue": True,
+            "awaitPromise": False,
+          },
+        }
+      ).encode("utf-8"),
+    )
     while True:
-        ready, _, _ = select.select([stdin_fd], [], [], POLL_SECONDS)
-        if ready:
-            chunk = os.read(stdin_fd, 65536)
-            if not chunk:
-                return 0
-        theme = read_theme()
-        if theme is None or theme == last:
-            continue
-        last = theme
-        native_write(theme)
+      raw = _ws_recv_text(sock)
+      if not raw:
+        return False
+      data = json.loads(raw.decode("utf-8"))
+      if data.get("id") != msg_id:
+        continue
+      value = ((data.get("result") or {}).get("result") or {}).get("value")
+      return bool(isinstance(value, dict) and value.get("ok"))
+  finally:
+    sock.close()
+
+
+def list_cdp_targets(timeout: float | None = None):
+  timeout = _cdp_timeout() if timeout is None else timeout
+  base = _cdp_base()
+  try:
+    targets = _http_json(f"{base}/json/list", timeout)
+  except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
+    try:
+      targets = _http_json(f"{base}/json", timeout)
+    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
+      return []
+  if isinstance(targets, list):
+    return targets
+  return []
+
+
+def apply_chrome(theme: str) -> int:
+  theme_id = THEME_IDS.get(theme)
+  if not theme_id:
+    return 2
+  timeout = _cdp_timeout()
+  expression = _prefs_expression(theme_id)
+  for target in list_cdp_targets(timeout):
+    if not _is_ui_target(target):
+      continue
+    ws_url = target.get("webSocketDebuggerUrl")
+    if not ws_url:
+      continue
+    try:
+      if _evaluate(ws_url, expression, timeout):
+        return 0
+    except (OSError, json.JSONDecodeError, TimeoutError, ValueError):
+      continue
+  return 0
 
 
 def main() -> int:
-    if sys.argv[1:] == ["--json-once"]:
-        theme = read_theme()
-        if theme is None:
-            return 1
-        emit_json(theme)
-        return 0
-    return watch()
+  args = sys.argv[1:]
+  if args == ["--json-once"]:
+    theme = read_theme()
+    if theme is None:
+      return 1
+    emit_json(theme)
+    return 0
+  if args[:1] == ["--apply-chrome"]:
+    theme = args[1] if len(args) > 1 else read_theme()
+    if theme not in THEME_IDS:
+      print("usage: vivaldi-darkman-host --apply-chrome light|dark", file=sys.stderr)
+      return 2
+    return apply_chrome(theme)
+  return watch()
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except BrokenPipeError:
-        raise SystemExit(0)
+  try:
+    raise SystemExit(main())
+  except BrokenPipeError:
+    raise SystemExit(0)
