@@ -23,7 +23,6 @@ osd_icon="${SWAY_DICTATE_OSD_ICON:-audio-input-microphone-symbolic}"
 sound_enabled="${SWAY_DICTATE_SOUND:-1}"
 sound_started="${SWAY_DICTATE_SOUND_STARTED:-message-new-instant}"
 sound_transcribing="${SWAY_DICTATE_SOUND_TRANSCRIBING:-audio-volume-change}"
-sound_done="${SWAY_DICTATE_SOUND_DONE:-complete}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
 
@@ -272,7 +271,6 @@ PY
                 exit 2
                 ;;
         esac
-        play_sound "$sound_done"
         notify "Done!"
     else
         notify -u critical "Dictation copied only" "Install wtype to paste into the focused window."
