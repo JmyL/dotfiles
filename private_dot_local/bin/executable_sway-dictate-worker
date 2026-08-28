@@ -24,7 +24,6 @@ sound_enabled="${SWAY_DICTATE_SOUND:-1}"
 sound_started="${SWAY_DICTATE_SOUND_STARTED:-message-new-instant}"
 sound_transcribing="${SWAY_DICTATE_SOUND_TRANSCRIBING:-audio-volume-change}"
 sound_done="${SWAY_DICTATE_SOUND_DONE:-complete}"
-sound_empty="${SWAY_DICTATE_SOUND_EMPTY:-dialog-warning}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
 
@@ -76,6 +75,8 @@ show_osd() {
         --duration "$duration" >/dev/null 2>&1
 }
 
+# Short status toasts use SwayOSD. Failures (-u critical) stay as
+# notifications so the full error body remains readable.
 notify() {
     local urgency="normal"
     local osd_message
@@ -233,7 +234,6 @@ PY
 
     text=$(cat "$text_file")
     if [ -z "$text" ]; then
-        play_sound "$sound_empty"
         notify "Empty"
         exit 0
     fi
