@@ -46,12 +46,15 @@ play_sound() {
     "${sound_command[@]}" -i "$sound" -d "sway-dictate" >/dev/null 2>&1 &
 }
 
+osd_client_has_duration=""
+
 show_osd() {
     local title="${1:-Dictation}"
     local body="${2:-}"
     local duration="${3:-$osd_duration}"
     local message="$title"
     local -a osd_command
+    local -a osd_args
 
     if [[ -n "$body" ]]; then
         message="$title: $body"
@@ -69,10 +72,21 @@ show_osd() {
         return 1
     fi
 
-    "${osd_command[@]}" \
-        --custom-message "$message" \
-        --custom-icon "$osd_icon" \
-        --duration "$duration" >/dev/null 2>&1
+    # Ubuntu's swayosd 0.3.0 rejects --duration; newer builds accept it.
+    if [[ -z "$osd_client_has_duration" ]]; then
+        if "${osd_command[@]}" --help 2>&1 | grep -q -- '--duration'; then
+            osd_client_has_duration=1
+        else
+            osd_client_has_duration=0
+        fi
+    fi
+
+    osd_args=(--custom-message "$message" --custom-icon "$osd_icon")
+    if [[ "$osd_client_has_duration" == 1 ]]; then
+        osd_args+=(--duration "$duration")
+    fi
+
+    "${osd_command[@]}" "${osd_args[@]}" >/dev/null 2>&1
 }
 
 # Short status toasts use SwayOSD. Failures (-u critical) stay as
