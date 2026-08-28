@@ -1,4 +1,5 @@
-# Cursor CLI follows darkman. OSC 11 often misses (tmux / Ink), so force TERM_THEME.
+# Cursor CLI follows darkman via TERM_THEME. The CLI prompt bar is inverted
+# vs the terminal, so the state file (and this fallback) store the opposite.
 __cursor_term_theme_from_darkman() {
   local file theme
   file="${CURSOR_TERM_THEME_FILE:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/cursor-term-theme}"
@@ -7,7 +8,10 @@ __cursor_term_theme_from_darkman() {
     IFS= read -r theme <"$file" || true
   fi
   if [[ $theme != light && $theme != dark ]] && command -v darkman >/dev/null 2>&1; then
-    theme=$(darkman get 2>/dev/null) || true
+    case "$(darkman get 2>/dev/null)" in
+    light) theme=dark ;;
+    dark) theme=light ;;
+    esac
   fi
   case $theme in
   light | dark)

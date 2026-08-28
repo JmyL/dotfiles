@@ -89,7 +89,7 @@ Core desktop tools:
 - `sway`
 - `waybar`
 - `kitty`
-- `darkman` — session dark/light preference via xdg-desktop-portal (`org.freedesktop.appearance color-scheme`). Kitty follows it with `light-theme.auto.conf` / `dark-theme.auto.conf`. Cursor CLI follows it via `TERM_THEME` (`~/.local/bin/cursor-cli-term-theme`, darkman `light-mode.d` / `dark-mode.d` hooks, `~/.bashrc.d/cursor-term-theme`). Manual only (`darkman set light` / `darkman set dark` / `darkman toggle`); geoclue/sun times are off. User systemd unit `darkman.service`.
+- `darkman` — session dark/light preference via xdg-desktop-portal (`org.freedesktop.appearance color-scheme`). Kitty follows it with `light-theme.auto.conf` / `dark-theme.auto.conf`. Cursor CLI follows it via inverted `TERM_THEME` (prompt bar chrome is backwards; `~/.local/bin/cursor-cli-term-theme`, darkman `light-mode.d` / `dark-mode.d` hooks, `~/.bashrc.d/cursor-term-theme`). Manual only (`darkman set light` / `darkman set dark` / `darkman toggle`); geoclue/sun times are off. User systemd unit `darkman.service`.
 - `foot` — fast floating terminal for `fzf-menu` / `fzf-drun` / `clipse` (font matched to kitty). Ubuntu 26.04 apt is 1.25 (no `[colors-dark]`); build ≥1.26 to `~/.local` from https://codeberg.org/dnkl/foot/releases
 - `fzf` — used by floating `fzf-menu` / `fzf-drun` pickers (replaces fuzzel)
 - `swayidle`

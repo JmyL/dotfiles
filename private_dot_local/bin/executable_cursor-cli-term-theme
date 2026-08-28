@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Persist Cursor CLI light/dark for new shells and tmux panes.
+# Persist Cursor CLI TERM_THEME for new shells and tmux panes.
 # Used by darkman light-mode.d / dark-mode.d hooks.
+#
+# Argument is the darkman appearance. Cursor CLI paints the prompt bar with
+# the opposite chrome (light bar when it thinks the terminal is dark, and
+# vice versa), so TERM_THEME is stored inverted.
 
 theme=${1:-}
 runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
@@ -16,7 +20,12 @@ usage() {
 }
 
 case $theme in
-light | dark) ;;
+light)
+  term_theme=dark
+  ;;
+dark)
+  term_theme=light
+  ;;
 *)
   usage
   exit 2
@@ -24,13 +33,13 @@ light | dark) ;;
 esac
 
 mkdir -p "$(dirname -- "$state_file")"
-printf '%s\n' "$theme" >"$state_file"
+printf '%s\n' "$term_theme" >"$state_file"
 
 if command -v "$pgrep_bin" >/dev/null && command -v "$tmux_bin" >/dev/null &&
   "$pgrep_bin" -u "$(id -u)" -x tmux >/dev/null 2>&1; then
-  "$tmux_bin" set-environment -g TERM_THEME "$theme" >/dev/null 2>&1 || true
+  "$tmux_bin" set-environment -g TERM_THEME "$term_theme" >/dev/null 2>&1 || true
 fi
 
 if command -v "$systemctl_bin" >/dev/null; then
-  "$systemctl_bin" --user set-environment "TERM_THEME=$theme" >/dev/null 2>&1 || true
+  "$systemctl_bin" --user set-environment "TERM_THEME=$term_theme" >/dev/null 2>&1 || true
 fi

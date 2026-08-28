@@ -33,22 +33,22 @@ teardown() {
   rm -rf "$tmp"
 }
 
-@test "writes light into the state file" {
+@test "maps darkman light to inverted TERM_THEME=dark" {
   run "$script" light
   [ "$status" -eq 0 ]
-  [ "$(cat "$CURSOR_TERM_THEME_FILE")" = "light" ]
+  [ "$(cat "$CURSOR_TERM_THEME_FILE")" = "dark" ]
   [ -f "$SYSTEMCTL_LOG" ]
-  grep -F -- "--user set-environment TERM_THEME=light" "$SYSTEMCTL_LOG"
+  grep -F -- "--user set-environment TERM_THEME=dark" "$SYSTEMCTL_LOG"
   [ ! -f "$TMUX_LOG" ]
 }
 
-@test "writes dark and updates tmux when a server is running" {
+@test "maps darkman dark to inverted TERM_THEME=light and updates tmux" {
   export PGREP_FAIL=0
   run "$script" dark
   [ "$status" -eq 0 ]
-  [ "$(cat "$CURSOR_TERM_THEME_FILE")" = "dark" ]
-  grep -F -- "set-environment -g TERM_THEME dark" "$TMUX_LOG"
-  grep -F -- "--user set-environment TERM_THEME=dark" "$SYSTEMCTL_LOG"
+  [ "$(cat "$CURSOR_TERM_THEME_FILE")" = "light" ]
+  grep -F -- "set-environment -g TERM_THEME light" "$TMUX_LOG"
+  grep -F -- "--user set-environment TERM_THEME=light" "$SYSTEMCTL_LOG"
 }
 
 @test "tmux failure does not undo a successful write" {
@@ -61,7 +61,7 @@ EOF
   chmod +x "$TMUX_BIN"
   run "$script" light
   [ "$status" -eq 0 ]
-  [ "$(cat "$CURSOR_TERM_THEME_FILE")" = "light" ]
+  [ "$(cat "$CURSOR_TERM_THEME_FILE")" = "dark" ]
 }
 
 @test "rejects unknown themes" {
@@ -78,7 +78,7 @@ EOF
   [ "$TERM_THEME" = "light" ]
 }
 
-@test "bashrc falls back to darkman when the state file is missing" {
+@test "bashrc inverts darkman when the state file is missing" {
   PATH="$tmp:$PATH"
   cat >"$tmp/darkman" <<'EOF'
 #!/usr/bin/env bash
@@ -88,5 +88,5 @@ EOF
   unset TERM_THEME
   # shellcheck disable=SC1090
   source "$bashrc"
-  [ "$TERM_THEME" = "dark" ]
+  [ "$TERM_THEME" = "light" ]
 }
