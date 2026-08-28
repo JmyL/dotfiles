@@ -1,0 +1,16 @@
+# cdr: current repo root. cds: superproject root (when in a submodule).
+cdr() {
+  local root
+  root="$(git rev-parse --show-toplevel)" || return
+  cd "$root"
+}
+
+cds() {
+  local root
+  root="$(git rev-parse --show-superproject-working-tree)" || return
+  [[ -n "$root" ]] || {
+    echo "not in a submodule" >&2
+    return 1
+  }
+  cd "$root"
+}
