@@ -40,6 +40,7 @@
   },
   "theme": {
     "schedule": {
+      "enabled": "system",
       "o_s": {
         "dark": "Vivaldi2",
         "light": "VivaldiZen"
@@ -55,6 +56,7 @@
     "downloads.open_panel_on_new": "false = do not open left Downloads panel on each download",
     "panels.window_defaults.barVisible": "false = hide the side panel icon strip; F4 still toggles it",
     "theme_color_position": "not Unified — avoids thick window frame",
-    "theme.schedule.o_s": "Operating System schedule: Dark (Vivaldi2) when darkman is dark, Zen (VivaldiZen) when light"
+    "theme.schedule.o_s": "Operating System schedule: Dark (Vivaldi2) when darkman is dark, Zen (VivaldiZen) when light",
+    "theme.schedule.enabled": "system — required; o_s mapping alone does not turn OS scheduling on"
   }
 }

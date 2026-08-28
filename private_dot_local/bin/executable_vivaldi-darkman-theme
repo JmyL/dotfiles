@@ -2,17 +2,33 @@
 set -euo pipefail
 
 # Persist Vivaldi/Dark Reader light/dark for the native-messaging host.
-# Also publishes GNOME color-scheme so Vivaldi's OS theme schedule
-# (Dark ↔ Zen) follows darkman even when GTK settings.ini stays dark.
+# Publishes GNOME color-scheme and GTK prefer-dark so Vivaldi 8.1 can
+# follow Theme Schedule → Operating System (portal + GTK). Mapping is
+# Dark (Vivaldi2) ↔ Zen (VivaldiZen) in vivaldi-ui/layout.json.
 # Used by darkman light-mode.d / dark-mode.d hooks.
 
 theme=${1:-}
 runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 state_file=${VIVALDI_DARKMAN_THEME_FILE:-$runtime_dir/vivaldi-darkman-theme}
 gsettings_bin=${GSETTINGS_BIN:-gsettings}
+config_home=${XDG_CONFIG_HOME:-$HOME/.config}
+gtk3_file=${GTK3_SETTINGS_FILE:-$config_home/gtk-3.0/settings.ini}
+gtk4_file=${GTK4_SETTINGS_FILE:-$config_home/gtk-4.0/settings.ini}
 
 usage() {
   echo "usage: ${0##*/} light|dark" >&2
+}
+
+write_gtk_ini() {
+  local file=$1
+  local gtk_theme=$2
+  local prefer=$3
+  mkdir -p "$(dirname -- "$file")"
+  printf '%s\n' \
+    '[Settings]' \
+    "gtk-theme-name=${gtk_theme}" \
+    "gtk-application-prefer-dark-theme=${prefer}" \
+    >"$file"
 }
 
 case $theme in
@@ -26,11 +42,35 @@ esac
 mkdir -p "$(dirname -- "$state_file")"
 printf '%s\n' "$theme" >"$state_file"
 
+if [[ $theme == dark ]]; then
+  scheme=prefer-dark
+  gtk_ini_theme=Adwaita-dark
+  gtk_prefer=1
+else
+  scheme=prefer-light
+  gtk_ini_theme=Adwaita
+  gtk_prefer=0
+fi
+
+write_gtk_ini "$gtk3_file" "$gtk_ini_theme" "$gtk_prefer"
+write_gtk_ini "$gtk4_file" "$gtk_ini_theme" "$gtk_prefer"
+
 if command -v "$gsettings_bin" >/dev/null; then
-  if [[ $theme == dark ]]; then
-    scheme=prefer-dark
-  else
-    scheme=prefer-light
-  fi
   "$gsettings_bin" set org.gnome.desktop.interface color-scheme "$scheme" >/dev/null 2>&1 || true
+  current=$("$gsettings_bin" get org.gnome.desktop.interface gtk-theme 2>/dev/null || true)
+  current=${current#\'}
+  current=${current%\'}
+  if [[ -n $current ]]; then
+    base=${current%-dark}
+    if [[ $theme == dark ]]; then
+      if [[ $base == "$current" ]]; then
+        next=${base}-dark
+      else
+        next=$current
+      fi
+    else
+      next=$base
+    fi
+    "$gsettings_bin" set org.gnome.desktop.interface gtk-theme "$next" >/dev/null 2>&1 || true
+  fi
 fi
