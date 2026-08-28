@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: until-ok [OPTIONS] [--] COMMAND [ARG ...]
+
+Run COMMAND until it succeeds (exit status 0), sleeping between attempts.
+
+Options:
+  -i, --interval SECONDS  Seconds to wait between attempts (default: 10)
+  -h, --help              Show this help
+
+Example:
+  until-ok ssh -o ConnectTimeout=5 -o BatchMode=yes HOST
+EOF
+}
+
+interval=10
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -i | --interval)
+    if [[ $# -lt 2 ]]; then
+      printf 'until-ok: %s requires a value\n' "$1" >&2
+      exit 2
+    fi
+    interval="$2"
+    shift 2
+    ;;
+  --interval=*)
+    interval="${1#--interval=}"
+    shift
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    printf 'until-ok: unknown option: %s\n' "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+  *)
+    break
+    ;;
+  esac
+done
+
+if [[ $# -lt 1 ]]; then
+  usage >&2
+  exit 2
+fi
+
+if [[ ! "$interval" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+  printf 'until-ok: interval must be a non-negative number: %s\n' "$interval" >&2
+  exit 2
+fi
+
+if ! command -v "$1" >/dev/null 2>&1; then
+  printf 'until-ok: command not found: %s\n' "$1" >&2
+  exit 127
+fi
+
+until "$@"; do
+  printf 'until-ok: exit %s; retrying in %ss...\n' "$?" "$interval" >&2
+  sleep "$interval"
+done
