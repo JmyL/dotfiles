@@ -89,6 +89,7 @@ Core desktop tools:
 - `sway`
 - `waybar`
 - `kitty`
+- `darkman` — session dark/light preference via xdg-desktop-portal (`org.freedesktop.appearance color-scheme`). Kitty follows it with `light-theme.auto.conf` / `dark-theme.auto.conf`. Manual only (`darkman set light` / `darkman set dark` / `darkman toggle`); geoclue/sun times are off. User systemd unit `darkman.service`.
 - `foot` — fast floating terminal for `fzf-menu` / `fzf-drun` / `clipse` (font matched to kitty). Ubuntu 26.04 apt is 1.25 (no `[colors-dark]`); build ≥1.26 to `~/.local` from https://codeberg.org/dnkl/foot/releases
 - `fzf` — used by floating `fzf-menu` / `fzf-drun` pickers (replaces fuzzel)
 - `swayidle`
@@ -294,12 +295,16 @@ Fedora Silverblue host notes:
   host input devices or host input-method paths. Build/install them from a
   matching toolbox if useful, but run the final install/setup step against the
   host and log out/in after group or udev changes.
+- `darkman` must run in the host user session (D-Bus / xdg-desktop-portal). On
+  Silverblue, `rpm-ostree install darkman` on the host, or the same `~/.local/bin`
+  build as Ubuntu. Do not rely on a toolbox-only binary.
 - `herdr-install-plugins` can run from the toolbox because Herdr plugin files
   live under the shared home directory. Herdr plugin actions that call `swaymsg`
   use `flatpak-spawn --host` fallback when they are invoked from a toolbox.
 
 May need separate installation depending on Fedora version/repositories:
 
+- `darkman` — host user session (`sudo dnf install darkman`; Silverblue `rpm-ostree install darkman`, or the Ubuntu `~/.local/bin` build). Not a toolbox-only install.
 - `swayosd-client`
 - `swaync-client`
 - `sesh`
@@ -358,6 +363,7 @@ git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 Ubuntu packages that may be missing, renamed, too old, or better installed another way:
 
+- `darkman` (not in Ubuntu apt): `sudo apt install golang-go scdoc` then `git clone --depth 1 --branch v2.3.1 https://gitlab.com/WhyNotHugo/darkman.git /tmp/darkman && make -C /tmp/darkman && install -Dm755 /tmp/darkman/darkman ~/.local/bin/darkman && systemctl --user daemon-reload && systemctl --user enable --now darkman.service`
 - `foot` ≥1.26 (Ubuntu 26.04 apt is 1.25): build to `~/.local` — `sudo apt install meson ninja-build libwayland-dev wayland-protocols libxkbcommon-dev libfontconfig-dev libfreetype-dev libpixman-1-dev libfcft-dev libtllist-dev libutf8proc-dev libutempter-dev scdoc` then from the [release tarball](https://codeberg.org/dnkl/foot/releases): `meson setup build --buildtype=release --prefix="$HOME/.local" && ninja -C build install`
 - npm install -g @mermaid-js/mermaid-cli
 - brave-browser (still used to pack local `.crx` via `brave-install-local-extensions`)

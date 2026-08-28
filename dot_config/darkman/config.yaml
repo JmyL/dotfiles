@@ -1,0 +1,5 @@
+# Manual light/dark only. No lat/lng and geoclue off, so sunrise/sunset
+# will not flip the theme. Portal notifies apps (kitty auto themes).
+usegeoclue: false
+dbusserver: true
+portal: true

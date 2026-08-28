@@ -1,0 +1,16 @@
+[Unit]
+Description=Framework for dark-mode and light-mode transitions
+Documentation=man:darkman(1)
+Before=xdg-desktop-portal.service
+
+[Service]
+Type=dbus
+BusName=nl.whynothugo.darkman
+ExecSearchPath=%h/.local/bin:/usr/bin
+ExecStart=darkman run
+Restart=on-failure
+TimeoutStopSec=15
+Slice=background.slice
+
+[Install]
+WantedBy=default.target
