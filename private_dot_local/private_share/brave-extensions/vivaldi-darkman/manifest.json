@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "darkman Dark Reader",
-  "version": "1.0.0",
-  "description": "Enable Dark Reader in darkman dark mode and disable it in light mode.",
-  "permissions": ["management", "nativeMessaging"],
+  "version": "1.1.0",
+  "description": "Follow darkman: Vivaldi Dark/Zen chrome plus Dark Reader on/off.",
+  "permissions": ["management", "nativeMessaging", "debugger"],
   "background": {
     "service_worker": "background.js"
   }
