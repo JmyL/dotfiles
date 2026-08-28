@@ -277,11 +277,11 @@
 	},
 	"bluetooth": {
 		"markup": true,
-		"format": "<span foreground=\"#c6ccd2\"></span> {status}",
+		"format": "<span foreground=\"#aeb4ba\"></span> {status}",
 		"format-connected": "<span foreground=\"#72b7f2\"></span>\u2006{num_connections}",
 		"format-connected-battery": "<span foreground=\"#72b7f2\"></span>\u2006{num_connections}",
-		"format-disabled": "<span foreground=\"#c6ccd2\"></span> off",
-		"format-off": "<span foreground=\"#c6ccd2\"></span> off",
+		"format-disabled": "<span foreground=\"#aeb4ba\"></span> off",
+		"format-off": "<span foreground=\"#aeb4ba\"></span> off",
 		"format-no-controller": "",
 		"tooltip-format": "{controller_alias}\t{controller_address}",
 		"tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
@@ -322,8 +322,8 @@
 		// "scroll-step": 1, // %, can be a float
 		"format": "<span foreground=\"#72b7f2\">{icon}</span> {volume}%",
 		"format-bluetooth": "<span foreground=\"#72b7f2\">{icon}</span> {volume}%",
-		"format-bluetooth-muted": "<span foreground=\"#c6ccd2\"></span> <span foreground=\"#72b7f2\">{icon}</span>",
-		"format-muted": "<span foreground=\"#c6ccd2\"></span>",
+		"format-bluetooth-muted": "<span foreground=\"#aeb4ba\"></span> <span foreground=\"#72b7f2\">{icon}</span>",
+		"format-muted": "<span foreground=\"#aeb4ba\"></span>",
 		"format-icons": {
 			"headphone": "",
 			"hands-free": "",

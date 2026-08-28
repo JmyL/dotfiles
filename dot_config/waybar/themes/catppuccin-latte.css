@@ -36,3 +36,16 @@ window#waybar #battery.critical:not(.charging),
 window#waybar #pulseaudio.muted {
     color: #4c4f69;
 }
+
+window#waybar #custom-swaync.notification,
+window#waybar #custom-swaync.dnd-notification,
+window#waybar #custom-swaync.inhibited-notification,
+window#waybar #custom-swaync.dnd-inhibited-notification {
+    color: #df8e1d;
+}
+
+window#waybar #custom-ree-vpn.ok,
+window#waybar #custom-ree-testbed.session,
+window#waybar #power-profiles-daemon.power-saver {
+    color: #40a02b;
+}

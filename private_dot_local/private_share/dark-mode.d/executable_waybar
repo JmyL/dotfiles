@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
-exec "${HOME}/.local/bin/waybar-catppuccin-theme" macchiato
+"${HOME}/.local/bin/waybar-catppuccin-theme" macchiato
+TRAY_HAN_FILL='#ffffff' "${HOME}/.local/bin/install-tray-icon-overlays"

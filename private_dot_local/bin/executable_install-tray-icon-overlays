@@ -1,13 +1,27 @@
 #!/usr/bin/env bash
 # Install monochrome Waybar tray icon overlays under ~/.local/share/icons.
 # Blueman: bluetooth rune (muted / accent / disabled).
-# Fcitx: "한" (white) and Latin "A" (muted) via input-keyboard*.
+# Fcitx: "한" (white on dark, bar-text on light) and Latin "A" (muted).
 set -euo pipefail
 
 icons_root="${XDG_DATA_HOME:-$HOME/.local/share}/icons"
 muted='#aeb4ba'
 active='#72b7f2'
-white='#ffffff'
+han_light='#4c4f69'
+han_dark='#ffffff'
+darkman_cmd=${DARKMAN:-darkman}
+
+han_fill=${TRAY_HAN_FILL:-}
+if [[ -z $han_fill ]]; then
+  mode=
+  if command -v "$darkman_cmd" >/dev/null 2>&1; then
+    mode=$("$darkman_cmd" get 2>/dev/null || true)
+  fi
+  case $mode in
+  light) han_fill=$han_light ;;
+  *) han_fill=$han_dark ;;
+  esac
+fi
 
 # Adwaita bluetooth-active / bluetooth-disabled path data (16x16).
 bt_path='m 7.585938 0.0898438 c -0.355469 0.1640622 -0.585938 0.5195312 -0.585938 0.9101562 v 5.296875 l -2.34375 -2.046875 c -0.414062 -0.363281 -1.042969 -0.324219 -1.40625 0.089844 c -0.363281 0.417968 -0.324219 1.046875 0.09375 1.410156 l 2.566406 2.25 l -2.566406 2.25 c -0.417969 0.363281 -0.457031 0.992188 -0.09375 1.40625 c 0.363281 0.417969 0.992188 0.457031 1.40625 0.09375 l 2.34375 -2.046875 v 5.296875 c 0 0.390625 0.230469 0.746094 0.585938 0.910156 c 0.359374 0.160156 0.777343 0.101563 1.070312 -0.160156 l 4 -3.5 c 0.21875 -0.1875 0.34375 -0.460938 0.34375 -0.75 s -0.125 -0.5625 -0.34375 -0.75 l -3.140625 -2.75 l 3.140625 -2.75 c 0.21875 -0.1875 0.34375 -0.460938 0.34375 -0.75 s -0.125 -0.5625 -0.34375 -0.75 l -4 -3.5 c -0.292969 -0.2617188 -0.710938 -0.3242188 -1.070312 -0.1601562 z m 1.414062 3.1132812 l 1.484375 1.296875 l -1.484375 1.296875 z m 0 7 l 1.484375 1.296875 l -1.484375 1.296875 z m 0 0'
@@ -128,8 +142,8 @@ install_keyboard_a() {
 
 install_fcitx_hangul() {
   local theme=hicolor
-  write_bt "$icons_root/$theme/scalable/apps/fcitx-hangul.svg" "$white" "$han_path"
-  write_bt "$icons_root/$theme/scalable/apps/org.fcitx.Fcitx5.fcitx-hangul.svg" "$white" "$han_path"
+  write_bt "$icons_root/$theme/scalable/apps/fcitx-hangul.svg" "$han_fill" "$han_path"
+  write_bt "$icons_root/$theme/scalable/apps/org.fcitx.Fcitx5.fcitx-hangul.svg" "$han_fill" "$han_path"
   link_sizes "$theme" apps/fcitx-hangul.svg
   link_sizes "$theme" apps/org.fcitx.Fcitx5.fcitx-hangul.svg
 }
@@ -144,6 +158,7 @@ write_index_theme Yaru hicolor
 write_index_theme Yaru-dark 'Yaru,hicolor'
 
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+  gtk-update-icon-cache -f "$icons_root/hicolor" >/dev/null 2>&1 || true
   gtk-update-icon-cache -f "$icons_root/Yaru" >/dev/null 2>&1 || true
   gtk-update-icon-cache -f "$icons_root/Yaru-dark" >/dev/null 2>&1 || true
 fi
