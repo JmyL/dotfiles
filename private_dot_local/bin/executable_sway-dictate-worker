@@ -6,6 +6,7 @@ pid_file="$state_dir/record.pid"
 audio_file="$state_dir/dictation.wav"
 text_file="$state_dir/dictation.txt"
 log_file="$state_dir/dictation.log"
+media_state_file="$state_dir/mpris-playing"
 venv_dir="${SWAY_DICTATE_VENV:-$HOME/.local/share/sway-dictate/.venv}"
 model_name="${SWAY_DICTATE_MODEL:-base}"
 language="${SWAY_DICTATE_LANGUAGE:-en}"
@@ -23,6 +24,9 @@ osd_icon="${SWAY_DICTATE_OSD_ICON:-audio-input-microphone-symbolic}"
 sound_enabled="${SWAY_DICTATE_SOUND:-1}"
 sound_started="${SWAY_DICTATE_SOUND_STARTED:-message-new-instant}"
 sound_transcribing="${SWAY_DICTATE_SOUND_TRANSCRIBING:-audio-volume-change}"
+media_resume_enabled="${SWAY_DICTATE_RESUME_MEDIA:-1}"
+media_resume_delay="${SWAY_DICTATE_MEDIA_RESUME_DELAY:-0.8}"
+busctl_bin="${SWAY_DICTATE_BUSCTL:-busctl}"
 
 mkdir -p "$state_dir" "$(dirname "$venv_dir")"
 
@@ -43,6 +47,80 @@ play_sound() {
     fi
 
     "${sound_command[@]}" -i "$sound" -d "sway-dictate" >/dev/null 2>&1 &
+}
+
+mpris_destinations() {
+    local output
+
+    output="$("$busctl_bin" --user list --no-pager 2>/dev/null || true)"
+    awk '$1 ~ /^org\.mpris\.MediaPlayer2\./ {print $1}' <<<"$output"
+}
+
+mpris_playback_status() {
+    local dest="${1:?}"
+    local output
+
+    output="$("$busctl_bin" --user get-property \
+        "$dest" \
+        /org/mpris/MediaPlayer2 \
+        org.mpris.MediaPlayer2.Player \
+        PlaybackStatus 2>/dev/null || true)"
+    awk -F'"' '{print $2}' <<<"$output"
+}
+
+mpris_call() {
+    local dest="${1:?}"
+    local method="${2:?}"
+
+    "$busctl_bin" --user call \
+        "$dest" \
+        /org/mpris/MediaPlayer2 \
+        org.mpris.MediaPlayer2.Player \
+        "$method" >/dev/null 2>&1
+}
+
+# Mic capture (especially Bluetooth headsets) pauses MPRIS players.
+# Remember who was Playing and resume after transcribe/cancel.
+pause_playing_media() {
+    local dest
+    local status
+
+    rm -f "$media_state_file"
+    if [[ "$media_resume_enabled" != 1 ]] || ! command -v "$busctl_bin" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    while IFS= read -r dest; do
+        [[ -n "$dest" ]] || continue
+        status="$(mpris_playback_status "$dest")"
+        if [[ "$status" == Playing ]]; then
+            printf '%s\n' "$dest" >>"$media_state_file"
+            mpris_call "$dest" Pause || true
+        fi
+    done < <(mpris_destinations)
+}
+
+resume_playing_media() {
+    local dest
+    local attempt
+
+    if [[ "$media_resume_enabled" != 1 || ! -s "$media_state_file" ]]; then
+        rm -f "$media_state_file"
+        return 0
+    fi
+
+    sleep "$media_resume_delay"
+    while IFS= read -r dest; do
+        [[ -n "$dest" ]] || continue
+        for attempt in 1 2 3 4 5; do
+            if mpris_call "$dest" Play; then
+                break
+            fi
+            sleep 0.4
+        done
+    done <"$media_state_file"
+    rm -f "$media_state_file"
+    return 0
 }
 
 osd_client_has_duration=""
@@ -176,6 +254,8 @@ start_recording() {
         exit 127
     }
 
+    pause_playing_media
+
     case "$recorder" in
         pw-record)
             pw-record --rate 16000 --channels 1 --format s16 "$audio_file" >>"$log_file" 2>&1 &
@@ -190,6 +270,7 @@ start_recording() {
 
     if ! recording_active; then
         rm -f "$pid_file"
+        resume_playing_media
         notify -u critical "Dictation failed" "Could not start microphone recording. See $log_file"
         exit 1
     fi
@@ -201,6 +282,7 @@ start_recording() {
 stop_recording() {
     if ! recording_active; then
         rm -f "$pid_file"
+        resume_playing_media
         notify "No active dictation"
         exit 1
     fi
@@ -209,6 +291,7 @@ stop_recording() {
     kill -INT "$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
     rm -f "$pid_file"
+    trap resume_playing_media EXIT
 
     if [ ! -s "$audio_file" ]; then
         notify -u critical "Dictation failed" "No audio was recorded."
@@ -285,6 +368,7 @@ cancel_recording() {
     fi
     rm -f "$pid_file" "$audio_file" "$text_file"
     notify "Dictation canceled"
+    resume_playing_media
 }
 
 case "${1:-}" in
