@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Persist Vivaldi/Dark Reader light/dark for the native-messaging host.
+# Also publishes GNOME color-scheme so Vivaldi's OS theme schedule
+# (Dark ↔ Zen) follows darkman even when GTK settings.ini stays dark.
+# Used by darkman light-mode.d / dark-mode.d hooks.
+
+theme=${1:-}
+runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+state_file=${VIVALDI_DARKMAN_THEME_FILE:-$runtime_dir/vivaldi-darkman-theme}
+gsettings_bin=${GSETTINGS_BIN:-gsettings}
+
+usage() {
+  echo "usage: ${0##*/} light|dark" >&2
+}
+
+case $theme in
+light | dark) ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
+
+mkdir -p "$(dirname -- "$state_file")"
+printf '%s\n' "$theme" >"$state_file"
+
+if command -v "$gsettings_bin" >/dev/null; then
+  if [[ $theme == dark ]]; then
+    scheme=prefer-dark
+  else
+    scheme=prefer-light
+  fi
+  "$gsettings_bin" set org.gnome.desktop.interface color-scheme "$scheme" >/dev/null 2>&1 || true
+fi

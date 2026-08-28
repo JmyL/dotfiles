@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Native-messaging host: watch the darkman theme file and notify Vivaldi."""
+
+from __future__ import annotations
+
+import json
+import os
+import select
+import struct
+import sys
+import time
+from pathlib import Path
+
+POLL_SECONDS = 0.2
+
+
+def theme_file() -> Path:
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    default = Path(runtime_dir) / "vivaldi-darkman-theme"
+    return Path(os.environ.get("VIVALDI_DARKMAN_THEME_FILE", default))
+
+
+def read_theme() -> str | None:
+    path = theme_file()
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    if text in ("dark", "light"):
+        return text
+    return None
+
+
+def emit_json(theme: str) -> None:
+    print(json.dumps({"theme": theme}), flush=True)
+
+
+def native_write(theme: str) -> None:
+    payload = json.dumps({"theme": theme}).encode("utf-8")
+    sys.stdout.buffer.write(struct.pack("<I", len(payload)))
+    sys.stdout.buffer.write(payload)
+    sys.stdout.buffer.flush()
+
+
+def watch() -> int:
+    stdin_fd = sys.stdin.fileno()
+    last: str | None = None
+    while True:
+        ready, _, _ = select.select([stdin_fd], [], [], POLL_SECONDS)
+        if ready:
+            chunk = os.read(stdin_fd, 65536)
+            if not chunk:
+                return 0
+        theme = read_theme()
+        if theme is None or theme == last:
+            continue
+        last = theme
+        native_write(theme)
+
+
+def main() -> int:
+    if sys.argv[1:] == ["--json-once"]:
+        theme = read_theme()
+        if theme is None:
+            return 1
+        emit_json(theme)
+        return 0
+    return watch()
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except BrokenPipeError:
+        raise SystemExit(0)

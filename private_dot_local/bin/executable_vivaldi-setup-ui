@@ -4,7 +4,7 @@ set -euo pipefail
 # Apply chezmoi-managed Vivaldi UI bits into Preferences:
 # - Clear Custom UI Modifications (no tracked CSS)
 # - layout.json (toolbar composition, hidden extension icons, bar positions,
-#   hidden side panel, …)
+#   hidden side panel, OS theme schedule Dark/Zen, …)
 # Prefer running while Vivaldi is quit so Preferences is not overwritten on exit.
 
 ui_dir="${XDG_CONFIG_HOME:-$HOME/.config}/vivaldi-ui"
@@ -78,6 +78,8 @@ if "panels" in layout:
   deep_merge(vivaldi.setdefault("panels", {}), layout["panels"])
 if "auto_hide" in layout:
   deep_merge(vivaldi.setdefault("auto_hide", {}), layout["auto_hide"])
+if "theme" in layout:
+  deep_merge(vivaldi.setdefault("theme", {}), layout["theme"])
 
 color_pos = layout.get("theme_color_position")
 if color_pos:
@@ -104,6 +106,9 @@ if ah is not None:
   print(f"auto_hide: {ah}")
 if color_pos:
   print(f"theme_color_position: {color_pos}")
+sched = (vivaldi.get("theme") or {}).get("schedule")
+if sched is not None:
+  print(f"theme.schedule: {sched}")
 PY
 
 printf 'Done. Restart Vivaldi to apply layout.json (custom CSS is disabled).\n'

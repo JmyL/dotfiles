@@ -89,7 +89,7 @@ Core desktop tools:
 - `sway`
 - `waybar`
 - `kitty`
-- `darkman` — session dark/light preference via xdg-desktop-portal (`org.freedesktop.appearance color-scheme`). Kitty follows it with `light-theme.auto.conf` / `dark-theme.auto.conf`. Manual only (`darkman set light` / `darkman set dark` / `darkman toggle`); geoclue/sun times are off. User systemd unit `darkman.service`.
+- `darkman` — session dark/light preference via xdg-desktop-portal (`org.freedesktop.appearance color-scheme`). Kitty follows it with `light-theme.auto.conf` / `dark-theme.auto.conf`. Vivaldi UI follows the portal plus `gsettings` `org.gnome.desktop.interface color-scheme` (`~/.local/bin/vivaldi-darkman-theme`); Themes → Schedule → Operating System maps dark→Dark (`Vivaldi2`) and light→Zen (`VivaldiZen`) in `vivaldi-ui/layout.json`. Dark Reader is enabled in dark and disabled in light by the local `vivaldi-darkman` extension (native host `vivaldi-darkman-host`). Manual only (`darkman set light` / `darkman set dark` / `darkman toggle`); geoclue/sun times are off. User systemd unit `darkman.service`.
 - `foot` — fast floating terminal for `fzf-menu` / `fzf-drun` / `clipse` (font matched to kitty). Ubuntu 26.04 apt is 1.25 (no `[colors-dark]`); build ≥1.26 to `~/.local` from https://codeberg.org/dnkl/foot/releases
 - `fzf` — used by floating `fzf-menu` / `fzf-drun` pickers (replaces fuzzel)
 - `swayidle`
@@ -107,15 +107,16 @@ Core desktop tools:
 - Tampermonkey (Brave/Chrome/Vivaldi extension) — runs userscripts under `~/.config/userscripts/` (e.g. `circleci-tab-status.user.js`). Install/update by opening the `.user.js` file in the browser or pasting into Tampermonkey → Create a new script.
 - Local Chromium extension `~/.local/share/brave-extensions/slack-stay-in-browser` — rewrites Slack `archives` permalinks to `messages` so they open in the web client without the desktop-app prompt; Alt+S focuses an open Slack tab (`vivaldi://extensions/shortcuts` / `brave://extensions/shortcuts`). Pack/register with `brave-install-local-extensions` (writes `.crx`/`.pem` under `~/.local/state/brave-extensions/` and External Extensions JSON for both Brave and Vivaldi). Restart the browser fully after installing or upgrading on a new machine.
 - Local Chromium extension `~/.local/share/brave-extensions/reeplay-open-firefox` — intercepts `reeplay.reeinfra.net` navigations and hands them to `~/.local/bin/reeplay-open-firefox` (native messaging host `com.sungsik.reeplay_open_firefox`). Same installer writes the host manifest under Vivaldi/Brave `NativeMessagingHosts/`. `~/.local/bin/xdg-open` also sends that host to Firefox so terminal/Slack/Herdr links match. Restart the browser fully after installing.
+- Local Chromium extension `~/.local/share/brave-extensions/vivaldi-darkman` — native host `~/.local/bin/vivaldi-darkman-host` (`com.sungsik.vivaldi_darkman`) enables Dark Reader when darkman is dark and disables it when light. Same installer registers the host under Vivaldi/Brave `NativeMessagingHosts/`. Restart the browser fully after installing.
 
 Vivaldi UI checklist (new machine):
 
-1. Install `vivaldi-stable` and Firefox, then once: `brave-install-local-extensions` and fully restart Vivaldi (Slack stay-in-browser + Reeplay open in Firefox).
+1. Install `vivaldi-stable` and Firefox, then once: `brave-install-local-extensions` and fully restart Vivaldi (Slack stay-in-browser + Reeplay open in Firefox + darkman Dark Reader).
 2. Quit Vivaldi, run `vivaldi-setup-ui`, start Vivaldi — toolbar/hidden icons + bar positions from `vivaldi-ui/layout.json`. Custom CSS is left off.
 3. After changing toolbars, “Hide button” on an extension icon, or Downloads settings in the UI, copy the new `toolbars.*` / `address_bar.extensions.hidden_extensions` / `downloads.*` values into `~/.config/vivaldi-ui/layout.json`, then `chezmoi add` that file. `downloads.open_panel_on_new=false` keeps the left Downloads panel from opening on each download.
-4. Themes: prefer a **user copy** of Dark; Coloring mode **not Unified** (`layout.json` sets `theme_color_position=addressbar` on the scheduled theme). Stock theme edits can reset on update.
+4. Themes: OS schedule Dark (`Vivaldi2`) / Zen (`VivaldiZen`) via `layout.json` `theme.schedule.o_s` so Super+Shift+t / darkman switches the chrome. Coloring mode **not Unified** (`layout.json` sets `theme_color_position=addressbar` on the scheduled theme). Stock theme edits can reset on update.
 5. Side panel: hidden (`layout.json` `panels.window_defaults.barVisible=false`). F4 still toggles it. Unified + Auto-Hide can leave a frame; leave Auto-Hide off.
-6. Confirm `vivaldi://extensions` has Slack stay-in-browser and Reeplay open in Firefox; shortcuts: Alt+S for Slack tab focus. Hidden toolbar icons (Show Tab Numbers, Slack stay-in-browser, Reeplay open in Firefox) still run in the background.
+6. Confirm `vivaldi://extensions` has Slack stay-in-browser, Reeplay open in Firefox, and darkman Dark Reader; shortcuts: Alt+S for Slack tab focus. Hidden toolbar icons (Show Tab Numbers, Slack stay-in-browser, Reeplay open in Firefox, darkman Dark Reader) still run in the background.
 
 Audio:
 
