@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Tell running Neovim servers to switch Catppuccin flavor.
+# Used by darkman light-mode.d / dark-mode.d hooks.
+
+flavor=${1:-}
+runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+nvim=${NVIM_BIN:-nvim}
+
+usage() {
+  echo "usage: ${0##*/} latte|macchiato" >&2
+}
+
+case $flavor in
+latte)
+  bg=light
+  scheme=catppuccin-latte
+  ;;
+macchiato)
+  bg=dark
+  scheme=catppuccin-macchiato
+  ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
+
+shopt -s nullglob
+socks=("$runtime_dir"/nvim.*.0)
+if ((${#socks[@]} == 0)); then
+  exit 0
+fi
+
+cmd="<Cmd>set background=${bg} | colorscheme ${scheme}<CR>"
+for sock in "${socks[@]}"; do
+  [[ -S $sock ]] || continue
+  "$nvim" --server "$sock" --remote-send "$cmd" >/dev/null 2>&1 || true
+done
