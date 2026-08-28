@@ -49,3 +49,8 @@ window#waybar #custom-ree-testbed.session,
 window#waybar #power-profiles-daemon.power-saver {
     color: #40a02b;
 }
+
+window#waybar #custom-ree-testbed.reserved,
+window#waybar #custom-ree-testbed.idle {
+    color: #7c7f93;
+}
