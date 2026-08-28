@@ -1,0 +1,5 @@
+/* Dark bar. Recording import may override window#waybar background. */
+window#waybar {
+    background-color: #000000;
+    color: #ffffff;
+}

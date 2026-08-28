@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Apply a Catppuccin flavor to Waybar via cached CSS, then poke style.css
+# so reload_style_on_change picks it up (import-only writes are ignored).
+# Used by darkman light-mode.d / dark-mode.d hooks.
+
+flavor=${1:-}
+config_dir=${WAYBAR_CONFIG_DIR:-$HOME/.config/waybar}
+state_path=${WAYBAR_THEME_STATE_PATH:-$HOME/.cache/waybar/theme-state.css}
+style_path=${WAYBAR_STYLE_PATH:-$HOME/.config/waybar/style.css}
+poke=${WAYBAR_POKE:-1}
+
+usage() {
+  echo "usage: ${0##*/} latte|macchiato" >&2
+}
+
+case $flavor in
+latte | macchiato) ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
+
+src=$config_dir/themes/catppuccin-${flavor}.css
+if [[ ! -f $src ]]; then
+  echo "${0##*/}: missing theme file: $src" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname -- "$state_path")"
+cp -- "$src" "$state_path"
+
+if [[ $poke != 1 ]]; then
+  exit 0
+fi
+
+if [[ -f $style_path ]]; then
+  python3 -c 'import sys; p=sys.argv[1]; t=open(p).read(); open(p,"w").write(t)' \
+    "$style_path" 2>/dev/null || true
+fi

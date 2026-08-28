@@ -189,16 +189,34 @@ poke_waybar_style() {
 }
 
 set_waybar_recording_state() {
-    color="#000000"
+    # When off, leave background to theme-state.css (later import must not
+    # set window#waybar background). When on, force the red recording bar
+    # and white default module text so it stays readable on a light theme.
     if [ "${1:-}" = on ]; then
-        color="#6b1c24"
-    fi
-    # Top-level import; no !important. Later style.css rules must not set
-    # window#waybar background or they hide this color.
-    css="window#waybar {
-    background-color: ${color};
+        css="window#waybar {
+    background-color: #6b1c24;
+    color: #ffffff;
+}
+window#waybar #workspaces button,
+window#waybar #clock,
+window#waybar #battery,
+window#waybar #cpu,
+window#waybar #memory,
+window#waybar #network,
+window#waybar #pulseaudio,
+window#waybar #tray,
+window#waybar #idle_inhibitor,
+window#waybar #custom-idle_inhibitor,
+window#waybar #custom-recording,
+window#waybar #power-profiles-daemon,
+window#waybar #window,
+window#waybar #pulseaudio.muted {
+    color: #ffffff;
 }
 "
+    else
+        css=""
+    fi
     mkdir -p "$(dirname "$waybar_state_path")"
     if [ -f "$waybar_state_path" ] && [ "$(cat "$waybar_state_path")" = "$css" ]; then
         return 0

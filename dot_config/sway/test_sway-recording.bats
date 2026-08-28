@@ -177,3 +177,12 @@ assert_link_order() {
   run "$script" nope
   [ "$status" -eq 2 ]
 }
+
+@test "start paints the recording bar; stop clears it for the theme import" {
+  run "$script" full
+  [ "$status" -eq 0 ]
+  grep -Fq 'background-color: #6b1c24' "$WAYBAR_STATE_PATH"
+  run "$script" stop
+  [ "$status" -eq 0 ]
+  [ ! -s "$WAYBAR_STATE_PATH" ]
+}

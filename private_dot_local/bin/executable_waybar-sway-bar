@@ -16,6 +16,7 @@ pidfile="${XDG_RUNTIME_DIR:-/tmp}/waybar-sway-bar.pid"
 # written by helper scripts, so seed empty defaults before the first launch.
 for state in \
   "$HOME/.cache/calendar-alert/waybar-state.css" \
+  "$HOME/.cache/waybar/theme-state.css" \
   "$HOME/.cache/sway-recording/waybar-state.css"; do
   mkdir -p "$(dirname "$state")"
   [[ -e "$state" ]] || : >"$state"

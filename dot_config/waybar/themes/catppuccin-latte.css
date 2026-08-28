@@ -1,0 +1,38 @@
+/* Light bar: brighter than Adwaita, aligned with Kitty Latte. */
+window#waybar {
+    background-color: #eff1f5;
+    color: #4c4f69;
+}
+
+window#waybar button:hover {
+    box-shadow: inset 0 -3px #4c4f69;
+}
+
+window#waybar #workspaces button,
+window#waybar #clock,
+window#waybar #battery,
+window#waybar #cpu,
+window#waybar #memory,
+window#waybar #disk,
+window#waybar #temperature,
+window#waybar #backlight,
+window#waybar #network,
+window#waybar #bluetooth,
+window#waybar #pulseaudio,
+window#waybar #wireplumber,
+window#waybar #custom-media,
+window#waybar #tray,
+window#waybar #idle_inhibitor,
+window#waybar #custom-idle_inhibitor,
+window#waybar #custom-recording,
+window#waybar #scratchpad,
+window#waybar #power-profiles-daemon,
+window#waybar #mpd,
+window#waybar #window,
+window#waybar #custom-calendar-alert.urgent,
+window#waybar #battery.charging,
+window#waybar #battery.plugged,
+window#waybar #battery.critical:not(.charging),
+window#waybar #pulseaudio.muted {
+    color: #4c4f69;
+}
