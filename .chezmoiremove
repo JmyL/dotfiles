@@ -16,3 +16,8 @@
 .config/vivaldi-ui/active-tab.css
 .config/vivaldi-ui/no-side-gutter.css
 .config/sway/config.d/20-teleport-workspaces.conf
+.local/bin/cursor-cli-term-theme
+.local/share/dark-mode.d/cursor-cli
+.local/share/light-mode.d/cursor-cli
+.bashrc.d/cursor-term-theme
+.config/darkman/test_cursor-cli-term-theme.bats
