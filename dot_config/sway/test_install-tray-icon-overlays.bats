@@ -8,6 +8,8 @@ setup() {
   mkdir -p "$HOME" "$XDG_DATA_HOME"
   script="$BATS_TEST_DIRNAME/../../.local/bin/install-tray-icon-overlays"
   hangul="$XDG_DATA_HOME/icons/hicolor/scalable/apps/fcitx-hangul.svg"
+  adwaita_hangul="$XDG_DATA_HOME/icons/Adwaita/scalable/apps/fcitx-hangul.svg"
+  adwaita_keyboard="$XDG_DATA_HOME/icons/Adwaita/scalable/apps/input-keyboard-symbolic.svg"
 }
 
 teardown() {
@@ -18,10 +20,16 @@ hangul_fill() {
   sed -n 's/.*fill="\([^"]*\)".*/\1/p' "$hangul" | head -n 1
 }
 
+svg_fill() {
+  sed -n 's/.*fill="\([^"]*\)".*/\1/p' "$1" | head -n 1
+}
+
 @test "TRAY_HAN_FILL paints the hangul glyph" {
   TRAY_HAN_FILL='#4c4f69' run "$script"
   [ "$status" -eq 0 ]
   [ "$(hangul_fill)" = "#4c4f69" ]
+  [ "$(svg_fill "$adwaita_hangul")" = "#4c4f69" ]
+  [ -f "$adwaita_keyboard" ]
 }
 
 @test "uses bar-text hangul when darkman reports light" {
@@ -100,4 +108,27 @@ EOF
   TRAY_HAN_FILL='#ffffff' run "$script"
   [ "$status" -eq 0 ]
   [ ! -s "$calls" ]
+}
+
+@test "falls back to gdbus when fcitx5-remote is unavailable" {
+  mkdir -p "$tmp/bin"
+  calls="$tmp/gdbus.calls"
+  cat >"$tmp/bin/gdbus" <<EOF
+#!/bin/sh
+printf '%s\n' "\$*" >>"$calls"
+case "\$*" in
+*"CurrentInputMethodGroup"*) printf "%s\n" "('Default',)" ;;
+*"InputMethodGroupInfo Default"*) printf "%s\n" "('eu', [('keyboard-eu', ''), ('hangul', '')])" ;;
+*"CurrentInputMethod"*) printf "%s\n" "('hangul',)" ;;
+*) printf "%s\n" "()" ;;
+esac
+EOF
+  chmod +x "$tmp/bin/gdbus"
+  export PATH="$tmp/bin:$PATH"
+  export FCITX5_REMOTE="$tmp/bin/missing-fcitx5-remote"
+  export TRAY_REFRESH_FCITX=1
+  TRAY_HAN_FILL='#ffffff' run "$script"
+  [ "$status" -eq 0 ]
+  grep -q "SetCurrentIM keyboard-eu" "$calls"
+  grep -q "SetCurrentIM hangul" "$calls"
 }

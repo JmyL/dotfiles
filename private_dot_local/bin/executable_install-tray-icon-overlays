@@ -33,7 +33,7 @@ han_path='M 5.59375 4.671875 C 3.640625 4.671875 2.25 5.734375 2.25 7.28125 C 2.
 a_path='M 10.4375 13.601562 L 9.59375 10.882812 L 5.4375 10.882812 L 4.609375 13.601562 L 2 13.601562 L 6.03125 2.132812 L 8.984375 2.132812 L 13.046875 13.601562 Z M 8.1875 6.195312 C 8.132812 6.007812 8.066406 5.78125 7.984375 5.507812 C 7.898438 5.226562 7.8125 4.945312 7.71875 4.664062 C 7.632812 4.375 7.566406 4.117188 7.515625 3.898438 C 7.460938 4.117188 7.390625 4.382812 7.296875 4.695312 C 7.210938 5.007812 7.128906 5.3125 7.046875 5.601562 C 6.960938 5.882812 6.898438 6.082031 6.859375 6.195312 L 6.046875 8.851562 L 9.03125 8.851562 Z'
 
 sizes=(16x16 22x22 24x24 32x32 48x48)
-themes=(hicolor Yaru Yaru-dark)
+themes=(hicolor Adwaita Yaru Yaru-dark)
 
 write_bt() {
   local dest=$1 fill=$2 path=$3 scale=${4:-1}
@@ -142,7 +142,7 @@ install_keyboard_a() {
 }
 
 install_fcitx_hangul() {
-  local theme=hicolor
+  local theme=$1
   write_bt "$icons_root/$theme/scalable/apps/fcitx-hangul.svg" "$han_fill" "$han_path"
   write_bt "$icons_root/$theme/scalable/apps/org.fcitx.Fcitx5.fcitx-hangul.svg" "$han_fill" "$han_path"
   link_sizes "$theme" apps/fcitx-hangul.svg
@@ -152,8 +152,8 @@ install_fcitx_hangul() {
 for theme in "${themes[@]}"; do
   install_bluetooth "$theme"
   install_keyboard_a "$theme"
+  install_fcitx_hangul "$theme"
 done
-install_fcitx_hangul
 
 write_index_theme Yaru hicolor
 write_index_theme Yaru-dark 'Yaru,hicolor'
@@ -196,15 +196,31 @@ pick_other_im() {
 refresh_fcitx_tray() {
   [[ ${TRAY_REFRESH_FCITX:-1} == 1 ]] || return 0
   local remote=${FCITX5_REMOTE:-fcitx5-remote}
-  command -v "$remote" >/dev/null 2>&1 || return 0
-  "$remote" --check >/dev/null 2>&1 || return 0
   local im other
-  im=$("$remote" -n 2>/dev/null || true)
+  if command -v "$remote" >/dev/null 2>&1 && "$remote" --check >/dev/null 2>&1; then
+    im=$("$remote" -n 2>/dev/null || true)
+    [[ -n $im ]] || return 0
+    other=$(pick_other_im "$im")
+    [[ -n $other && $other != "$im" ]] || return 0
+    "$remote" -s "$other" >/dev/null 2>&1 || return 0
+    sleep 0.2
+    "$remote" -s "$im" >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  command -v gdbus >/dev/null 2>&1 || return 0
+  im=$(gdbus call --session --dest org.fcitx.Fcitx5 --object-path /controller \
+    --method org.fcitx.Fcitx.Controller1.CurrentInputMethod 2>/dev/null || true)
+  im=${im#*\'}
+  im=${im%%\'*}
   [[ -n $im ]] || return 0
   other=$(pick_other_im "$im")
   [[ -n $other && $other != "$im" ]] || return 0
-  "$remote" -s "$other" >/dev/null 2>&1 || return 0
-  "$remote" -s "$im" >/dev/null 2>&1 || true
+  gdbus call --session --dest org.fcitx.Fcitx5 --object-path /controller \
+    --method org.fcitx.Fcitx.Controller1.SetCurrentIM "$other" >/dev/null 2>&1 || return 0
+  sleep 0.2
+  gdbus call --session --dest org.fcitx.Fcitx5 --object-path /controller \
+    --method org.fcitx.Fcitx.Controller1.SetCurrentIM "$im" >/dev/null 2>&1 || true
 }
 
 refresh_fcitx_tray
