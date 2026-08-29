@@ -1,0 +1,14 @@
+name = "vroom-core"
+description = "Work on the vroom-storage core repository"
+group = "personal"
+working_dir = "~/projects/vroom-core"
+
+[[tabs]]
+name = "vroom-core"
+
+[[tabs.panes]]
+command = "nvim"
+
+[[tabs.panes]]
+command = "ai"
+split = "right"
