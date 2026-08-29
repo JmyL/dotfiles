@@ -14,7 +14,13 @@ fi
 # Honor XDG data dirs so snap/flatpak desktop files are included
 # (e.g. Ubuntu Firefox snap under /var/lib/snapd/desktop/applications).
 data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
-data_dirs="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+default_data_dirs="/usr/local/share:/usr/share"
+for flatpak_export in /var/lib/flatpak/exports/share "$HOME/.local/share/flatpak/exports/share"; do
+  if [[ -d $flatpak_export ]]; then
+    default_data_dirs+=":$flatpak_export"
+  fi
+done
+data_dirs="${XDG_DATA_DIRS:-$default_data_dirs}"
 app_dirs=("$data_home/applications")
 IFS=:
 for dir in $data_dirs; do
@@ -29,7 +35,7 @@ cache_file=$cache_dir/apps.tsv
 fingerprint=$(
   {
     printf '%s\n' "${app_dirs[@]}"
-    find "${app_dirs[@]}" -type f -name '*.desktop' -printf '%p\t%T@\n' 2>/dev/null || true
+    find "${app_dirs[@]}" \( -type f -o -type l \) -name '*.desktop' -printf '%p\t%T@\n' 2>/dev/null || true
   } | sort | md5sum | awk '{print $1}'
 )
 
@@ -81,7 +87,7 @@ rebuild_cache() {
     id=${id%.desktop}
     labels+=("$name")
     ids+=("$id")
-  done < <(find "${app_dirs[@]}" -type f -name '*.desktop' 2>/dev/null | sort -u || true)
+  done < <(find "${app_dirs[@]}" \( -type f -o -type l \) -name '*.desktop' 2>/dev/null | sort -u || true)
 
   ((${#labels[@]} > 0)) || return 1
 
@@ -136,6 +142,6 @@ while IFS= read -r file; do
     # shellcheck disable=SC2086
     exec $exec_line
   fi
-done < <(find "${app_dirs[@]}" -type f -name "${selected_id}.desktop" 2>/dev/null || true)
+done < <(find "${app_dirs[@]}" \( -type f -o -type l \) -name "${selected_id}.desktop" 2>/dev/null || true)
 
 exit 1
