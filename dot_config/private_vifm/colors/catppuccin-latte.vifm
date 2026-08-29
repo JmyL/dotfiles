@@ -11,7 +11,7 @@ highlight OtherWin    cterm=none           ctermfg=103     ctermbg=255
 highlight AuxWin      cterm=none           ctermfg=103     ctermbg=255
 highlight Directory   cterm=bold           ctermfg=68      ctermbg=255
 highlight CurrLine    cterm=bold           ctermfg=60      ctermbg=254
-highlight OtherLine   cterm=bold           ctermfg=default ctermbg=254
+highlight OtherLine   cterm=none           ctermfg=103     ctermbg=254
 highlight Selected    cterm=bold           ctermfg=255     ctermbg=103
 highlight LineNr      cterm=none           ctermfg=103     ctermbg=255
 
