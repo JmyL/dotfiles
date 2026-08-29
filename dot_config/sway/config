@@ -17,8 +17,9 @@ set $right l
 set $term kitty
 # Your preferred application launcher (floating kitty + fzf)
 set $menu ~/.local/bin/fzf-drun
-# Shared desktop and lock-screen wallpaper
-set $wallpaper ~/.config/sway/project-hail-mary-wallpaper-2880x1800.jpg
+# Shared desktop and lock-screen wallpaper. The symlink is updated by
+# sway-theme-wallpaper when darkman changes the light/dark preference.
+set $wallpaper ~/.config/sway/wallpaper-current
 set $lock swaylock -f -i $wallpaper -s fill
 
 # Floating pickers / clipboard TUI (foot --app-id …)
@@ -48,6 +49,7 @@ focus_on_window_activation focus
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
 output * bg $wallpaper fill
+exec ~/.config/sway/sway-theme-wallpaper
 #
 # Example configuration:
 #

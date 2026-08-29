@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+wallpaper_root="${SWAY_WALLPAPER_ROOT:-${HOME}/.config/sway/wallpapers}"
+cache_root="${SWAY_WALLPAPER_CACHE_ROOT:-${HOME}/.cache/sway}"
+current_link="${SWAY_CURRENT_WALLPAPER:-${HOME}/.config/sway/wallpaper-current}"
+swaymsg_bin="${SWAYMSG:-swaymsg}"
+darkman_bin="${DARKMAN:-darkman}"
+
+mode_from_darkman() {
+  local mode
+  mode="$(${darkman_bin} get 2>/dev/null || true)"
+  case "$mode" in
+    light | dark) printf '%s\n' "$mode" ;;
+    *) return 1 ;;
+  esac
+}
+
+select_wallpaper() {
+  local mode="$1"
+  local mode_dir="${wallpaper_root}/${mode}"
+  local cache_file="${cache_root}/${mode}"
+  local selected=""
+  local now cache_mtime
+
+  mkdir -p "$cache_root"
+  now=$(date +%s)
+
+  if [ -f "$cache_file" ]; then
+    selected=$(cat "$cache_file")
+    cache_mtime=$(stat -c %Y "$cache_file")
+    if [ -f "$selected" ] && [ $((now - cache_mtime)) -lt 86400 ]; then
+      printf '%s\n' "$selected"
+      return
+    fi
+  fi
+
+  selected=$(find "$mode_dir" -maxdepth 1 -type f \( \
+    -iname "${mode}-*.jpg" -o -iname "${mode}-*.jpeg" -o \
+    -iname "${mode}-*.png" -o -iname "${mode}-*.webp" \
+  \) -print | shuf -n 1)
+  [ -n "$selected" ] || return 1
+
+  printf '%s\n' "$selected" >"$cache_file"
+  printf '%s\n' "$selected"
+}
+
+apply_wallpaper() {
+  local mode="$1"
+  local selected
+
+  selected=$(select_wallpaper "$mode") || return 0
+  ln -sfn "$selected" "$current_link"
+  "$swaymsg_bin" output "*" bg "$selected" fill >/dev/null
+}
+
+if [ "${1:-}" = "--once" ]; then
+  mode="${2:-$(mode_from_darkman || true)}"
+  case "$mode" in
+    light | dark) apply_wallpaper "$mode" ;;
+  esac
+  exit 0
+fi
+
+last_mode=""
+while :; do
+  mode=$(mode_from_darkman || true)
+  if [ "$mode" != "$last_mode" ] && [ -n "$mode" ]; then
+    apply_wallpaper "$mode"
+    last_mode="$mode"
+  fi
+  sleep 60
+done
