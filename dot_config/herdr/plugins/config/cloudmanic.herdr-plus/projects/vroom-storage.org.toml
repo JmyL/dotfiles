@@ -4,7 +4,7 @@ group = "personal"
 working_dir = "~/projects/vroom-storage.org"
 
 [[tabs]]
-name = "site"
+name = "vroom-storage.org"
 
 [[tabs.panes]]
 command = "nvim"
