@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Apply a Catppuccin flavor to vifm via a cached colorscheme source file.
+# Used by darkman light-mode.d / dark-mode.d hooks.
+
+flavor=${1:-}
+config_dir=${VIFM_CONFIG_DIR:-$HOME/.config/vifm}
+state_path=${VIFM_THEME_STATE_PATH:-$HOME/.cache/vifm/current-theme.vifm}
+vifm_bin=${VIFM_BIN:-vifm}
+remote=${VIFM_REMOTE:-1}
+
+usage() {
+  echo "usage: ${0##*/} latte|macchiato" >&2
+}
+
+case $flavor in
+latte | macchiato) ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
+
+src=$config_dir/colors/catppuccin-${flavor}.vifm
+if [[ ! -f $src ]]; then
+  echo "${0##*/}: missing theme file: $src" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname -- "$state_path")"
+printf 'colorscheme catppuccin-%s\n' "$flavor" >"$state_path"
+
+if [[ $remote != 1 ]]; then
+  exit 0
+fi
+
+if command -v "$vifm_bin" >/dev/null; then
+  "$vifm_bin" --remote -c "source $state_path" >/dev/null 2>&1 || true
+fi

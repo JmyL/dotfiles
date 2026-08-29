@@ -65,7 +65,10 @@ set norunexec
 
 " Selected color scheme
 
-colorscheme gruvbox
+colorscheme catppuccin-macchiato
+if system('test -f "$HOME/.cache/vifm/current-theme.vifm"; printf $?') == '0'
+    source ~/.cache/vifm/current-theme.vifm
+endif
 
 " Format for displaying time in file list. For example:
 " TIME_STAMP_FORMAT=%m/%d-%H:%M
