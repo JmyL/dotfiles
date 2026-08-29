@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Generate the Zathura theme included by ~/.config/zathura/zathurarc.
+# Zathura reads this when a document window starts; existing windows keep
+# their current colors until reopened.
+
+mode=${1:-}
+state_path=${ZATHURA_THEME_STATE_PATH:-$HOME/.cache/zathura/darkman-theme}
+
+usage() {
+  echo "usage: ${0##*/} light|dark" >&2
+}
+
+mkdir -p "$(dirname -- "$state_path")"
+
+case $mode in
+light)
+  cat <<'EOF' >"$state_path"
+# Sepia light theme
+set notification-error-bg       "#f4ecd8"
+set notification-error-fg       "#9d0006"
+set notification-warning-bg     "#f4ecd8"
+set notification-warning-fg     "#af3a03"
+set notification-bg             "#f4ecd8"
+set notification-fg             "#79740e"
+
+set completion-bg               "#e8dcc3"
+set completion-fg               "#5b4636"
+set completion-group-bg         "#d9c9a9"
+set completion-group-fg         "#7c6f64"
+set completion-highlight-bg     "#b57614"
+set completion-highlight-fg     "#f4ecd8"
+
+set index-bg                    "#e8dcc3"
+set index-fg                    "#5b4636"
+set index-active-bg             "#b57614"
+set index-active-fg             "#f4ecd8"
+
+set inputbar-bg                 "#f4ecd8"
+set inputbar-fg                 "#5b4636"
+set statusbar-bg                "#e8dcc3"
+set statusbar-fg               "#5b4636"
+
+set highlight-color             "#d79921"
+set highlight-active-color      "#af3a03"
+set default-bg                  "#f4ecd8"
+set default-fg                  "#5b4636"
+set render-loading-bg           "#f4ecd8"
+set render-loading-fg           "#5b4636"
+set recolor-lightcolor          "#f4ecd8"
+set recolor-darkcolor           "#5b4636"
+set recolor-keephue             false
+EOF
+  ;;
+dark)
+  cat <<'EOF' >"$state_path"
+# Gruvbox dark theme
+set notification-error-bg       "#282828"
+set notification-error-fg       "#fb4934"
+set notification-warning-bg     "#282828"
+set notification-warning-fg     "#fabd2f"
+set notification-bg             "#282828"
+set notification-fg             "#b8bb26"
+
+set completion-bg               "#504945"
+set completion-fg               "#ebdbb2"
+set completion-group-bg         "#3c3836"
+set completion-group-fg         "#928374"
+set completion-highlight-bg     "#83a598"
+set completion-highlight-fg     "#504945"
+
+set index-bg                    "#504945"
+set index-fg                    "#ebdbb2"
+set index-active-bg             "#83a598"
+set index-active-fg             "#504945"
+
+set inputbar-bg                 "#282828"
+set inputbar-fg                "#ebdbb2"
+set statusbar-bg               "#504945"
+set statusbar-fg               "#ebdbb2"
+
+set highlight-color             "#fabd2f"
+set highlight-active-color      "#fe8019"
+set default-bg                  "#282828"
+set default-fg                  "#ebdbb2"
+set render-loading-bg           "#282828"
+set render-loading-fg           "#ebdbb2"
+set recolor-lightcolor          "#282828"
+set recolor-darkcolor           "#ebdbb2"
+set recolor-keephue             true
+EOF
+  ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
