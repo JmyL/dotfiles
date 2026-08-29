@@ -344,7 +344,7 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     # Toggle idle/sleep inhibitor
     bindsym $mod+Shift+a exec ~/.local/bin/idle-inhibit toggle
     # Toggle light/dark (kitty, swaync, Herdr, Neovim, Vivaldi via darkman)
-    bindsym $mod+Shift+t exec ~/.local/bin/darkman toggle
+    bindsym $mod+Shift+t exec sh -c 'c="$HOME/.local/bin/darkman"; [ -x "$c" ] || c=darkman; exec "$c" toggle'
     # Cycle available power profiles
     bindsym $mod+Shift+m exec ~/.local/bin/cycle-power-profile
     # Lock screen
