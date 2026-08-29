@@ -8,8 +8,7 @@ setup() {
   mkdir -p "$HOME" "$XDG_DATA_HOME"
   script="$BATS_TEST_DIRNAME/../../.local/bin/install-tray-icon-overlays"
   hangul="$XDG_DATA_HOME/icons/hicolor/scalable/apps/fcitx-hangul.svg"
-  adwaita_hangul="$XDG_DATA_HOME/icons/Adwaita/scalable/apps/fcitx-hangul.svg"
-  adwaita_keyboard="$XDG_DATA_HOME/icons/Adwaita/scalable/apps/input-keyboard-symbolic.svg"
+  keyboard="$XDG_DATA_HOME/icons/hicolor/scalable/apps/input-keyboard-symbolic.svg"
 }
 
 teardown() {
@@ -28,8 +27,7 @@ svg_fill() {
   TRAY_HAN_FILL='#4c4f69' run "$script"
   [ "$status" -eq 0 ]
   [ "$(hangul_fill)" = "#4c4f69" ]
-  [ "$(svg_fill "$adwaita_hangul")" = "#4c4f69" ]
-  [ -f "$adwaita_keyboard" ]
+  [ "$(svg_fill "$keyboard")" = "#aeb4ba" ]
 }
 
 @test "uses bar-text hangul when darkman reports light" {
