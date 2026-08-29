@@ -6,6 +6,10 @@ cache_root="${SWAY_WALLPAPER_CACHE_ROOT:-${HOME}/.cache/sway}"
 current_link="${SWAY_CURRENT_WALLPAPER:-${HOME}/.config/sway/wallpaper-current}"
 swaymsg_bin="${SWAYMSG:-swaymsg}"
 darkman_bin="${DARKMAN:-darkman}"
+lock_file="${XDG_RUNTIME_DIR:-/tmp}/sway-theme-wallpaper.lock"
+
+exec 9>"$lock_file"
+flock -n 9 || exit 0
 
 mode_from_darkman() {
   local mode
