@@ -41,6 +41,11 @@ window#waybar #pulseaudio.muted {
     color: #4c4f69;
 }
 
+window#waybar #workspaces button.focused,
+window#waybar #workspaces button.active {
+    color: #ffffff;
+}
+
 window#waybar #custom-swaync.notification,
 window#waybar #custom-swaync.dnd-notification,
 window#waybar #custom-swaync.inhibited-notification,
