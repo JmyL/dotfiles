@@ -48,7 +48,7 @@ focus_on_window_activation focus
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
-output * bg $wallpaper fill
+output * bg $wallpaper fill #1e1e2e
 exec_always ~/.config/sway/sway-theme-wallpaper
 #
 # Example configuration:

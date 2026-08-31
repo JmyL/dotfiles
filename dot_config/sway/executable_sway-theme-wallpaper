@@ -7,16 +7,15 @@ current_link="${SWAY_CURRENT_WALLPAPER:-${HOME}/.config/sway/wallpaper-current}"
 swaymsg_bin="${SWAYMSG:-swaymsg}"
 darkman_bin="${DARKMAN:-darkman}"
 lock_file="${XDG_RUNTIME_DIR:-/tmp}/sway-theme-wallpaper.lock"
-
-exec 9>"$lock_file"
-flock -n 9 || exit 0
+pid_file="${XDG_RUNTIME_DIR:-/tmp}/sway-theme-wallpaper.pid"
+sleep_secs="${SWAY_WALLPAPER_SLEEP:-60}"
 
 mode_from_darkman() {
   local mode
   mode="$(${darkman_bin} get 2>/dev/null || true)"
   case "$mode" in
-    light | dark) printf '%s\n' "$mode" ;;
-    *) return 1 ;;
+  light | dark) printf '%s\n' "$mode" ;;
+  *) return 1 ;;
   esac
 }
 
@@ -53,25 +52,48 @@ apply_wallpaper() {
   local mode="$1"
   local selected
 
-  selected=$(select_wallpaper "$mode") || return 0
+  selected=$(select_wallpaper "$mode") || {
+    echo "${0##*/}: no ${mode} wallpaper in ${wallpaper_root}/${mode}" >&2
+    return 1
+  }
   ln -sfn "$selected" "$current_link"
   "$swaymsg_bin" output "*" bg "$selected" fill >/dev/null
 }
 
+replace_old_watcher() {
+  local old i
+  old=$(cat "$pid_file" 2>/dev/null || true)
+  if [[ $old =~ ^[0-9]+$ ]] && [ "$old" -ne "$$" ]; then
+    kill "$old" 2>/dev/null || true
+    i=0
+    while ((i<20)) && kill -0 "$old" 2>/dev/null; do
+      sleep 0.1
+      ((++i))
+    done
+  fi
+  printf '%s\n' "$$" >"$pid_file"
+}
+
 if [ "${1:-}" = "--once" ]; then
   mode="${2:-$(mode_from_darkman || true)}"
-  case "$mode" in
-    light | dark) apply_wallpaper "$mode" ;;
+  case $mode in
+  light | dark) apply_wallpaper "$mode" || true ;;
   esac
   exit 0
 fi
+
+replace_old_watcher
+exec 9>"$lock_file"
+flock -n 9 || exit 0
 
 last_mode=""
 while :; do
   mode=$(mode_from_darkman || true)
   if [ "$mode" != "$last_mode" ] && [ -n "$mode" ]; then
-    apply_wallpaper "$mode"
-    last_mode="$mode"
+    if apply_wallpaper "$mode"; then
+      last_mode="$mode"
+    fi
   fi
-  sleep 60
+  # Keep the lock fd out of sleep so killing this script releases the lock.
+  sleep "$sleep_secs" 9>&-
 done
