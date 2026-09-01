@@ -21,7 +21,8 @@
   "tabs": {
     "bar": {
       "position": 3
-    }
+    },
+    "tooltip": false
   },
   "windows": {
     "use_native_decoration": true
@@ -52,6 +53,7 @@
     "hidden_extensions": "Chrome Show Tab Numbers + Slack stay in browser + Reeplay open in Firefox + darkman Dark Reader (toolbar icons hidden; extensions still run)",
     "toolbars.navigation": "AccountButton removed via toolbar editor",
     "tabs.bar.position": "3 = bottom",
+    "tabs.tooltip": "false = no hover popup thumbnail preview on tabs",
     "address_bar.position": "1 = bottom",
     "downloads.open_panel_on_new": "false = do not open left Downloads panel on each download",
     "panels.window_defaults.barVisible": "false = hide the side panel icon strip; F4 still toggles it",
