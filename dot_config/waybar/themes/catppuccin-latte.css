@@ -53,7 +53,7 @@ window#waybar #workspaces button.urgent {
 /* Beat the base-module color above; on/off is color-only (same coffee glyph). */
 window#waybar #idle_inhibitor.deactivated,
 window#waybar #custom-idle_inhibitor.deactivated {
-    color: #5c5f77;
+    color: #aeb4ba;
 }
 
 window#waybar #idle_inhibitor.activated,
