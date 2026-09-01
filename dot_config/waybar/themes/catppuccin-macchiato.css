@@ -3,3 +3,24 @@ window#waybar {
     background-color: #000000;
     color: #ffffff;
 }
+
+window#waybar #workspaces button.focused,
+window#waybar #workspaces button.active {
+    color: #ffffff;
+    background-color: #64727D;
+}
+
+window#waybar #workspaces button.urgent {
+    color: #ffffff;
+    background-color: #eb4d4b;
+}
+
+window#waybar #idle_inhibitor.deactivated,
+window#waybar #custom-idle_inhibitor.deactivated {
+    color: #aeb4ba;
+}
+
+window#waybar #idle_inhibitor.activated,
+window#waybar #custom-idle_inhibitor.activated {
+    color: #72b7f2;
+}

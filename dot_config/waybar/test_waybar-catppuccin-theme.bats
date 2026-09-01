@@ -44,6 +44,13 @@ teardown() {
   [ ! -f "$WAYBAR_THEME_STATE_PATH" ]
 }
 
+@test "latte theme colors idle inhibitor by activation class" {
+  latte="$BATS_TEST_DIRNAME/themes/catppuccin-latte.css"
+  grep -q '#custom-idle_inhibitor.activated' "$latte"
+  grep -q '#custom-idle_inhibitor.deactivated' "$latte"
+  ! grep -qE 'window#waybar #custom-idle_inhibitor,' "$latte"
+}
+
 @test "WAYBAR_POKE=0 skips poking style.css" {
   export WAYBAR_POKE=0
   printf 'untouched\n' >"$WAYBAR_STYLE_PATH"

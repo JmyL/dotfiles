@@ -24,8 +24,6 @@ window#waybar #custom-media,
 window#waybar #custom-forager-battery,
 window#waybar #custom-swaync,
 window#waybar #tray,
-window#waybar #idle_inhibitor,
-window#waybar #custom-idle_inhibitor,
 window#waybar #custom-recording,
 window#waybar #keyboard-state,
 window#waybar #keyboard-state > label,
@@ -44,6 +42,23 @@ window#waybar #pulseaudio.muted {
 window#waybar #workspaces button.focused,
 window#waybar #workspaces button.active {
     color: #ffffff;
+    background-color: #64727D;
+}
+
+window#waybar #workspaces button.urgent {
+    color: #ffffff;
+    background-color: #eb4d4b;
+}
+
+/* Beat the base-module color above; on/off is color-only (same coffee glyph). */
+window#waybar #idle_inhibitor.deactivated,
+window#waybar #custom-idle_inhibitor.deactivated {
+    color: #5c5f77;
+}
+
+window#waybar #idle_inhibitor.activated,
+window#waybar #custom-idle_inhibitor.activated {
+    color: #1e66f5;
 }
 
 window#waybar #custom-swaync.notification,
