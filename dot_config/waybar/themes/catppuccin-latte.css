@@ -58,7 +58,7 @@ window#waybar #custom-idle_inhibitor.deactivated {
 
 window#waybar #idle_inhibitor.activated,
 window#waybar #custom-idle_inhibitor.activated {
-    color: #1e66f5;
+    color: #72b7f2;
 }
 
 window#waybar #custom-swaync.notification,
