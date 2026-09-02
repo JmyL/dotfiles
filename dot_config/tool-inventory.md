@@ -128,6 +128,7 @@ Screenshot/recording/clipboard:
 - `grimshot` / sway screenshot helper
 - `slurp`
 - `swappy`
+- `zenity` — file picker for `swappy-open` (user `swappy.desktop` so `$mod+/` can open an image)
 - `wl-clipboard` (`wl-copy`, `wl-paste`)
 - `ImageMagick` (`magick`) — `wl-copy-image` (vifm `yi`) converts JPEG/HEIC/GIF/WebP and other still images to PNG for the clipboard
 - `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`. **autoPaste** on Wayland needs `/dev/uinput` access: run `~/.local/bin/clipse-setup-uinput` on each machine (idempotent; uses sudo). Check with `clipse-setup-uinput --check`. On Fedora Silverblue/toolbox, run it on the **host**. Then **log out and back in** so group `input` is active in the session.
@@ -263,7 +264,7 @@ sudo dnf install \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
   khal khard vdirsyncer \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
-  wl-clipboard wtype xorg-x11-xauth xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils ImageMagick
+  wl-clipboard wtype xorg-x11-xauth xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils ImageMagick zenity
 ```
 
 Fedora follow-ups:
@@ -352,7 +353,7 @@ sudo apt install \
   slurp sox starship swappy sway swayidle swaylock swayosd thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
   wtype xauth xclip xdg-utils xterm zathura zip zoxide grimshot build-essential libreadline-dev unzip \
-  python3-venv python3-gi imagemagick lazygit luarocks wireplumber pipewire-bin
+  python3-venv python3-gi imagemagick lazygit luarocks wireplumber pipewire-bin zenity
 ```
 
 Ubuntu follow-ups:

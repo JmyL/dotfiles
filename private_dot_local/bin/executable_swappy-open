@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Open an image in swappy. With no argument, pick a file first.
+# Used by the user swappy.desktop entry so $mod+/ can launch it.
+
+swappy_cmd="${SWAPPY:-swappy}"
+zenity_cmd="${ZENITY:-zenity}"
+pictures="${XDG_PICTURES_DIR:-$HOME/Pictures}"
+
+usage() {
+  echo "Usage: ${0##*/} [image-file]" >&2
+  exit 2
+}
+
+pick_file() {
+  local start=$pictures
+  if [[ ! -d $start ]]; then
+    start=$HOME
+  fi
+  "$zenity_cmd" --file-selection \
+    --title="Open in Swappy" \
+    --filename="${start}/" \
+    --file-filter='Images | *.png *.jpg *.jpeg *.webp *.gif *.bmp *.heic *.HEIC *.tif *.tiff' \
+    --file-filter='All files | *'
+}
+
+file=
+if (($# == 0)); then
+  file=$(pick_file) || exit 0
+elif (($# == 1)); then
+  case "$1" in
+  -h | --help)
+    usage
+    ;;
+  --)
+    usage
+    ;;
+  *)
+    file=$1
+    ;;
+  esac
+elif (($# == 2)) && [[ $1 == -- ]]; then
+  file=$2
+else
+  usage
+fi
+
+file=${file%$'\n'}
+
+if [[ ! -f $file ]]; then
+  echo "swappy-open: not a regular file: $file" >&2
+  exit 1
+fi
+
+exec "$swappy_cmd" -f "$file"
