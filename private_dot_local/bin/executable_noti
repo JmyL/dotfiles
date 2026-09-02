@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+summary="${*:-done}"
+notify_cmd="${NOTIFY_SEND:-notify-send}"
+sound_cmd="${CANBERRA_GTK_PLAY:-canberra-gtk-play}"
+
+"$notify_cmd" -- "$summary"
+if command -v "$sound_cmd" >/dev/null 2>&1; then
+  "$sound_cmd" -i complete >/dev/null 2>&1 &
+fi
