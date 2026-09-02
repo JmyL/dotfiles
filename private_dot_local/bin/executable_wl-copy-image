@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Copy an image file to the Wayland clipboard as PNG.
+# PNG is copied as-is. Other formats go through ImageMagick (first frame
+# for GIF/HEIC sequences) so Slack, clipse, and swappy can paste them.
+
+wl_copy="${WL_COPY:-wl-copy}"
+magick_cmd="${MAGICK:-magick}"
+file_cmd="${FILE:-file}"
+
+usage() {
+  echo "Usage: ${0##*/} [--] <image-file>" >&2
+  exit 2
+}
+
+if (($# < 1)) || (($# > 2)); then
+  usage
+fi
+
+if [[ "$1" == -- ]]; then
+  shift
+fi
+
+if (($# != 1)); then
+  usage
+fi
+
+src=$1
+
+if [[ ! -f "$src" ]]; then
+  echo "wl-copy-image: not a regular file: $src" >&2
+  exit 1
+fi
+
+if [[ ! -r "$src" ]]; then
+  echo "wl-copy-image: cannot read: $src" >&2
+  exit 1
+fi
+
+copy_png() {
+  "$wl_copy" --type image/png
+}
+
+mime=$("$file_cmd" --mime-type -b -- "$src") || mime=""
+
+if [[ "$mime" == image/png ]]; then
+  copy_png <"$src"
+  echo "${src##*/} yanked as PNG"
+  exit 0
+fi
+
+if ! command -v "$magick_cmd" >/dev/null 2>&1; then
+  echo "wl-copy-image: need ImageMagick (magick) to copy ${mime:-unknown} as PNG" >&2
+  exit 1
+fi
+
+# First frame only. -delete 1--1 is a no-op on single-frame images.
+if ! "$magick_cmd" -quiet "$src" -delete 1--1 png:- | copy_png; then
+  echo "wl-copy-image: cannot convert to PNG: $src" >&2
+  exit 1
+fi
+
+echo "${src##*/} yanked as PNG"

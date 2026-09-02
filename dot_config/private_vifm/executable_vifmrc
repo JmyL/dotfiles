@@ -459,6 +459,11 @@ elseif executable('xclip')
     nnoremap ys :!echo -n %c:r | xclip -selection clipboard %i<cr>:echo expand('%"c:r') "is yanked to clipboard"<cr>
 endif
 
+" Yank current image (any format) as PNG into the clipboard
+if executable('wl-copy-image')
+    nnoremap yi :!wl-copy-image %"c:p %S<cr>
+endif
+
 " Mappings for faster renaming
 nnoremap I cW<c-a>
 nnoremap cc cW<c-u>

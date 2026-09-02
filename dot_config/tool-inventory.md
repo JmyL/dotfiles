@@ -129,6 +129,7 @@ Screenshot/recording/clipboard:
 - `slurp`
 - `swappy`
 - `wl-clipboard` (`wl-copy`, `wl-paste`)
+- `ImageMagick` (`magick`) — `wl-copy-image` (vifm `yi`) converts JPEG/HEIC/GIF/WebP and other still images to PNG for the clipboard
 - `clipse` — clipboard history TUI (`$mod+v`); install Wayland amd64 release to `~/.local/bin/clipse`. **autoPaste** on Wayland needs `/dev/uinput` access: run `~/.local/bin/clipse-setup-uinput` on each machine (idempotent; uses sudo). Check with `clipse-setup-uinput --check`. On Fedora Silverblue/toolbox, run it on the **host**. Then **log out and back in** so group `input` is active in the session.
 - `wf-recorder`
 - `seekey` — Wayland keystroke OSD bubbles (`~/.local/bin/seekey`). Not packaged in apt/dnf; build [Seekey](https://github.com/Nakanomk/Seekey) (`v0.2.3`) with `./install.sh --user --no-input`. Needs `input` group read access to `/dev/input/event*` (same as `clipse-setup-uinput`). Desktop entry `~/.local/share/applications/dev.seekey.desktop` must use the absolute `~/.local/bin/seekey` path (Sway PATH has no `~/.local/bin`). Launcher opens the Seekey menu (`--xdg --desktop-launch`). Not autostarted.
@@ -262,7 +263,7 @@ sudo dnf install \
   power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
   khal khard vdirsyncer \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
-  wl-clipboard wtype xorg-x11-xauth xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils
+  wl-clipboard wtype xorg-x11-xauth xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils ImageMagick
 ```
 
 Fedora follow-ups:
