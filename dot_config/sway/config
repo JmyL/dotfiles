@@ -25,6 +25,7 @@ set $lock swaylock -f -i $wallpaper -s fill
 # Floating pickers / clipboard TUI (foot --app-id …)
 for_window [app_id="fzf-menu"] floating enable, sticky enable, border none, resize set 720 420, move position center
 for_window [app_id="clipse"] floating enable, sticky enable, border none, resize set 900 640, move position center
+for_window [app_id="swappy-open"] floating enable, sticky enable, border none, resize set 1000 640, move position center
 
 ### Window appearance
 #

@@ -2,11 +2,10 @@
 
 set -euo pipefail
 
-# Open an image in swappy. With no argument, pick a file first.
-# Used by the user swappy.desktop entry so $mod+/ can launch it.
+# Open an image in swappy. With no argument, pick a file in a floating
+# vifm (Sway app_id=swappy-open). Used by the user swappy.desktop entry.
 
 swappy_cmd="${SWAPPY:-swappy}"
-zenity_cmd="${ZENITY:-zenity}"
 pictures="${XDG_PICTURES_DIR:-$HOME/Pictures}"
 
 usage() {
@@ -14,16 +13,74 @@ usage() {
   exit 2
 }
 
+resolve_foot() {
+  if [[ -n ${FOOT:-} ]]; then
+    printf '%s\n' "$FOOT"
+    return 0
+  fi
+  if [[ -x ${HOME}/.local/bin/foot ]]; then
+    printf '%s\n' "${HOME}/.local/bin/foot"
+    return 0
+  fi
+  command -v foot
+}
+
+resolve_vifm() {
+  if [[ -n ${VIFM:-} ]]; then
+    printf '%s\n' "$VIFM"
+    return 0
+  fi
+  command -v vifm
+}
+
 pick_file() {
   local start=$pictures
   if [[ ! -d $start ]]; then
     start=$HOME
   fi
-  "$zenity_cmd" --file-selection \
-    --title="Open in Swappy" \
-    --filename="${start}/" \
-    --file-filter='Images | *.png *.jpg *.jpeg *.webp *.gif *.bmp *.heic *.HEIC *.tif *.tiff' \
-    --file-filter='All files | *'
+
+  local foot_bin vifm_bin
+  foot_bin=$(resolve_foot) || {
+    echo "swappy-open: foot not found" >&2
+    return 127
+  }
+  vifm_bin=$(resolve_vifm) || {
+    echo "swappy-open: vifm not found" >&2
+    return 127
+  }
+  if [[ ! -x $foot_bin ]]; then
+    echo "swappy-open: foot not found: $foot_bin" >&2
+    return 127
+  fi
+  if [[ ! -x $vifm_bin ]]; then
+    echo "swappy-open: vifm not found: $vifm_bin" >&2
+    return 127
+  fi
+
+  local outfile picked
+  outfile=$(mktemp)
+  if ! "$foot_bin" --app-id=swappy-open \
+    --title="Swappy" \
+    --window-size-chars=100x32 \
+    "$vifm_bin" --choose-files "$outfile" \
+    -c 'echo "Enter: open in Swappy | q: cancel"' \
+    "$start"
+  then
+    rm -f "$outfile"
+    return 1
+  fi
+
+  if [[ ! -s $outfile ]]; then
+    rm -f "$outfile"
+    return 1
+  fi
+
+  IFS= read -r picked <"$outfile" || true
+  rm -f "$outfile"
+  if [[ -z $picked ]]; then
+    return 1
+  fi
+  printf '%s\n' "$picked"
 }
 
 file=
