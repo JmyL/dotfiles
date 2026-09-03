@@ -238,11 +238,7 @@ if ((as_worktree)); then
       printf 'need a terminal to prompt for the worktree branch\n' >&2
       exit 1
     fi
-    printf '%s\n' "$name" >&2
-    printf '%s\n\n' "$working_dir" >&2
-    printf 'Branch (empty → generated name)\n' >&2
-    printf '❯ ' >&2
-    IFS= read -r branch || exit 1
+    IFS= read -r -p 'branch: ' branch || exit 1
   fi
   branch="$(
     python3 - "$plus_root/config.toml" "$branch" <<'PY'
