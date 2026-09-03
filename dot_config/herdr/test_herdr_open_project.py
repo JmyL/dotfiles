@@ -27,7 +27,7 @@ case "$1 $2" in
 "workspace create")
   cat "${HERDR_CREATE_JSON:?}"
   ;;
-"worktree create")
+"worktree create" | "notification show")
   ;;
 "tab rename" | "tab create" | "pane split" | "pane rename" | "pane run")
   if [[ "$1 $2" == "tab create" ]]; then
@@ -120,6 +120,13 @@ class HerdrOpenProjectTest(unittest.TestCase):
             return []
         return self.log.read_text(encoding="utf-8").splitlines()
 
+    def init_git(self, path: Path | None = None) -> None:
+        subprocess.run(
+            ["git", "init", str(path or self.cwd)],
+            check=True,
+            capture_output=True,
+        )
+
     def test_usage(self):
         result = self.run_script()
         self.assertEqual(result.returncode, 2)
@@ -171,6 +178,7 @@ class HerdrOpenProjectTest(unittest.TestCase):
         self.assertIn("pane run w9:p1 ai", calls)
 
     def test_worktree_creates_from_project_cwd(self):
+        self.init_git()
         self.write_state([{"workspace_id": "w1K", "label": "project: dotfiles"}])
         result = self.run_script("--worktree", "--branch", "feat", "dotfiles")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -180,6 +188,7 @@ class HerdrOpenProjectTest(unittest.TestCase):
         )
 
     def test_worktree_empty_branch_lets_herdr_name_it(self):
+        self.init_git()
         self.write_state([])
         result = self.run_script("--worktree", "--branch", "", "dotfiles")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -189,6 +198,7 @@ class HerdrOpenProjectTest(unittest.TestCase):
         )
 
     def test_worktree_applies_branch_prefix(self):
+        self.init_git()
         (self.projects.parent / "config.toml").write_text(
             '[worktree]\nbranch_prefix = "sungsik/"\n', encoding="utf-8"
         )
@@ -200,6 +210,7 @@ class HerdrOpenProjectTest(unittest.TestCase):
         )
 
     def test_worktree_keeps_qualified_branch(self):
+        self.init_git()
         (self.projects.parent / "config.toml").write_text(
             '[worktree]\nbranch_prefix = "sungsik/"\n', encoding="utf-8"
         )
@@ -211,10 +222,18 @@ class HerdrOpenProjectTest(unittest.TestCase):
         )
 
     def test_worktree_requires_tty_without_branch(self):
+        self.init_git()
         result = self.run_script("--worktree", "dotfiles")
         self.assertEqual(result.returncode, 1)
         self.assertIn("need a terminal to prompt", result.stderr)
         self.assertEqual(self.herdr_calls(), [])
+
+    def test_worktree_notifies_when_not_git_repo(self):
+        result = self.run_script("--worktree", "--branch", "feat", "dotfiles")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.herdr_calls()
+        self.assertTrue(any(c.startswith("notification show Worktree") for c in calls))
+        self.assertFalse(any(c.startswith("worktree create") for c in calls))
 
     def test_worktree_unknown_project(self):
         result = self.run_script("--worktree", "--branch", "feat", "missing")

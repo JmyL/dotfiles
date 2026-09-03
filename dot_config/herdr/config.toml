@@ -27,7 +27,9 @@ open_notification_target = ["prefix+o", "alt+enter"]
 workspace_picker = ["prefix+w", "ctrl+alt+o"]
 goto = "prefix+g"
 new_workspace = ["prefix+shift+n", "ctrl+alt+t"]
-new_worktree = ["prefix+shift+g", "ctrl+alt+g"]
+# Built-in new_worktree writes a sticky panel diagnostic outside a git
+# work tree. herdr-new-worktree notifies instead.
+new_worktree = ""
 # open_worktree = ""    # optional, unset by default
 remove_worktree = ["prefix+shift+x", "ctrl+alt+x"]  # opens confirmation
 rename_workspace = ["prefix+shift+w", "ctrl+alt+r"]
@@ -141,6 +143,12 @@ key = "alt+comma"
 type = "shell"
 command = "herdr-open-project dotfiles"
 description = "open project: dotfiles"
+
+[[keys.command]]
+key = ["prefix+shift+g", "ctrl+alt+g"]
+type = "shell"
+command = "herdr-new-worktree"
+description = "new worktree"
 
 [[keys.command]]
 key = "ctrl+alt+d"
