@@ -21,7 +21,7 @@ prefix = "alt+a"
 # help = "prefix+?"
 # settings = "prefix+s"
 # detach = "prefix+q"
-reload_config = ["prefix+shift+r", "alt+shift+r"]
+reload_config = "prefix+shift+r"
 
 open_notification_target = ["prefix+o", "alt+enter"]
 workspace_picker = ["prefix+w", "ctrl+alt+o"]
@@ -194,6 +194,12 @@ command = "$SHELL"
 width = "50%"
 height = "50%"
 description = "scratch shell popup"
+
+[[keys.command]]
+key = "alt+shift+r"
+type = "shell"
+command = "herdr-rename-first-tab"
+description = "rename first tab to workspace name"
 
 [[keys.command]]
 key = "prefix+space"

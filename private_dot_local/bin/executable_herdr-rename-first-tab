@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Rename the current workspace's first tab to match the workspace name.
+# Strips herdr-plus / navigator kind prefixes (project:/dir:) so the tab
+# gets the same short name the sidebar already shows for those workspaces.
+set -euo pipefail
+
+herdr_bin="${HERDR:-herdr}"
+
+herdr_cmd() {
+  "$herdr_bin" "$@"
+}
+
+ws_json="$(herdr_cmd workspace list)"
+tab_target="$(
+  printf '%s' "$ws_json" | python3 -c '
+import json
+import sys
+
+data = json.load(sys.stdin)
+workspaces = (data.get("result") or {}).get("workspaces") or []
+ws = next((item for item in workspaces if item.get("focused")), None)
+if not ws:
+    raise SystemExit("no focused workspace")
+
+label = str(ws.get("label") or "").strip()
+for prefix in ("project: ", "dir: "):
+    if label.startswith(prefix):
+        label = label[len(prefix) :].strip()
+        break
+if not label:
+    raise SystemExit("focused workspace has no name")
+
+workspace_id = ws.get("workspace_id")
+if not workspace_id:
+    raise SystemExit("focused workspace has no id")
+
+print(json.dumps({"workspace_id": workspace_id, "label": label}))
+'
+)"
+
+workspace_id="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["workspace_id"])' "$tab_target")"
+label="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["label"])' "$tab_target")"
+
+tabs_json="$(herdr_cmd tab list --workspace "$workspace_id")"
+tab_id="$(
+  printf '%s' "$tabs_json" | python3 -c '
+import json
+import sys
+
+tabs = (json.load(sys.stdin).get("result") or {}).get("tabs") or []
+if not tabs:
+    raise SystemExit("workspace has no tabs")
+tabs = sorted(tabs, key=lambda tab: tab.get("number") or 0)
+tab_id = tabs[0].get("tab_id")
+if not tab_id:
+    raise SystemExit("first tab has no id")
+print(tab_id)
+'
+)"
+
+herdr_cmd tab rename "$tab_id" "$label" >/dev/null
