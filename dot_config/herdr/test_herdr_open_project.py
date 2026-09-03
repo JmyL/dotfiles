@@ -27,6 +27,8 @@ case "$1 $2" in
 "workspace create")
   cat "${HERDR_CREATE_JSON:?}"
   ;;
+"worktree create")
+  ;;
 "tab rename" | "tab create" | "pane split" | "pane rename" | "pane run")
   if [[ "$1 $2" == "tab create" ]]; then
     printf '%s\n' '{"result":{"root_pane":{"pane_id":"w9:p2"}}}'
@@ -167,6 +169,21 @@ class HerdrOpenProjectTest(unittest.TestCase):
         self.assertIn("pane split w9:p0 --direction right --no-focus", calls)
         self.assertIn("pane run w9:p0 nvim", calls)
         self.assertIn("pane run w9:p1 ai", calls)
+
+    def test_worktree_creates_from_project_cwd(self):
+        self.write_state([{"workspace_id": "w1K", "label": "project: dotfiles"}])
+        result = self.run_script("--worktree", "dotfiles")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.herdr_calls(),
+            [f"worktree create --cwd {self.cwd} --focus"],
+        )
+
+    def test_worktree_unknown_project(self):
+        result = self.run_script("--worktree", "missing")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("no project named 'missing'", result.stderr)
+        self.assertEqual(self.herdr_calls(), [])
 
 
 if __name__ == "__main__":

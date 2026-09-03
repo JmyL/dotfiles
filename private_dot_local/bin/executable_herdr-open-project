@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Focus an existing "project: <name>" workspace, or create one like Navigator.
+# --worktree matches herdr-plus picker ctrl+g: create a git worktree from the
+# project's working_dir (empty branch so herdr generates worktree/...).
 set -euo pipefail
 
 herdr_bin="${HERDR:-herdr}"
@@ -7,7 +9,7 @@ projects_dir="${HERDR_PLUS_PROJECTS_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr
 
 usage() {
   cat >&2 <<'EOF'
-Usage: herdr-open-project <project-name>
+Usage: herdr-open-project [--worktree] <project-name>
 EOF
   exit 2
 }
@@ -176,13 +178,36 @@ for tab_index, tab in enumerate(project.get("tabs") or []):
 PY
 }
 
-[[ $# -eq 1 && -n "${1// /}" ]] || usage
-name="$1"
+as_worktree=0
+name=""
+for arg in "$@"; do
+  case "$arg" in
+  --worktree)
+    as_worktree=1
+    ;;
+  -h | --help)
+    usage
+    ;;
+  -*)
+    printf 'unknown option: %s\n' "$arg" >&2
+    usage
+    ;;
+  *)
+    if [[ -n "$name" ]]; then
+      usage
+    fi
+    name="$arg"
+    ;;
+  esac
+done
+[[ -n "${name// /}" ]] || usage
 
-existing="$(find_existing_workspace "$name")"
-if [[ -n "$existing" ]]; then
-  herdr_cmd workspace focus "$existing"
-  exit 0
+if ((as_worktree == 0)); then
+  existing="$(find_existing_workspace "$name")"
+  if [[ -n "$existing" ]]; then
+    herdr_cmd workspace focus "$existing"
+    exit 0
+  fi
 fi
 
 project_json="$(resolve_project "$name")"
@@ -194,6 +219,11 @@ if [[ ! -d "$working_dir" ]]; then
 fi
 working_dir="$(realpath "$working_dir")"
 name="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["name"])' "$project_json")"
+
+if ((as_worktree)); then
+  herdr_cmd worktree create --cwd "$working_dir" --focus >/dev/null
+  exit 0
+fi
 
 created="$(
   herdr_cmd workspace create \
