@@ -58,6 +58,10 @@ trough {
   box-shadow: inset 0 0 7px 0 #d20f39;
 }
 
+.notification-background .notification.success {
+  box-shadow: inset 0 0 7px 0 #40a02b;
+}
+
 .notification .notification-content {
   margin: 7px;
 }
