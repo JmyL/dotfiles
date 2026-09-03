@@ -20,19 +20,6 @@ herdr_cmd() {
   "$herdr_bin" "$@"
 }
 
-notify_worktree() {
-  herdr_cmd notification show "Worktree" \
-    --body "$1" \
-    --position top-right \
-    --sound request >/dev/null || true
-}
-
-is_inside_git_work_tree() {
-  local dir="$1" out
-  out="$(git -C "$dir" rev-parse --is-inside-work-tree 2>/dev/null)" || return 1
-  [[ "${out//$'\n'/}" == "true" ]]
-}
-
 expand_working_dir() {
   local path="$1"
   case "$path" in
@@ -246,10 +233,6 @@ working_dir="$(realpath "$working_dir")"
 name="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["name"])' "$project_json")"
 
 if ((as_worktree)); then
-  if ! is_inside_git_work_tree "$working_dir"; then
-    notify_worktree "Not a Git work tree: $working_dir"
-    exit 0
-  fi
   if ((branch_set == 0)); then
     if [[ ! -t 0 ]]; then
       printf 'need a terminal to prompt for the worktree branch\n' >&2
