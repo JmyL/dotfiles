@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # Focus an existing "project: <name>" workspace, or create one like Navigator.
 # --worktree matches herdr-plus picker ctrl+g: create a git worktree from the
-# project's working_dir (empty branch so herdr generates worktree/...).
+# project's working_dir. Without --branch, prompt like the plus branch window
+# (empty input lets herdr generate worktree/...).
 set -euo pipefail
 
 herdr_bin="${HERDR:-herdr}"
 projects_dir="${HERDR_PLUS_PROJECTS_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/herdr/plugins/config/cloudmanic.herdr-plus/projects}"
+plus_root="${HERDR_PLUS_ROOT:-$(dirname "$projects_dir")}"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: herdr-open-project [--worktree] <project-name>
+Usage: herdr-open-project [--worktree] [--branch <name>] <project-name>
 EOF
   exit 2
 }
@@ -179,24 +181,34 @@ PY
 }
 
 as_worktree=0
+branch_set=0
+branch=""
 name=""
-for arg in "$@"; do
-  case "$arg" in
+while [[ $# -gt 0 ]]; do
+  case "$1" in
   --worktree)
     as_worktree=1
+    shift
+    ;;
+  --branch)
+    [[ $# -ge 2 ]] || usage
+    branch_set=1
+    branch="$2"
+    shift 2
     ;;
   -h | --help)
     usage
     ;;
   -*)
-    printf 'unknown option: %s\n' "$arg" >&2
+    printf 'unknown option: %s\n' "$1" >&2
     usage
     ;;
   *)
     if [[ -n "$name" ]]; then
       usage
     fi
-    name="$arg"
+    name="$1"
+    shift
     ;;
   esac
 done
@@ -221,7 +233,39 @@ working_dir="$(realpath "$working_dir")"
 name="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["name"])' "$project_json")"
 
 if ((as_worktree)); then
-  herdr_cmd worktree create --cwd "$working_dir" --focus >/dev/null
+  if ((branch_set == 0)); then
+    if [[ ! -t 0 ]]; then
+      printf 'need a terminal to prompt for the worktree branch\n' >&2
+      exit 1
+    fi
+    printf '%s\n' "$name" >&2
+    printf '%s\n\n' "$working_dir" >&2
+    printf 'Branch (empty → generated name)\n' >&2
+    printf '❯ ' >&2
+    IFS= read -r branch || exit 1
+  fi
+  branch="$(
+    python3 - "$plus_root/config.toml" "$branch" <<'PY'
+import sys
+import tomllib
+from pathlib import Path
+
+config_path = Path(sys.argv[1])
+branch = sys.argv[2].strip()
+prefix = ""
+if config_path.is_file():
+    data = tomllib.loads(config_path.read_text())
+    prefix = str((data.get("worktree") or {}).get("branch_prefix") or "")
+if branch and prefix and "/" not in branch:
+    branch = prefix + branch
+print(branch)
+PY
+  )"
+  if [[ -n "$branch" ]]; then
+    herdr_cmd worktree create --cwd "$working_dir" --branch "$branch" --focus >/dev/null
+  else
+    herdr_cmd worktree create --cwd "$working_dir" --focus >/dev/null
+  fi
   exit 0
 fi
 

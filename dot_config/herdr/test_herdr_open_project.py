@@ -172,15 +172,52 @@ class HerdrOpenProjectTest(unittest.TestCase):
 
     def test_worktree_creates_from_project_cwd(self):
         self.write_state([{"workspace_id": "w1K", "label": "project: dotfiles"}])
-        result = self.run_script("--worktree", "dotfiles")
+        result = self.run_script("--worktree", "--branch", "feat", "dotfiles")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.herdr_calls(),
+            [f"worktree create --cwd {self.cwd} --branch feat --focus"],
+        )
+
+    def test_worktree_empty_branch_lets_herdr_name_it(self):
+        self.write_state([])
+        result = self.run_script("--worktree", "--branch", "", "dotfiles")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.herdr_calls(),
             [f"worktree create --cwd {self.cwd} --focus"],
         )
 
+    def test_worktree_applies_branch_prefix(self):
+        (self.projects.parent / "config.toml").write_text(
+            '[worktree]\nbranch_prefix = "sungsik/"\n', encoding="utf-8"
+        )
+        result = self.run_script("--worktree", "--branch", "feat", "dotfiles")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.herdr_calls()[-1],
+            f"worktree create --cwd {self.cwd} --branch sungsik/feat --focus",
+        )
+
+    def test_worktree_keeps_qualified_branch(self):
+        (self.projects.parent / "config.toml").write_text(
+            '[worktree]\nbranch_prefix = "sungsik/"\n', encoding="utf-8"
+        )
+        result = self.run_script("--worktree", "--branch", "sungsik/feat", "dotfiles")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.herdr_calls()[-1],
+            f"worktree create --cwd {self.cwd} --branch sungsik/feat --focus",
+        )
+
+    def test_worktree_requires_tty_without_branch(self):
+        result = self.run_script("--worktree", "dotfiles")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("need a terminal to prompt", result.stderr)
+        self.assertEqual(self.herdr_calls(), [])
+
     def test_worktree_unknown_project(self):
-        result = self.run_script("--worktree", "missing")
+        result = self.run_script("--worktree", "--branch", "feat", "missing")
         self.assertEqual(result.returncode, 1)
         self.assertIn("no project named 'missing'", result.stderr)
         self.assertEqual(self.herdr_calls(), [])

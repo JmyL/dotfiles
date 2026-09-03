@@ -144,8 +144,10 @@ description = "open project: dotfiles"
 
 [[keys.command]]
 key = "ctrl+alt+d"
-type = "shell"
+type = "popup"
 command = "herdr-open-project --worktree ree-drive"
+width = "50%"
+height = "40%"
 description = "new ree-drive worktree"
 
 [[keys.command]]
