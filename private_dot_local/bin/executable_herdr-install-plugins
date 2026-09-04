@@ -26,3 +26,9 @@ while read -r repo ref extra; do
     herdr plugin install "$repo" --yes
   fi
 done <"$list"
+
+# Work-only: link rddev leftover cleanup when that machine has work chezmoi.
+work_plugin="${XDG_CONFIG_HOME:-$HOME/.config}/work/herdr-rddev-cleanup"
+if [[ -f "${work_plugin}/herdr-plugin.toml" ]]; then
+  herdr plugin link "$work_plugin"
+fi
