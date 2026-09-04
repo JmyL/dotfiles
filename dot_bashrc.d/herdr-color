@@ -1,0 +1,15 @@
+# Cursor CLI tool shells export NO_COLOR=1. Herdr panes inherit the server
+# process environment, so a server started via `herdr update --handoff` from
+# an agent would disable TUI colors in every pane. Drop those in herdr
+# shells, and strip them when invoking herdr so a later update stays clean.
+
+if [[ -n ${HERDR_ENV:-} ]]; then
+  unset NO_COLOR FORCE_COLOR
+fi
+
+herdr() {
+  (
+    unset NO_COLOR FORCE_COLOR
+    command herdr "$@"
+  )
+}

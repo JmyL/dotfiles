@@ -47,6 +47,7 @@ When changing Herdr plugin behavior, keybindings, or local plugin repos, check t
 - Local `herdr plugin link ...` is for development on the current machine only. For changes that must reach other PCs, push the plugin repo branch/tag referenced in `plugins.list`.
 - If a plugin change requires a different repo/ref, update the live `~/.config/herdr/plugins.list`, run `chezmoi add ~/.config/herdr/plugins.list`, review `chezmoi diff`, then commit and push the dotfiles repo.
 - If the plugin installer script changes, edit `~/.local/bin/herdr-install-plugins`, run `bash -n ~/.local/bin/herdr-install-plugins`, then manage it with `chezmoi add ~/.local/bin/herdr-install-plugins`.
+- **Server environment:** Cursor CLI tool shells set `NO_COLOR=1` / `FORCE_COLOR=0`. Starting or handing off `herdr server` from that environment makes every pane inherit them, so Cursor CLI draws no colors (input bar, diffs, everything). Always run `env -u NO_COLOR -u FORCE_COLOR herdr update --handoff` (same unset when starting the server). `~/.bashrc.d/herdr-color` unsets those in interactive herdr panes and wraps `herdr` so interactive updates stay clean.
 
 ## Shell script formatting
 
