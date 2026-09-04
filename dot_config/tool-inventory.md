@@ -232,7 +232,7 @@ These are useful for reproducing the full environment but may be installed by th
 
 - `pi`
 - `herdr`
-- `bun` (needed by some Herdr plugins, e.g. `rjyo/herdr-window-title-sync`)
+- `bun`
 - `uv`, `uvx`
 - `gh`
 - `gh` extension `dlvhdr/gh-dash` (`gh extension install dlvhdr/gh-dash`)

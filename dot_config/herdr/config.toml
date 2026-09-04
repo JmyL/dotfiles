@@ -63,6 +63,11 @@ split_horizontal = ["prefix+minus", "alt+d"]
 close_pane = ["prefix+x", "alt+q"]
 zoom = ["prefix+z", "alt+z"]
 # resize_mode = "prefix+r"
+# Native resize stays off — herdr-splits owns alt+shift+hjkl (nvim-aware).
+resize_pane_left = ""
+resize_pane_down = ""
+resize_pane_up = ""
+resize_pane_right = ""
 toggle_sidebar = ["prefix+b", "alt+b"]
 
 # Navigate-mode movement. These local shortcuts win while navigate mode is open.
@@ -246,6 +251,7 @@ command = "herdr pane swap --current --direction right"
 description = "swap pane right"
 
 [ui]
+window_title = "{hostname}: {workspace}"
 agent_panel_sort = "spaces"
 tab_bar_position = "bottom"
 sidebar_start_collapsed = true
