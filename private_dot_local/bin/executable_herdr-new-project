@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Create a herdr-plus project for ~/projects/<name>.
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: herdr-new-project [--work] <project-name>
+EOF
+  exit 2
+}
+
+work=false
+case "${1:-}" in
+--work)
+  work=true
+  shift
+  ;;
+--help | -h)
+  usage
+  ;;
+esac
+
+[[ $# -eq 1 ]] || usage
+
+name="$1"
+[[ "$name" =~ ^[[:alnum:]][[:alnum:]_.-]*$ ]] || {
+  printf 'project name must contain only letters, digits, ., _, and -: %s\n' "$name" >&2
+  exit 1
+}
+
+working_dir="$HOME/projects/$name"
+[[ -d "$working_dir" ]] || {
+  printf 'working directory does not exist: %s\n' "$working_dir" >&2
+  exit 1
+}
+
+projects_dir="${XDG_CONFIG_HOME:-$HOME/.config}/herdr/plugins/config/cloudmanic.herdr-plus/projects"
+work_projects_dir="${XDG_CONFIG_HOME:-$HOME/.config}/work/herdr-plus/projects"
+project_file="$projects_dir/$name.toml"
+
+if [[ "$work" == true ]]; then
+  mkdir -p "$work_projects_dir" "$projects_dir"
+  project_file="$work_projects_dir/$name.toml"
+  link_file="$projects_dir/$name.toml"
+  [[ ! -e "$project_file" && ! -L "$project_file" && ! -e "$link_file" && ! -L "$link_file" ]] || {
+    printf 'project already exists: %s\n' "$name" >&2
+    exit 1
+  }
+else
+  mkdir -p "$projects_dir"
+  [[ ! -e "$project_file" && ! -L "$project_file" ]] || {
+    printf 'project already exists: %s\n' "$name" >&2
+    exit 1
+  }
+fi
+
+cat >"$project_file" <<EOF
+name = "$name"
+description = "Work on the $name repository"
+group = "personal"
+working_dir = "~/projects/$name"
+
+[[tabs]]
+name = "$name"
+
+[[tabs.panes]]
+command = "nvim"
+
+[[tabs.panes]]
+command = "ai"
+split = "right"
+EOF
+
+if [[ "$work" == true ]]; then
+  ln -s "../../../../../work/herdr-plus/projects/$name.toml" "$link_file"
+fi
+
+printf 'created %s project: %s\n' "$([[ "$work" == true ]] && printf work || printf personal)" "$project_file"
