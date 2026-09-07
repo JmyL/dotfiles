@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  printf 'Usage: dev {setup|cleanup|shell|sync-headers|help} [arguments]\n'
+  printf '\nCommands:\n'
+  printf '  setup         Create or update the development container\n'
+  printf '  shell         Enter the development container\n'
+  printf '  cleanup       Stop and remove the managed container\n'
+  printf '  sync-headers  Mirror selected container headers\n'
+  printf '  help          Show this help\n'
+}
+
+command="${1:-}"
+if [[ -n "$command" ]]; then
+  shift
+fi
+
+case "$command" in
+  setup)
+    exec "$HOME/.local/bin/setup-dev-env" "$@"
+    ;;
+  cleanup)
+    exec "$HOME/.local/bin/cleanup-dev-env" "$@"
+    ;;
+  shell)
+    (($# == 0)) || { usage >&2; exit 2; }
+    exec "$HOME/.local/bin/dev-shell"
+    ;;
+  sync-headers)
+    exec "$HOME/.local/bin/sync-dev-headers" "$@"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

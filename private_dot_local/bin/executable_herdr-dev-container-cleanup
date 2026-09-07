@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -u
+
+# Herdr cleanup is intentionally fail-open: worktree removal must not depend on
+# the container runtime being reachable.
+workspace="${HERDR_WORKTREE_PATH:-}"
+if [[ -z "$workspace" && -n "${HERDR_PLUGIN_EVENT_JSON:-}" ]]; then
+  workspace="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("data", {}).get("worktree", {}).get("path", ""))' <<<"$HERDR_PLUGIN_EVENT_JSON" 2>/dev/null || true)"
+fi
+
+if [[ -n "$workspace" ]]; then
+  "$HOME/.local/bin/setup-dev-env" cleanup --workspace "$workspace" || true
+fi
+exit 0

@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  printf 'Usage: sync-dev-headers HEADER_PATH [HEADER_PATH ...]\n'
+  printf '       sync-dev-headers --list\n\n'
+  printf 'Copy selected paths from /usr/include or /usr/local/include in the development container.\n'
+  printf 'Use --list to show available include paths.\n'
+  exit 0
+fi
+
+list=0
+if [[ "${1:-}" == "--list" ]]; then
+  list=1
+  shift
+fi
+
+if ((list == 1 && $# > 0)); then
+  printf 'sync-dev-headers: --list does not accept header subtrees\n' >&2
+  exit 2
+fi
+
+if ((list == 0 && $# == 0)); then
+  printf 'sync-dev-headers: specify at least one include path\n' >&2
+  exit 2
+fi
+
+for subtree in "$@"; do
+  if [[ "$subtree" == /* || "$subtree" == *..* || ! "$subtree" =~ ^(usr/include|usr/local/include)(/[A-Za-z0-9_+.-]+)+$ ]]; then
+    printf 'sync-dev-headers: invalid header path: %s\n' "$subtree" >&2
+    exit 2
+  fi
+done
+
+project_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)"
+container_name="${DEV_CONTAINER_NAME:-$($HOME/.local/bin/dev-container-name "$project_root")}"
+mirror_root="${DEV_HEADER_MIRROR_ROOT:-$project_root/.deps/container-headers}"
+manifest="${DEV_HEADER_MIRROR_MANIFEST:-$mirror_root/.manifest}"
+
+runtime_command() {
+  "$HOME/.local/bin/dev-container-runtime" "$@"
+}
+
+if ! state="$(runtime_command inspect --format='{{.State.Running}}' "$container_name" 2>/dev/null)" || [[ "$state" != true ]]; then
+  printf 'sync-dev-headers: container %s is not running\n' "$container_name" >&2
+  exit 1
+fi
+
+if ((list == 1)); then
+  runtime_command exec "$container_name" sh -lc \
+    'for root in /usr/include /usr/local/include; do
+       [ -d "$root" ] || continue
+       find "$root" -mindepth 1 -maxdepth 1 -type d -printf "%p\n"
+     done' \
+    | sed 's#^/##' | sort
+  exit 0
+fi
+
+mkdir -p "$mirror_root"
+temporary="$(mktemp -d "$mirror_root/.sync.XXXXXX")"
+cleanup() {
+  rm -rf "$temporary"
+}
+trap cleanup EXIT
+
+for subtree in "$@"; do
+  source="/$subtree"
+  if ! runtime_command exec "$container_name" test -e "$source"; then
+    printf 'sync-dev-headers: header path does not exist: %s\n' "$source" >&2
+    exit 1
+  fi
+
+  parent="$(dirname "$subtree")"
+  base="$(basename "$subtree")"
+  mkdir -p "$temporary/$parent"
+  runtime_command cp "$container_name:$source" "$temporary/$parent/"
+done
+
+for subtree in "$@"; do
+  parent="$(dirname "$subtree")"
+  base="$(basename "$subtree")"
+  destination="$mirror_root/$subtree"
+  mkdir -p "$mirror_root/$parent"
+  rm -rf "$destination"
+  mv "$temporary/$parent/$base" "$destination"
+done
+
+manifest_temporary="$(mktemp "$(dirname "$manifest")/.manifest.XXXXXX")"
+trap 'rm -f "$manifest_temporary"; cleanup' EXIT
+{
+  [[ -f "$manifest" ]] && cat "$manifest"
+  printf '%s\n' "$@"
+} | sort -u >"$manifest_temporary"
+mv "$manifest_temporary" "$manifest"
+
+printf 'sync-dev-headers: synced'
+for subtree in "$@"; do
+  printf ' %s' "$subtree"
+done
+printf '\n'

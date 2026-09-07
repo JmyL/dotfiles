@@ -1,0 +1,366 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  printf 'Usage: setup-dev-env [--force] [directory]\n'
+  printf '       setup-dev-env cleanup --workspace directory\n\n'
+  printf 'Provision a project dev container and install local editor settings.\n'
+}
+
+runtime_command() {
+  "$HOME/.local/bin/dev-container-runtime" "$@"
+}
+
+cleanup_workspace() {
+  local workspace="$1" ids id
+  if [[ -z "$workspace" ]]; then
+    printf 'setup-dev-env: cleanup skipped; workspace is unavailable: %s\n' "$workspace" >&2
+    return 0
+  fi
+  if [[ -d "$workspace" ]]; then
+    workspace="$(cd "$workspace" && pwd -P)"
+  fi
+
+  ids="$(runtime_command ps -aq \
+    --filter 'label=dev-setup.managed=true' \
+    --filter "label=dev-setup.workspace=$workspace" 2>/dev/null || true)"
+  if [[ -z "$ids" ]]; then
+    printf 'setup-dev-env: no managed containers found for %s\n' "$workspace"
+    return 0
+  fi
+
+  local removed=0
+  while read -r id; do
+    [[ -z "$id" ]] && continue
+    runtime_command stop --time 5 "$id" >/dev/null 2>&1 || \
+      printf 'setup-dev-env: warning: could not stop container %s\n' "$id" >&2
+    if runtime_command rm "$id" >/dev/null 2>&1; then
+      printf 'setup-dev-env: removed container %s\n' "$id"
+      removed=$((removed + 1))
+    else
+      printf 'setup-dev-env: warning: could not remove container %s\n' "$id" >&2
+    fi
+  done <<<"$ids"
+  printf 'setup-dev-env: removed %d container(s) for %s\n' "$removed" "$workspace"
+  return 0
+}
+
+if [[ "${1:-}" == cleanup ]]; then
+  shift
+  workspace=''
+  while (($#)); do
+    case "$1" in
+      --workspace) workspace="${2:-}"; shift 2 ;;
+      -h|--help) usage; exit 0 ;;
+      *) printf 'setup-dev-env: unknown cleanup argument: %s\n' "$1" >&2; exit 2 ;;
+    esac
+  done
+  cleanup_workspace "$workspace"
+  exit 0
+fi
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+force=0
+if [[ "${1:-}" == "--force" ]]; then
+  force=1
+  shift
+fi
+if (($# > 0)); then
+  project_dir="$(cd "$1" && pwd -P)"
+  shift
+  (($# == 0)) || { printf 'setup-dev-env: too many arguments\n' >&2; exit 2; }
+else
+  project_dir="$PWD"
+fi
+
+workspace_name="$(basename "$project_dir")"
+container_name="${DEV_CONTAINER_NAME:-$($HOME/.local/bin/dev-container-name "$project_dir")}" 
+container_image="${DEV_CONTAINER_IMAGE:-localhost/${workspace_name}-dev:dev}"
+host_user="$(id -un)"
+host_uid="$(id -u)"
+host_gid="$(id -g)"
+
+ensure_container() {
+  local runtime
+  if command -v docker >/dev/null 2>&1; then runtime=docker
+  elif command -v podman >/dev/null 2>&1; then runtime=podman
+  else printf 'setup-dev-env: neither docker nor podman is available\n' >&2; return 1
+  fi
+  if ! runtime_command inspect "$container_name" >/dev/null 2>&1; then
+    if [[ "$container_image" == localhost/* && -f "$project_dir/docker/Dockerfile" ]]; then
+      runtime_command build --target "${DEV_CONTAINER_BUILD_TARGET:-dev}" \
+        -f "$project_dir/docker/Dockerfile" -t "$container_image" "$project_dir" >/dev/null
+    fi
+    local -a run_args=(run -d \
+      --name "$container_name" \
+      --label dev-setup.managed=true \
+      --label "dev-setup.workspace=$project_dir" \
+      --label "dev-setup.repository=$workspace_name" \
+      --user "$(id -u):$(id -g)" \
+      -v "$project_dir:$project_dir:Z" \
+      -w "$project_dir" \
+      -e CC=clang -e CXX=clang++ \
+    )
+    # Rootless Podman needs keep-id for bind mounts when setup runs inside
+    # Toolbox/dev containers. Plain Docker does not understand this option.
+    runtime_path="$(command -v "$runtime")"
+    if [[ "$runtime" == podman || "$runtime_path" == "$HOME/.local/bin/docker" ]]; then
+      run_args+=(--userns=keep-id)
+    fi
+    if [[ -n "${DEV_CONTAINER_RUN_OPTIONS:-}" ]]; then
+      read -r -a run_options <<< "$DEV_CONTAINER_RUN_OPTIONS"
+      run_args+=("${run_options[@]}")
+    fi
+    run_args+=("$container_image" sleep infinity)
+    runtime_command "${run_args[@]}" >/dev/null
+  elif [[ "$(runtime_command inspect --format='{{.State.Running}}' "$container_name" 2>/dev/null || true)" != true ]]; then
+    runtime_command start "$container_name" >/dev/null
+  fi
+
+  if ! runtime_command exec --user 0 "$container_name" sh -c '
+    host_user="$1"
+    host_uid="$2"
+    host_gid="$3"
+    uid_user="$(getent passwd "$host_uid" | cut -d: -f1 || true)"
+
+    if [ -z "$(getent group "$host_gid" || true)" ]; then
+      groupadd --gid "$host_gid" "devuser-$host_gid"
+    fi
+
+    if [ -n "$uid_user" ] && [ "$uid_user" != "$host_user" ]; then
+      if getent passwd "$host_user" >/dev/null 2>&1; then
+        printf "setup-dev-env: user %s already exists with another UID\\n" "$host_user" >&2
+        exit 1
+      fi
+      passwd_tmp="$(mktemp)"
+      awk -F: -v OFS=: -v uid="$host_uid" -v name="$host_user" \
+        "\$3 == uid {\$1 = name} {print}" /etc/passwd > "$passwd_tmp"
+      install -o root -g root -m 0644 "$passwd_tmp" /etc/passwd
+      rm -f "$passwd_tmp"
+      if [ -f /etc/shadow ]; then
+        shadow_tmp="$(mktemp)"
+        awk -F: -v OFS=: -v old="$uid_user" -v name="$host_user" \
+          "\$1 == old {\$1 = name} {print}" /etc/shadow > "$shadow_tmp"
+        install -o root -g shadow -m 0640 "$shadow_tmp" /etc/shadow
+        rm -f "$shadow_tmp"
+      fi
+      uid_user="$host_user"
+    elif [ -z "$uid_user" ]; then
+      if getent passwd "$host_user" >/dev/null 2>&1; then
+        printf "setup-dev-env: user %s already exists with another UID\\n" "$host_user" >&2
+        exit 1
+      fi
+      useradd --create-home --uid "$host_uid" --gid "$host_gid" "$host_user"
+    fi
+
+    usermod --gid "$host_gid" "$host_user"
+    install -d -o "$host_uid" -g "$host_gid" "/home/$host_user"
+    printf "%s ALL=(ALL) NOPASSWD:ALL\\n" "$host_user" > /etc/sudoers.d/dev-setup
+    chmod 0440 /etc/sudoers.d/dev-setup
+  ' setup-dev-env "$host_user" "$host_uid" "$host_gid"; then
+    printf 'setup-dev-env: warning: could not configure container user %s\\n' "$host_user" >&2
+  fi
+
+  if ! runtime_command exec --user 0 "$container_name" sh -lc \
+    'command -v clangd >/dev/null 2>&1 || (command -v apt-get >/dev/null 2>&1 && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y clangd && rm -rf /var/lib/apt/lists/*)' >/dev/null 2>&1; then
+    printf 'setup-dev-env: warning: clangd could not be installed in %s\n' "$container_name" >&2
+  fi
+
+  if [[ "${DEV_CONTAINER_CONFIGURE_BUILD:-1}" == 1 && -f "$project_dir/CMakeLists.txt" ]]; then
+    local cmake_generator="${CMAKE_GENERATOR:-Ninja}"
+    local cmake_cxx_flags="${CMAKE_CXX_FLAGS:-${CXXFLAGS:--stdlib=libc++}}"
+    if ! runtime_command exec --user "$host_uid:$host_gid" -w "$project_dir" "$container_name" \
+      cmake -S "$project_dir" -B "$project_dir/build" \
+        -G "$cmake_generator" \
+        -DCMAKE_CXX_FLAGS="$cmake_cxx_flags" \
+        -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON >/dev/null; then
+      printf 'setup-dev-env: warning: CMake configure failed in %s\n' "$project_dir" >&2
+    fi
+  fi
+}
+
+write_file() {
+  local name="$1"
+  local destination="$project_dir/$name"
+  local temporary
+
+  if [[ -e "$destination" && "$force" != 1 ]]; then
+    printf 'setup-dev-env: preserving existing %s\n' "$destination"
+    return
+  fi
+
+  temporary="$(mktemp)"
+  trap 'rm -f "$temporary"' RETURN
+
+  case "$name" in
+    .envrc)
+      cat >"$temporary" <<'EOF'
+# Project-specific defaults. setup-dev-env owns container lifecycle.
+export DEV_CONTAINER_WORKSPACE="$(cd "$(dirname "${DIRENV_FILE:-$PWD/.envrc}")" && pwd)"
+export DEV_CONTAINER_NAME="${DEV_CONTAINER_NAME:-$($HOME/.local/bin/dev-container-name "$DEV_CONTAINER_WORKSPACE")}" 
+export DEV_CONTAINER_IMAGE="${DEV_CONTAINER_IMAGE:-localhost/$(basename "$DEV_CONTAINER_WORKSPACE")-dev:dev}"
+export DEV_HEADER_MIRROR_ROOT="${DEV_HEADER_MIRROR_ROOT:-$DEV_CONTAINER_WORKSPACE/.deps/container-headers}"
+EOF
+      ;;
+    .nvim.lua)
+      cat >"$temporary" <<'EOF'
+local project_root = vim.fs.root(0, { '.git' })
+local name_command = vim.env.HOME .. '/.local/bin/dev-container-name'
+local function default_container_name(root)
+  local name = vim.fn.system({ name_command, root })
+  return vim.v.shell_error == 0 and vim.trim(name) or nil
+end
+
+local container_name = vim.env.DEV_CONTAINER_NAME
+  or (project_root and default_container_name(project_root))
+  or 'project-dev'
+local runtime_wrapper = vim.env.HOME .. '/.local/bin/dev-container-runtime'
+
+local container_command = { runtime_wrapper }
+
+local mirror_root = vim.env.DEV_HEADER_MIRROR_ROOT
+local mirror_subtrees = ''
+if mirror_root then
+  local manifest = io.open(mirror_root .. '/.manifest', 'r')
+  if manifest then
+    mirror_subtrees = manifest:read('*a') or ''
+    manifest:close()
+  end
+end
+
+if not project_root or vim.fn.executable(runtime_wrapper) == 0 or vim.fn.executable(name_command) == 0 then
+  return
+end
+
+local function notify(message, level)
+  vim.notify('[project] ' .. message, level or vim.log.levels.INFO)
+end
+
+local function runtime_command(...)
+  local command = vim.deepcopy(container_command)
+  for _, argument in ipairs({ ... }) do
+    table.insert(command, argument)
+  end
+  return command
+end
+
+local function ensure_container()
+  if vim.fn.executable(runtime_wrapper) == 0 then
+    return false
+  end
+
+  local state = vim.fn.system(runtime_command('inspect', '--format={{.State.Running}}', container_name))
+  if vim.v.shell_error ~= 0 then
+    return false
+  end
+
+  if vim.trim(state) ~= 'true' then
+    vim.fn.system(runtime_command('start', container_name))
+    if vim.v.shell_error ~= 0 then
+      return false
+    end
+  end
+
+  return true
+end
+
+local function disable_local_clangd()
+  vim.lsp.enable('clangd', false)
+  for _, client in ipairs(vim.lsp.get_clients({ name = 'clangd' })) do
+    client:stop(true)
+  end
+end
+
+local function start_clangd(bufnr)
+  local root = vim.fs.root(bufnr, { '.git' })
+  if not root or not ensure_container() then
+    return
+  end
+  disable_local_clangd()
+
+  local clangd_args = {
+    'clangd',
+    '--background-index',
+    '--clang-tidy',
+    '--compile-commands-dir=' .. root .. '/build',
+  }
+  if mirror_root then
+    local mappings = {}
+    for subtree in mirror_subtrees:gmatch('%S+') do
+      table.insert(mappings, mirror_root .. '/' .. subtree .. '=/' .. subtree)
+    end
+    if #mappings > 0 then
+      table.insert(clangd_args, '--path-mappings=' .. table.concat(mappings, ','))
+    end
+  end
+
+  vim.lsp.start({
+    name = 'clangd-container',
+    cmd = vim.list_extend(runtime_command('exec', '-i', '-w', root, container_name), clangd_args),
+    root_dir = root,
+  }, { bufnr = bufnr })
+end
+
+vim.schedule(function()
+  if ensure_container() then
+    notify('development container ready')
+  end
+end)
+
+local group = vim.api.nvim_create_augroup('project-container-clangd', { clear = true })
+local clangd_notified = false
+vim.api.nvim_create_autocmd('LspAttach', {
+  group = group,
+  callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if client and client.name == 'clangd-container' and not clangd_notified then
+      clangd_notified = true
+      notify('container clangd attached')
+    end
+  end,
+})
+vim.api.nvim_create_autocmd('FileType', {
+  group = group,
+  pattern = { 'c', 'cpp', 'objc', 'objcpp', 'cuda' },
+  callback = function(args)
+    start_clangd(args.buf)
+  end,
+})
+
+if vim.bo.filetype == 'c' or vim.bo.filetype == 'cpp' or vim.bo.filetype == 'objc'
+    or vim.bo.filetype == 'objcpp' or vim.bo.filetype == 'cuda' then
+  vim.schedule(function()
+    start_clangd(0)
+  end)
+end
+EOF
+      ;;
+    *)
+      printf 'setup-dev-env: unsupported template: %s\n' "$name" >&2
+      exit 1
+      ;;
+  esac
+
+  install -m 0644 "$temporary" "$destination"
+  printf 'setup-dev-env: installed %s\n' "$destination"
+  trap - RETURN
+  rm -f "$temporary"
+}
+
+write_file .envrc
+write_file .nvim.lua
+
+if command -v podman >/dev/null 2>&1 || command -v docker >/dev/null 2>&1; then
+  export DEV_CONTAINER_WORKSPACE="$project_dir"
+  export DEV_CONTAINER_NAME="$container_name"
+  export DEV_CONTAINER_IMAGE="$container_image"
+  ensure_container
+else
+  printf 'setup-dev-env: warning: neither podman nor docker is available; files were installed only\n' >&2
+fi
+
+printf '\nNext steps:\n  direnv allow\n  nvim\n\nUse dev-shell to enter the development container.\n'

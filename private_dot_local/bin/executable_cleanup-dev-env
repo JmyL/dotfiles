@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -gt 1 ]]; then
+  printf 'Usage: cleanup-dev-env [directory]\n' >&2
+  exit 2
+fi
+
+workspace="${1:-${DEV_CONTAINER_WORKSPACE:-$PWD}}"
+exec "$HOME/.local/bin/setup-dev-env" cleanup --workspace "$workspace"

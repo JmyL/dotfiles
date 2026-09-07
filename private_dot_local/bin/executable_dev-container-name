@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+workspace="${1:?usage: dev-container-name <workspace>}"
+workspace="$(cd "$workspace" && pwd -P)"
+basename="$(basename "$workspace")"
+basename="${basename//[^A-Za-z0-9_.-]/-}"
+hash="$(printf '%s' "$workspace" | sha256sum | cut -c1-8)"
+printf 'dev-%s-%s\n' "$basename" "$hash"

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v docker >/dev/null 2>&1; then
+  runtime=docker
+elif command -v podman >/dev/null 2>&1; then
+  runtime=podman
+else
+  printf 'dev-container-runtime: neither docker nor podman is available\n' >&2
+  exit 127
+fi
+exec "$runtime" "$@"

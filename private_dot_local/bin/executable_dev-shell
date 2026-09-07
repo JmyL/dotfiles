@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+workspace="${DEV_CONTAINER_WORKSPACE:-$PWD}"
+name="${DEV_CONTAINER_NAME:-}"
+
+if [[ -z "$name" && -x "$HOME/.local/bin/dev-container-name" ]]; then
+  name="$($HOME/.local/bin/dev-container-name "$workspace")"
+fi
+
+if [[ -z "$name" ]]; then
+  printf 'dev-shell: could not determine the development container\n' >&2
+  exit 1
+fi
+
+exec "$HOME/.local/bin/dev-container-runtime" \
+  exec -it -w "$workspace" "$name" /bin/bash
