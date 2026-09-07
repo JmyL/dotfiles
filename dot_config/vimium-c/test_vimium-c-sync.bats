@@ -8,6 +8,11 @@ setup() {
   export VIMIUM_C_TRACKED="$tmp/vimium-c/settings.json"
   export VIMIUM_C_DOWNLOADS="$tmp/Downloads"
   export CHEZMOI="$tmp/chezmoi"
+  export VIMIUM_C_CDP_PY="$BATS_TEST_DIRNAME/cdp.py"
+  export VIMIUM_C_CDP_PORT=1
+  export VIMIUM_C_CDP_TIMEOUT=0.05
+  unset VIMIUM_C_CDP_DUMP VIMIUM_C_CDP_APPLY
+  export VIMIUM_C_EXTRACTED="$tmp/extracted.json"
   export VIMIUM_C_OPEN="$tmp/open"
   export VIMIUM_C_MERGETOOL="$tmp/mergetool"
   export CHEZMOI_LOG="$tmp/chezmoi.log"
@@ -43,6 +48,7 @@ teardown() {
 write_export() {
   local dest=$1
   local mappings=${2:-$'map <a-p> visitPreviousTab\nmap <a-a> togglePinTab'}
+  mkdir -p "$(dirname -- "$dest")"
   python3 - "$dest" "$mappings" <<'PY'
 import json, sys
 path, mappings = sys.argv[1], sys.argv[2]
@@ -69,10 +75,42 @@ PY
   [[ "$output" == *"Usage: vimium-c-sync"* ]]
 }
 
-@test "incoming fails when no export exists" {
+@test "incoming fails when no export exists and CDP is down" {
   run "$script" incoming
   [ "$status" -eq 2 ]
-  [[ "$output" == *"no incoming Export"* ]]
+  [[ "$output" == *"CDP not reachable"* ]]
+}
+
+@test "incoming uses a CDP dump when Downloads is empty" {
+  write_export "$tmp/dump.json"
+  write_export "$VIMIUM_C_TRACKED" $'map <a-p> visitPreviousTab\nmap <a-a> togglePinTab'
+  export VIMIUM_C_CDP_DUMP="$tmp/dump.json"
+  run "$script" incoming
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no settings differences"* ]]
+}
+
+@test "extract writes a dump to the given file" {
+  write_export "$tmp/dump.json"
+  export VIMIUM_C_CDP_DUMP="$tmp/dump.json"
+  run "$script" extract "$tmp/out.json"
+  [ "$status" -eq 0 ]
+  [[ -f "$tmp/out.json" ]]
+  grep -F -- '"Vimium C"' "$tmp/out.json"
+}
+
+@test "apply writes storage keys to VIMIUM_C_CDP_APPLY" {
+  write_export "$VIMIUM_C_TRACKED"
+  export VIMIUM_C_CDP_APPLY="$tmp/applied.json"
+  run "$script" apply
+  [ "$status" -eq 0 ]
+  python3 - "$tmp/applied.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+assert "name" not in data
+assert "keyMappings" in data
+assert "\n" in data["keyMappings"]
+PY
 }
 
 @test "incoming rejects a non-Vimium JSON" {

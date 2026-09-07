@@ -2,13 +2,16 @@
 set -euo pipefail
 
 # Compare / merge / adopt a Vimium C Export JSON for chezmoi.
-# Import and Export stay in the extension UI; this only manages the file.
+# Live browser settings are read and written over Vivaldi localhost CDP
+# when ~/.local/bin/vivaldi-stable is running. UI Export/Import is fallback.
 
 config_dir="${VIMIUM_C_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/vimium-c}"
 tracked="${VIMIUM_C_TRACKED:-$config_dir/settings.json}"
 downloads="${VIMIUM_C_DOWNLOADS:-$HOME/Downloads}"
 chezmoi_bin="${CHEZMOI:-chezmoi}"
 mergetool="${VIMIUM_C_MERGETOOL:-vimdiff}"
+cdp_py="${VIMIUM_C_CDP_PY:-${XDG_CONFIG_HOME:-$HOME/.config}/vimium-c/cdp.py}"
+extracted="${VIMIUM_C_EXTRACTED:-${XDG_RUNTIME_DIR:-/tmp}/vimium-c-extracted.json}"
 ext_id="${VIMIUM_C_EXT_ID:-hfjbmagddngcpeloejdejnfgbamkjaeg}"
 options_url="chrome-extension://${ext_id}/pages/options.html"
 do_chezmoi=1
@@ -19,14 +22,17 @@ Usage: vimium-c-sync <command> [export.json]
 
 Manage a Vimium C Export JSON as ~/.config/vimium-c/settings.json.
 
-  incoming [file]   Compare a fresh Export to the tracked file
+  incoming [file]   Compare live/Export settings to the tracked file
+  extract [file]    Read live Vimium C settings over CDP
+  apply [file]      Write a file (default: tracked) into Vimium C over CDP
   adopt [file]      Replace the tracked file with that Export
   merge [file]      Open a mergetool on incoming vs tracked
-  import            Print the Import path (and optionally open Options)
-  export            Open Options and print Export instructions
+  import            Print the Import path (UI fallback)
+  export            Print Export instructions (UI fallback)
   path              Print the tracked settings path
 
-If [file] is omitted, use the newest ~/Downloads/vimium_c-*.json.
+If [file] is omitted for incoming/adopt/merge: newest
+~/Downloads/vimium_c-*.json, else a CDP extract.
 
 Volatile Export fields (@time, time, environment.chromium) are stripped
 before compare/adopt so browser version and export time do not noise diffs.
@@ -35,11 +41,9 @@ before compare/adopt so browser version and export time do not noise diffs.
   --open            With import/export, open the Vimium C Options page
   --chezmoi         Force chezmoi add (default when chezmoi is available)
 
-Typical other-PC flow:
-  1. vimium-c-sync export --open    # Export from Options → Downloads
-  2. vimium-c-sync incoming         # compare vs chezmoi-tracked
-  3. vimium-c-sync merge            # or adopt, if incoming should win
-  4. vimium-c-sync import --open    # Import the tracked file
+After chezmoi update, apply tracked settings to this browser:
+  vimium-c-sync incoming
+  vimium-c-sync apply
 EOF
 }
 
@@ -62,8 +66,17 @@ find_incoming() {
       newest=$f
     fi
   done
-  [[ -n $newest ]] || die "no incoming Export (pass a file, or Export to $downloads/vimium_c-*.json)"
-  printf '%s\n' "$newest"
+  if [[ -n $newest ]]; then
+    printf '%s\n' "$newest"
+    return
+  fi
+  cmd_extract "$extracted" >/dev/null || die "could not extract live Vimium C settings"
+  printf '%s\n' "$extracted"
+}
+
+run_cdp() {
+  [[ -f "$cdp_py" ]] || die "missing CDP helper: $cdp_py"
+  python3 "$cdp_py" "$@"
 }
 
 normalize_json() {
@@ -207,6 +220,26 @@ open_options() {
   die "cannot open Options; set VIMIUM_C_OPEN"
 }
 
+cmd_extract() {
+  local dest=${1:-} status=0
+  if [[ -n $dest ]]; then
+    run_cdp extract "$dest" || status=$?
+    if ((status != 0)); then
+      return "$status"
+    fi
+    printf 'extracted: %s\n' "$dest"
+    return 0
+  fi
+  run_cdp extract
+}
+
+cmd_apply() {
+  local src=${1:-$tracked}
+  [[ -f "$src" ]] || die "no settings to apply: $src"
+  run_cdp apply "$src"
+  printf 'applied: %s\n' "$src"
+}
+
 cmd_import() {
   local open=${1:-0}
   if [[ ! -f "$tracked" ]]; then
@@ -267,6 +300,12 @@ done
 case $cmd in
 incoming | diff)
   cmd_incoming "$file"
+  ;;
+extract)
+  cmd_extract "$file"
+  ;;
+apply)
+  cmd_apply "$file"
   ;;
 adopt)
   cmd_adopt "$file"

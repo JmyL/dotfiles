@@ -57,14 +57,12 @@ shred -u sungsik-private.asc 2>/dev/null || rm -f sungsik-private.asc
 ## Vimium C settings
 
 Tracked Export JSON: `~/.config/vimium-c/settings.json` (not the Vivaldi
-profile). Import / Export stay in the extension UI; `vimium-c-sync`
-compares a fresh Export to the tracked file, then adopt or merge.
+profile). `vimium-c-sync` reads and writes the live extension over CDP
+when Vivaldi was started with `~/.local/bin/vivaldi-stable`.
 
 ```sh
-vimium-c-sync export --open
 vimium-c-sync incoming
-vimium-c-sync merge            # or: vimium-c-sync adopt
-vimium-c-sync import --open
+vimium-c-sync apply            # after chezmoi update: tracked → browser
 ```
 
 See `~/.config/vimium-c/README.md`.

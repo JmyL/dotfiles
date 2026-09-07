@@ -32,6 +32,23 @@ When an agent is launched from this home directory, assume the task is to modify
 - Keep secrets out of tracked files. Use chezmoi private/encrypted/ignored mechanisms for sensitive data.
 - For tmux status-bar confirmations, prefer tmux-native `confirm-before` with `y/n` prompts unless an explicit default-on-Enter behavior is required.
 
+## Vimium C (Vivaldi)
+
+Tracked Export: `~/.config/vimium-c/settings.json`, managed by `vimium-c-sync`.
+Do **not** track `~/.config/vivaldi/` profile state.
+
+When the user asks to apply, sync, or 반영 Vimium C settings from chezmoi
+(after `chezmoi update`, or phrases like "chezmoi로 설정 가져와서 반영해 줘"):
+
+1. Confirm `~/.config/vimium-c/settings.json` is present (`chezmoi apply` that path if needed).
+2. Vivaldi must be running via `~/.local/bin/vivaldi-stable` (localhost CDP on 19222).
+3. `vimium-c-sync incoming` — reads the live extension over CDP (no UI Export).
+4. Show the diff. After a chezmoi update, **tracked wins** (apply chezmoi to the browser). Merge or adopt only if the user wants local mappings kept.
+5. `vimium-c-sync apply` writes the tracked file into Vimium C over CDP. Do not ask the user to click Import unless CDP failed.
+6. If the tracked file changed, `chezmoi add` / commit / push as usual.
+
+UI Export/Import is the fallback when Vivaldi is quit or CDP is off.
+
 ## Sway / Waybar
 
 Waybar is started only by Sway's `bar { swaybar_command …/waybar-sway-bar }` block in `~/.config/sway/config.d/05-waybar-bar.conf` (wrapper runs `waybar -b bar-0` and restarts on exit; path must be absolute because Sway does not expand `~`/`$HOME` in `swaybar_command`). Do not also `swaymsg exec waybar` (or equivalent): that leaves an unmanaged second instance that survives `swaymsg reload` and stacks with the bar-managed one.
