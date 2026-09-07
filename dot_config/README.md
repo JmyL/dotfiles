@@ -54,18 +54,20 @@ machine unless it is stored in a secure backup location:
 shred -u sungsik-private.asc 2>/dev/null || rm -f sungsik-private.asc
 ```
 
-## Vimium C key mappings
+## Vimium C settings
 
-Paste into Vimium C Options → Custom key mappings (not tracked by chezmoi;
-copy across machines via Export/Import or browser sync if enabled):
+Tracked Export JSON: `~/.config/vimium-c/settings.json` (not the Vivaldi
+profile). Import / Export stay in the extension UI; `vimium-c-sync`
+compares a fresh Export to the tracked file, then adopt or merge.
 
-```text
-map <a-p> visitPreviousTab
-map <a-f> togglePinTab
+```sh
+vimium-c-sync export --open
+vimium-c-sync incoming
+vimium-c-sync merge            # or: vimium-c-sync adopt
+vimium-c-sync import --open
 ```
 
-- `Alt+P`: last-tab focus (same as default `^`)
-- `Alt+F`: toggle pin (replaces default multi-link hints on `<a-f>`)
+See `~/.config/vimium-c/README.md`.
 
 ## Atuin shell history
 

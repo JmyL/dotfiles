@@ -1,0 +1,293 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Compare / merge / adopt a Vimium C Export JSON for chezmoi.
+# Import and Export stay in the extension UI; this only manages the file.
+
+config_dir="${VIMIUM_C_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/vimium-c}"
+tracked="${VIMIUM_C_TRACKED:-$config_dir/settings.json}"
+downloads="${VIMIUM_C_DOWNLOADS:-$HOME/Downloads}"
+chezmoi_bin="${CHEZMOI:-chezmoi}"
+mergetool="${VIMIUM_C_MERGETOOL:-vimdiff}"
+ext_id="${VIMIUM_C_EXT_ID:-hfjbmagddngcpeloejdejnfgbamkjaeg}"
+options_url="chrome-extension://${ext_id}/pages/options.html"
+do_chezmoi=1
+
+usage() {
+  cat <<EOF
+Usage: vimium-c-sync <command> [export.json]
+
+Manage a Vimium C Export JSON as ~/.config/vimium-c/settings.json.
+
+  incoming [file]   Compare a fresh Export to the tracked file
+  adopt [file]      Replace the tracked file with that Export
+  merge [file]      Open a mergetool on incoming vs tracked
+  import            Print the Import path (and optionally open Options)
+  export            Open Options and print Export instructions
+  path              Print the tracked settings path
+
+If [file] is omitted, use the newest ~/Downloads/vimium_c-*.json.
+
+Volatile Export fields (@time, time, environment.chromium) are stripped
+before compare/adopt so browser version and export time do not noise diffs.
+
+  --no-chezmoi      Do not run chezmoi add after adopt/merge
+  --open            With import/export, open the Vimium C Options page
+  --chezmoi         Force chezmoi add (default when chezmoi is available)
+
+Typical other-PC flow:
+  1. vimium-c-sync export --open    # Export from Options → Downloads
+  2. vimium-c-sync incoming         # compare vs chezmoi-tracked
+  3. vimium-c-sync merge            # or adopt, if incoming should win
+  4. vimium-c-sync import --open    # Import the tracked file
+EOF
+}
+
+die() {
+  printf '%s\n' "$*" >&2
+  exit 2
+}
+
+find_incoming() {
+  local explicit=${1:-}
+  local newest="" f
+  if [[ -n $explicit ]]; then
+    [[ -f "$explicit" ]] || die "incoming file not found: $explicit"
+    printf '%s\n' "$explicit"
+    return
+  fi
+  for f in "$downloads"/vimium_c-*.json; do
+    [[ -f "$f" ]] || continue
+    if [[ -z $newest || "$f" -nt "$newest" ]]; then
+      newest=$f
+    fi
+  done
+  [[ -n $newest ]] || die "no incoming Export (pass a file, or Export to $downloads/vimium_c-*.json)"
+  printf '%s\n' "$newest"
+}
+
+normalize_json() {
+  local src=$1 dest=$2
+  python3 - "$src" "$dest" <<'PY'
+import json
+import sys
+
+src, dest = sys.argv[1], sys.argv[2]
+try:
+    data = json.loads(open(src, encoding="utf-8").read())
+except json.JSONDecodeError as exc:
+    sys.stderr.write(f"not JSON: {src}: {exc}\n")
+    sys.exit(2)
+if not isinstance(data, dict) or data.get("name") not in ("Vimium C", "Vimium++"):
+    sys.stderr.write(f"not a Vimium C Export: {src}\n")
+    sys.exit(2)
+data.pop("@time", None)
+data.pop("time", None)
+env = data.get("environment")
+if isinstance(env, dict):
+    env = dict(env)
+    env.pop("chromium", None)
+    data["environment"] = env
+ordered = {}
+for key in ("name", "environment"):
+    if key in data:
+        ordered[key] = data[key]
+for key in sorted(data):
+    if key not in ordered:
+        ordered[key] = data[key]
+with open(dest, "w", encoding="utf-8") as out:
+    json.dump(ordered, out, indent=2, ensure_ascii=False)
+    out.write("\n")
+PY
+}
+
+ensure_config_dir() {
+  mkdir -p "$config_dir"
+}
+
+chezmoi_add() {
+  if ((do_chezmoi == 0)); then
+    printf 'tracked: %s (chezmoi add skipped)\n' "$tracked"
+    return
+  fi
+  if ! command -v "$chezmoi_bin" >/dev/null 2>&1; then
+    printf 'tracked: %s (chezmoi not found; add later)\n' "$tracked"
+    return
+  fi
+  "$chezmoi_bin" add "$tracked"
+  printf 'tracked: %s (chezmoi add)\n' "$tracked"
+}
+
+diff_normalized() {
+  local left=$1 right=$2
+  local status=0
+  diff -u --label incoming --label tracked "$left" "$right" || status=$?
+  if ((status == 1)); then
+    return 1
+  fi
+  if ((status > 1)); then
+    return "$status"
+  fi
+  return 0
+}
+
+cmd_incoming() {
+  local incoming norm_in norm_tr
+  incoming=$(find_incoming "${1:-}")
+  printf 'incoming: %s\n' "$incoming"
+  printf 'tracked:  %s\n' "$tracked"
+  norm_in=$(mktemp)
+  norm_tr=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$norm_in' '$norm_tr'" RETURN
+  normalize_json "$incoming" "$norm_in"
+  if [[ ! -f "$tracked" ]]; then
+    printf 'no tracked settings yet; adopt to start chezmoi tracking\n'
+    return 1
+  fi
+  normalize_json "$tracked" "$norm_tr"
+  if diff_normalized "$norm_in" "$norm_tr"; then
+    printf 'no settings differences (export time / Chromium version ignored)\n'
+    return 0
+  fi
+  return 1
+}
+
+cmd_adopt() {
+  local incoming norm
+  incoming=$(find_incoming "${1:-}")
+  ensure_config_dir
+  norm=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$norm'" RETURN
+  normalize_json "$incoming" "$norm"
+  cp "$norm" "$tracked"
+  printf 'adopted %s\n' "$incoming"
+  chezmoi_add
+}
+
+cmd_merge() {
+  local incoming norm_in ours status=0
+  incoming=$(find_incoming "${1:-}")
+  ensure_config_dir
+  if [[ ! -f "$tracked" ]]; then
+    printf 'no tracked settings yet; adopting incoming\n'
+    cmd_adopt "$incoming"
+    return
+  fi
+  norm_in=$(mktemp)
+  ours=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$norm_in' '$ours'" RETURN
+  normalize_json "$incoming" "$norm_in"
+  normalize_json "$tracked" "$ours"
+  "$mergetool" "$norm_in" "$ours" || status=$?
+  if ((status != 0)); then
+    printf 'mergetool exited %s; tracked unchanged\n' "$status" >&2
+    return "$status"
+  fi
+  normalize_json "$ours" "$tracked"
+  printf 'wrote merge result to %s\n' "$tracked"
+  chezmoi_add
+}
+
+open_options() {
+  if [[ -n ${VIMIUM_C_OPEN:-} ]]; then
+    "$VIMIUM_C_OPEN" "$options_url"
+    return
+  fi
+  if command -v vivaldi-stable >/dev/null 2>&1; then
+    vivaldi-stable "$options_url"
+    return
+  fi
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$options_url"
+    return
+  fi
+  die "cannot open Options; set VIMIUM_C_OPEN"
+}
+
+cmd_import() {
+  local open=${1:-0}
+  if [[ ! -f "$tracked" ]]; then
+    die "no tracked settings at $tracked (adopt an Export first)"
+  fi
+  printf 'Import in Vimium C Options → Backup / Restore:\n'
+  printf '  %s\n' "$tracked"
+  if ((open == 1)); then
+    open_options
+  fi
+}
+
+cmd_export() {
+  local open=${1:-0}
+  printf 'Export in Vimium C Options → Backup / Restore\n'
+  printf 'Save as ~/Downloads/vimium_c-*.json (the default name), then:\n'
+  printf '  vimium-c-sync incoming\n'
+  printf '  vimium-c-sync adopt    # or: vimium-c-sync merge\n'
+  if ((open == 1)); then
+    open_options
+  fi
+}
+
+cmd=""
+file=""
+open_opts=0
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  --no-chezmoi)
+    do_chezmoi=0
+    ;;
+  --chezmoi)
+    do_chezmoi=1
+    ;;
+  --open)
+    open_opts=1
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  --*)
+    die "unknown option: $1"
+    ;;
+  *)
+    if [[ -z $cmd ]]; then
+      cmd=$1
+    elif [[ -z $file ]]; then
+      file=$1
+    else
+      die "unexpected argument: $1"
+    fi
+    ;;
+  esac
+  shift
+done
+
+case $cmd in
+incoming | diff)
+  cmd_incoming "$file"
+  ;;
+adopt)
+  cmd_adopt "$file"
+  ;;
+merge)
+  cmd_merge "$file"
+  ;;
+import)
+  cmd_import "$open_opts"
+  ;;
+export | open)
+  cmd_export "$open_opts"
+  ;;
+path)
+  printf '%s\n' "$tracked"
+  ;;
+-h | --help | help | "")
+  usage
+  ;;
+*)
+  usage >&2
+  die "unknown command: $cmd"
+  ;;
+esac

@@ -1,0 +1,172 @@
+#!/usr/bin/env bats
+
+script="$BATS_TEST_DIRNAME/../../.local/bin/vimium-c-sync"
+
+setup() {
+  tmp=$(mktemp -d)
+  export VIMIUM_C_DIR="$tmp/vimium-c"
+  export VIMIUM_C_TRACKED="$tmp/vimium-c/settings.json"
+  export VIMIUM_C_DOWNLOADS="$tmp/Downloads"
+  export CHEZMOI="$tmp/chezmoi"
+  export VIMIUM_C_OPEN="$tmp/open"
+  export VIMIUM_C_MERGETOOL="$tmp/mergetool"
+  export CHEZMOI_LOG="$tmp/chezmoi.log"
+  export OPEN_LOG="$tmp/open.log"
+  export MERGE_LOG="$tmp/merge.log"
+  mkdir -p "$VIMIUM_C_DOWNLOADS"
+
+  cat >"$CHEZMOI" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${CHEZMOI_LOG:?}"
+EOF
+  chmod +x "$CHEZMOI"
+
+  cat >"$VIMIUM_C_OPEN" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${OPEN_LOG:?}"
+EOF
+  chmod +x "$VIMIUM_C_OPEN"
+
+  cat >"$VIMIUM_C_MERGETOOL" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${MERGE_LOG:?}"
+# Copy incoming (first arg) over ours (second arg).
+cp "$1" "$2"
+EOF
+  chmod +x "$VIMIUM_C_MERGETOOL"
+}
+
+teardown() {
+  rm -rf "$tmp"
+}
+
+write_export() {
+  local dest=$1
+  local mappings=${2:-$'map <a-p> visitPreviousTab\nmap <a-a> togglePinTab'}
+  python3 - "$dest" "$mappings" <<'PY'
+import json, sys
+path, mappings = sys.argv[1], sys.argv[2]
+data = {
+    "name": "Vimium C",
+    "@time": "9/7/2026, 10:00:00 AM",
+    "time": 1757232000000,
+    "environment": {
+        "extension": "2.12.2",
+        "platform": "linux",
+        "chromium": 150,
+    },
+    "keyMappings": mappings.split("\n") + [""],
+}
+with open(path, "w", encoding="utf-8") as out:
+    json.dump(data, out, indent="\t")
+    out.write("\n")
+PY
+}
+
+@test "usage with no args" {
+  run "$script"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Usage: vimium-c-sync"* ]]
+}
+
+@test "incoming fails when no export exists" {
+  run "$script" incoming
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"no incoming Export"* ]]
+}
+
+@test "incoming rejects a non-Vimium JSON" {
+  printf '{ "name": "other" }\n' >"$tmp/other.json"
+  run "$script" incoming "$tmp/other.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"not a Vimium C Export"* ]]
+}
+
+@test "incoming with no tracked file reports that adopt is needed" {
+  write_export "$VIMIUM_C_DOWNLOADS/vimium_c-20260907_100000.json"
+  run "$script" incoming
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no tracked settings yet"* ]]
+}
+
+@test "incoming ignores export time and chromium version" {
+  write_export "$tmp/a.json"
+  run "$script" adopt --no-chezmoi "$tmp/a.json"
+  [ "$status" -eq 0 ]
+  python3 - "$tmp/a.json" "$tmp/b.json" <<'PY'
+import json, sys
+data = json.loads(open(sys.argv[1], encoding="utf-8").read())
+data["@time"] = "later"
+data["time"] = 999
+data["environment"]["chromium"] = 151
+json.dump(data, open(sys.argv[2], "w", encoding="utf-8"), indent=2)
+PY
+  run "$script" incoming "$tmp/b.json"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"no settings differences"* ]]
+}
+
+@test "incoming diffs keyMappings" {
+  write_export "$tmp/a.json"
+  "$script" --no-chezmoi adopt "$tmp/a.json"
+  write_export "$tmp/b.json" $'map <a-p> visitPreviousTab'
+  run "$script" incoming "$tmp/b.json"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"keyMappings"* ]]
+}
+
+@test "adopt writes a normalized tracked file and chezmoi add" {
+  write_export "$VIMIUM_C_DOWNLOADS/vimium_c-settings.json"
+  run "$script" adopt
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"chezmoi add"* ]]
+  grep -F -- "add $VIMIUM_C_TRACKED" "$CHEZMOI_LOG"
+  python3 - "$VIMIUM_C_TRACKED" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+assert data["name"] == "Vimium C"
+assert "time" not in data
+assert "@time" not in data
+assert "chromium" not in data["environment"]
+assert data["environment"]["platform"] == "linux"
+assert data["keyMappings"][0].startswith("map")
+PY
+}
+
+@test "adopt --no-chezmoi skips chezmoi" {
+  write_export "$tmp/a.json"
+  run "$script" adopt --no-chezmoi "$tmp/a.json"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"chezmoi add skipped"* ]]
+  [ ! -f "$CHEZMOI_LOG" ]
+}
+
+@test "merge writes mergetool result and chezmoi add" {
+  write_export "$tmp/old.json" $'map <a-p> visitPreviousTab'
+  write_export "$tmp/new.json" $'map <a-a> togglePinTab'
+  "$script" --no-chezmoi adopt "$tmp/old.json"
+  run "$script" merge "$tmp/new.json"
+  [ "$status" -eq 0 ]
+  grep -F -- "togglePinTab" "$VIMIUM_C_TRACKED"
+  grep -F -- "add $VIMIUM_C_TRACKED" "$CHEZMOI_LOG"
+}
+
+@test "import --open prints the path and opens Options" {
+  write_export "$tmp/a.json"
+  "$script" --no-chezmoi adopt "$tmp/a.json"
+  run "$script" import --open
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$VIMIUM_C_TRACKED"* ]]
+  grep -F -- "chrome-extension://hfjbmagddngcpeloejdejnfgbamkjaeg/pages/options.html" "$OPEN_LOG"
+}
+
+@test "path prints the tracked file" {
+  run "$script" path
+  [ "$status" -eq 0 ]
+  [ "$output" = "$VIMIUM_C_TRACKED" ]
+}
+
+@test "unknown command exits 2" {
+  run "$script" frobnicate
+  [ "$status" -eq 2 ]
+}
