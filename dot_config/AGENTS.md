@@ -41,13 +41,12 @@ When the user asks to apply, sync, or 반영 Vimium C settings from chezmoi
 (after `chezmoi update`, or phrases like "chezmoi로 설정 가져와서 반영해 줘"):
 
 1. Confirm `~/.config/vimium-c/settings.json` is present (`chezmoi apply` that path if needed).
-2. Vivaldi must be running via `~/.local/bin/vivaldi-stable` (localhost CDP on 19222).
-3. `vimium-c-sync incoming` — reads the live extension over CDP (no UI Export).
-4. Show the diff. After a chezmoi update, **tracked wins** (apply chezmoi to the browser). Merge or adopt only if the user wants local mappings kept.
-5. `vimium-c-sync apply` writes the tracked file into Vimium C over CDP. Do not ask the user to click Import unless CDP failed.
-6. If the tracked file changed, `chezmoi add` / commit / push as usual.
+2. `vimium-c-sync incoming` then `vimium-c-sync apply`. The script starts `~/.local/bin/vivaldi-stable` when CDP is down and waits for the Vimium C worker. Do not ask the user to start Vivaldi.
+3. Show the incoming diff. After a chezmoi update, **tracked wins**. Merge or adopt only if the user wants local mappings kept.
+4. If Vivaldi is already running **without** CDP, do not kill it — say they need to quit and start `~/.local/bin/vivaldi-stable`.
+5. If the tracked file changed, `chezmoi add` / commit / push as usual.
 
-UI Export/Import is the fallback when Vivaldi is quit or CDP is off.
+UI Export/Import is only the fallback after CDP start/apply failed.
 
 ## Sway / Waybar
 

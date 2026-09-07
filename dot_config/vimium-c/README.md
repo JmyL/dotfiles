@@ -1,8 +1,9 @@
 # Vimium C settings
 
 Chezmoi-tracked copy of a Vimium C Export (`settings.json`).
-Live settings are read and written over Vivaldi localhost CDP
-(`~/.local/bin/vivaldi-stable`). Do **not** track `~/.config/vivaldi/`.
+Live settings are read and written over Vivaldi localhost CDP.
+`vimium-c-sync` starts `~/.local/bin/vivaldi-stable` when CDP is down.
+Do **not** track `~/.config/vivaldi/`.
 
 ## Apply chezmoi to this browser
 

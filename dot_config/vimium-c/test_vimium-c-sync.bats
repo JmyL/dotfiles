@@ -11,7 +11,9 @@ setup() {
   export VIMIUM_C_CDP_PY="$BATS_TEST_DIRNAME/cdp.py"
   export VIMIUM_C_CDP_PORT=1
   export VIMIUM_C_CDP_TIMEOUT=0.05
-  unset VIMIUM_C_CDP_DUMP VIMIUM_C_CDP_APPLY
+  export VIMIUM_C_START_VIVALDI=0
+  export VIMIUM_C_VIVALDI_RUNNING=0
+  unset VIMIUM_C_CDP_DUMP VIMIUM_C_CDP_APPLY VIMIUM_C_CDP_PROBE
   export VIMIUM_C_EXTRACTED="$tmp/extracted.json"
   export VIMIUM_C_OPEN="$tmp/open"
   export VIMIUM_C_MERGETOOL="$tmp/mergetool"
@@ -75,10 +77,53 @@ PY
   [[ "$output" == *"Usage: vimium-c-sync"* ]]
 }
 
-@test "incoming fails when no export exists and CDP is down" {
+@test "incoming fails when no export exists and auto-start is off" {
   run "$script" incoming
   [ "$status" -eq 2 ]
-  [[ "$output" == *"CDP not reachable"* ]]
+  [[ "$output" == *"auto-start disabled"* ]]
+}
+
+@test "extract starts Vivaldi when CDP is down" {
+  write_export "$tmp/later-dump.json"
+  export VIVALDI_LOG="$tmp/vivaldi.log"
+  cat >"$tmp/vivaldi" <<EOF
+#!/usr/bin/env bash
+printf 'started\n' >>"${VIVALDI_LOG}"
+cp "$tmp/later-dump.json" "$tmp/dump.json"
+touch "$tmp/cdp-up"
+EOF
+  chmod +x "$tmp/vivaldi"
+  cat >"$tmp/probe" <<EOF
+#!/usr/bin/env bash
+[[ -f "$tmp/cdp-up" ]]
+EOF
+  chmod +x "$tmp/probe"
+  export VIMIUM_C_START_VIVALDI=1
+  export VIMIUM_C_VIVALDI="$tmp/vivaldi"
+  export VIMIUM_C_CDP_PROBE="$tmp/probe"
+  export VIMIUM_C_CDP_WAIT=1
+  export VIMIUM_C_CDP_SLEEP=0.05
+  export VIMIUM_C_CDP_DUMP="$tmp/dump.json"
+  run "$script" extract "$tmp/out.json"
+  [ "$status" -eq 0 ]
+  grep -F -- started "$VIVALDI_LOG"
+  grep -F -- '"Vimium C"' "$tmp/out.json"
+}
+
+@test "does not start Vivaldi when it is already running without CDP" {
+  cat >"$tmp/vivaldi" <<'EOF'
+#!/usr/bin/env bash
+printf 'started\n' >>"${VIVALDI_LOG:?}"
+EOF
+  chmod +x "$tmp/vivaldi"
+  export VIMIUM_C_START_VIVALDI=1
+  export VIMIUM_C_VIVALDI_RUNNING=1
+  export VIMIUM_C_VIVALDI="$tmp/vivaldi"
+  export VIVALDI_LOG="$tmp/vivaldi.log"
+  run "$script" extract "$tmp/out.json"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"running without CDP"* ]]
+  [ ! -f "$VIVALDI_LOG" ]
 }
 
 @test "incoming uses a CDP dump when Downloads is empty" {

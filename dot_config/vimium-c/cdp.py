@@ -322,9 +322,15 @@ def apply(src: str) -> int:
 
 def main(argv: list[str]) -> int:
   if not argv or argv[0] in ("-h", "--help"):
-    print("usage: vimium-c cdp.py extract [file] | apply <file>", file=sys.stderr)
+    print("usage: cdp.py extract [file] | apply <file> | ready", file=sys.stderr)
     return 2
   cmd, *rest = argv
+  if cmd == "ready":
+    try:
+      _worker_ws(_timeout())
+    except SystemExit:
+      return 1
+    return 0
   if cmd == "extract":
     dest = rest[0] if rest else None
     return extract(dest)

@@ -57,8 +57,8 @@ shred -u sungsik-private.asc 2>/dev/null || rm -f sungsik-private.asc
 ## Vimium C settings
 
 Tracked Export JSON: `~/.config/vimium-c/settings.json` (not the Vivaldi
-profile). `vimium-c-sync` reads and writes the live extension over CDP
-when Vivaldi was started with `~/.local/bin/vivaldi-stable`.
+profile). `vimium-c-sync` reads and writes the live extension over CDP,
+and starts `~/.local/bin/vivaldi-stable` if CDP is down.
 
 ```sh
 vimium-c-sync incoming

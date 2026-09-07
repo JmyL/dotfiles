@@ -12,6 +12,10 @@ chezmoi_bin="${CHEZMOI:-chezmoi}"
 mergetool="${VIMIUM_C_MERGETOOL:-vimdiff}"
 cdp_py="${VIMIUM_C_CDP_PY:-${XDG_CONFIG_HOME:-$HOME/.config}/vimium-c/cdp.py}"
 extracted="${VIMIUM_C_EXTRACTED:-${XDG_RUNTIME_DIR:-/tmp}/vimium-c-extracted.json}"
+vivaldi_bin="${VIMIUM_C_VIVALDI:-$HOME/.local/bin/vivaldi-stable}"
+start_vivaldi="${VIMIUM_C_START_VIVALDI:-1}"
+cdp_wait="${VIMIUM_C_CDP_WAIT:-30}"
+cdp_sleep="${VIMIUM_C_CDP_SLEEP:-0.25}"
 ext_id="${VIMIUM_C_EXT_ID:-hfjbmagddngcpeloejdejnfgbamkjaeg}"
 options_url="chrome-extension://${ext_id}/pages/options.html"
 do_chezmoi=1
@@ -40,6 +44,10 @@ before compare/adopt so browser version and export time do not noise diffs.
   --no-chezmoi      Do not run chezmoi add after adopt/merge
   --open            With import/export, open the Vimium C Options page
   --chezmoi         Force chezmoi add (default when chezmoi is available)
+
+extract/apply start ~/.local/bin/vivaldi-stable when CDP is down
+and wait for the Vimium C worker. If Vivaldi is already running
+without CDP, they refuse rather than killing the session.
 
 After chezmoi update, apply tracked settings to this browser:
   vimium-c-sync incoming
@@ -77,6 +85,59 @@ find_incoming() {
 run_cdp() {
   [[ -f "$cdp_py" ]] || die "missing CDP helper: $cdp_py"
   python3 "$cdp_py" "$@"
+}
+
+cdp_is_ready() {
+  if [[ -n ${VIMIUM_C_CDP_PROBE:-} ]]; then
+    "${VIMIUM_C_CDP_PROBE}"
+    return
+  fi
+  run_cdp ready
+}
+
+vivaldi_is_running() {
+  case ${VIMIUM_C_VIVALDI_RUNNING:-} in
+  1) return 0 ;;
+  0) return 1 ;;
+  esac
+  pgrep -x vivaldi-bin >/dev/null 2>&1
+}
+
+wait_for_cdp() {
+  local waited=0
+  while awk -v w="$waited" -v lim="$cdp_wait" 'BEGIN { exit !(w < lim) }'; do
+    if cdp_is_ready; then
+      printf 'Vivaldi CDP is ready\n'
+      return 0
+    fi
+    sleep "$cdp_sleep"
+    waited=$(awk -v w="$waited" -v s="$cdp_sleep" 'BEGIN { print w + s }')
+  done
+  return 1
+}
+
+ensure_vivaldi() {
+  if [[ -n ${VIMIUM_C_CDP_DUMP:-} && -f "${VIMIUM_C_CDP_DUMP}" ]]; then
+    return 0
+  fi
+  if cdp_is_ready; then
+    return 0
+  fi
+  if vivaldi_is_running; then
+    die "Vivaldi is running without CDP. Quit it, then start ~/.local/bin/vivaldi-stable."
+  fi
+  if [[ $start_vivaldi != 1 ]]; then
+    die "Vivaldi CDP is not ready (auto-start disabled)"
+  fi
+  if [[ ! -x "$vivaldi_bin" ]]; then
+    die "cannot start Vivaldi: $vivaldi_bin is not executable"
+  fi
+  printf 'starting %s\n' "$vivaldi_bin"
+  "$vivaldi_bin" >/dev/null 2>&1 &
+  if wait_for_cdp; then
+    return 0
+  fi
+  die "started Vivaldi but CDP did not become ready within ${cdp_wait}s"
 }
 
 normalize_json() {
@@ -222,6 +283,7 @@ open_options() {
 
 cmd_extract() {
   local dest=${1:-} status=0
+  ensure_vivaldi
   if [[ -n $dest ]]; then
     run_cdp extract "$dest" || status=$?
     if ((status != 0)); then
@@ -236,6 +298,9 @@ cmd_extract() {
 cmd_apply() {
   local src=${1:-$tracked}
   [[ -f "$src" ]] || die "no settings to apply: $src"
+  if [[ -z ${VIMIUM_C_CDP_APPLY:-} ]]; then
+    ensure_vivaldi
+  fi
   run_cdp apply "$src"
   printf 'applied: %s\n' "$src"
 }
