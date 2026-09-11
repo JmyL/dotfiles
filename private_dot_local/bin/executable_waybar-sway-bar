@@ -12,6 +12,12 @@ set -euo pipefail
 waybar_bin="$(command -v waybar)" || exit 1
 pidfile="${XDG_RUNTIME_DIR:-/tmp}/waybar-sway-bar.pid"
 
+# Sway launches swaybar_command with WAYLAND_SOCKET pointing at a
+# preconnected bar-client fd. Keep that fd open here so Sway still sees a
+# live bar client, but do not pass the variable to waybar: GTK then falls
+# back to X11 (DISPLAY=:0) and dies with "Bar need to run under Wayland".
+unset WAYLAND_SOCKET
+
 # Waybar treats missing @import targets as fatal. These files are runtime state
 # written by helper scripts, so seed empty defaults before the first launch.
 for state in \

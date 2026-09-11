@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Import Sway's compositor env into systemd/D-Bus, then start the session
+# target. Sway `exec` lines run in parallel; portals must not start until
+# WAYLAND_DISPLAY is visible to systemd user services.
+set -euo pipefail
+
+dbus_update="${DBUS_UPDATE_ACTIVATION_ENVIRONMENT:-dbus-update-activation-environment}"
+systemctl_bin="${SYSTEMCTL:-systemctl}"
+
+dbus_args=(
+  WAYLAND_DISPLAY
+  XDG_CURRENT_DESKTOP=sway
+  XDG_SESSION_DESKTOP=sway
+  DESKTOP_SESSION=sway
+)
+import_args=(
+  WAYLAND_DISPLAY
+  XDG_CURRENT_DESKTOP
+  XDG_SESSION_DESKTOP
+  DESKTOP_SESSION
+)
+if [[ -n "${DISPLAY:-}" ]]; then
+  dbus_args+=(DISPLAY)
+  import_args+=(DISPLAY)
+fi
+
+"$dbus_update" --systemd "${dbus_args[@]}"
+"$systemctl_bin" --user import-environment "${import_args[@]}"
+"$systemctl_bin" --user start sway-session.target
