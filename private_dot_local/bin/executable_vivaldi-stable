@@ -4,9 +4,12 @@ set -euo pipefail
 # Start Vivaldi with a localhost DevTools port so vivaldi-darkman-host
 # can set Dark/Zen without the debugger extension permission (that
 # permission made Vivaldi disable the extension).
+# SystemNotifications: send website notifications (Gmail, etc.) to the
+# freedesktop daemon (swaync) instead of Vivaldi's own popup windows.
 
 port=${VIVALDI_CDP_PORT:-19222}
 bin=${VIVALDI_BIN:-/usr/bin/vivaldi-stable}
+features=${VIVALDI_ENABLE_FEATURES:-SystemNotifications}
 
 if [[ ! -x $bin ]]; then
   printf 'vivaldi-stable not found: %s\n' "$bin" >&2
@@ -17,4 +20,5 @@ exec "$bin" \
   --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port="$port" \
   --remote-allow-origins="http://127.0.0.1:${port}" \
+  --enable-features="$features" \
   "$@"

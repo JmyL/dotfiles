@@ -137,6 +137,7 @@ EOF
   grep -F -- "--remote-debugging-address=127.0.0.1" "$tmp/vivaldi.args"
   grep -F -- "--remote-debugging-port=19222" "$tmp/vivaldi.args"
   grep -F -- "--remote-allow-origins=http://127.0.0.1:19222" "$tmp/vivaldi.args"
+  grep -F -- "--enable-features=SystemNotifications" "$tmp/vivaldi.args"
   grep -F -- "--foo" "$tmp/vivaldi.args"
 }
 
