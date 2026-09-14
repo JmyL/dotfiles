@@ -35,11 +35,12 @@ fi
 
 workspace_json="$(herdr workspace get "$workspace_id")" || die "failed to read workspace"
 readarray -t worktree_fields < <(
-  python3 - <<'PY' <<<"$workspace_json"
+  WORKSPACE_JSON="$workspace_json" python3 - <<'PY'
 import json
+import os
 import sys
 
-payload = json.load(sys.stdin)
+payload = json.loads(os.environ["WORKSPACE_JSON"])
 worktree = ((payload.get("result") or {}).get("workspace") or {}).get("worktree") or {}
 checkout_path = worktree.get("checkout_path") or ""
 repo_root = worktree.get("repo_root") or ""
