@@ -13,10 +13,32 @@ die() {
 }
 
 confirm() {
-  local prompt="$1"
-  local reply
-  read -r -p "${prompt} [y/N] " reply
-  [[ "${reply,,}" == "y" || "${reply,,}" == "yes" ]]
+  local action="$1"
+  local message="$2"
+  local ttl_sec="${3:-15}"
+  local now expires file existing_action existing_expires
+  now="$(date +%s)"
+  expires="$((now + ttl_sec))"
+  file="${state_dir}/${workspace_id}.token"
+
+  if [[ -f "$file" ]]; then
+    read -r existing_action existing_expires <"$file" || true
+    if [[ "$existing_action" == "$action" && "${existing_expires:-0}" -ge "$now" ]]; then
+      rm -f "$file"
+      return 0
+    fi
+  fi
+
+  printf '%s %s\n' "$action" "$expires" >"$file"
+  msg "$message"
+  notify "Confirm again" "$message"
+  return 1
+}
+
+notify() {
+  local title="$1"
+  local body="${2:-}"
+  herdr notification show "$title" --body "$body" >/dev/null 2>&1 || true
 }
 
 require_cmd() {
@@ -30,33 +52,45 @@ require_cmd python3
 
 workspace_id="${HERDR_WORKSPACE_ID:-}"
 if [[ -z "$workspace_id" ]]; then
-  die "HERDR_WORKSPACE_ID is not set; run this from a Herdr pane"
+  workspace_id="$(
+    herdr workspace list |
+      python3 -c 'import json,sys; ws=((json.load(sys.stdin).get("result") or {}).get("workspaces") or []); f=[w for w in ws if w.get("focused")]; print((f[0] if f else {}).get("workspace_id",""))'
+  )"
 fi
+if [[ -z "$workspace_id" ]]; then
+  notify "Worktree remove failed" "Cannot resolve current workspace ID."
+  die "cannot resolve current workspace ID"
+fi
+state_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/herdr-worktree-remove-safe"
+mkdir -p "$state_dir"
 
 workspace_json="$(herdr workspace get "$workspace_id")" || die "failed to read workspace"
 readarray -t worktree_fields < <(
   WORKSPACE_JSON="$workspace_json" python3 - <<'PY'
 import json
 import os
-import sys
-
 payload = json.loads(os.environ["WORKSPACE_JSON"])
-worktree = ((payload.get("result") or {}).get("workspace") or {}).get("worktree") or {}
+workspace = ((payload.get("result") or {}).get("workspace") or {})
+worktree = workspace.get("worktree") or {}
+label = workspace.get("label") or ""
 checkout_path = worktree.get("checkout_path") or ""
 repo_root = worktree.get("repo_root") or ""
 is_linked = bool(worktree.get("is_linked_worktree"))
 print(checkout_path)
 print(repo_root)
 print("1" if is_linked else "0")
+print(label)
 PY
 )
 
 checkout_path="${worktree_fields[0]:-}"
 repo_root="${worktree_fields[1]:-}"
 is_linked="${worktree_fields[2]:-0}"
+workspace_label="${worktree_fields[3]:-}"
 
 if [[ "$is_linked" != "1" || -z "$checkout_path" || -z "$repo_root" ]]; then
-  die "current workspace is not a linked worktree"
+  notify "Worktree remove skipped" "Current workspace is not a linked worktree: ${workspace_label}"
+  die "current workspace is not a linked worktree: ${workspace_label}"
 fi
 
 branch="$(git -C "$checkout_path" branch --show-current 2>/dev/null || true)"
@@ -71,8 +105,7 @@ if [[ "$dirty_count" != "0" ]]; then
   msg "Warning: worktree has ${dirty_count} local change(s)."
 fi
 
-if ! confirm "Remove this worktree now?"; then
-  msg "cancelled"
+if ! confirm "remove:${checkout_path}" "Run ctrl+alt+x again within 15s to remove this worktree." 15; then
   exit 0
 fi
 
@@ -88,9 +121,8 @@ fi
 
 if [[ "$remove_output" == *"working trees containing submodules cannot be moved or removed"* ]]; then
   msg "Git blocked remove because this worktree contains initialized submodules."
-  if ! confirm "Retry with --force (may delete uncommitted submodule/worktree changes)?"; then
-    msg "cancelled"
-    exit 1
+  if ! confirm "force:${checkout_path}" "Run ctrl+alt+x again within 15s to retry with --force." 15; then
+    exit 0
   fi
   herdr worktree remove --workspace "$workspace_id" --force
   msg "removed with --force"
