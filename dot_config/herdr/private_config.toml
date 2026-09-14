@@ -164,7 +164,7 @@ description = "new ree-drive worktree"
 [[keys.command]]
 key = "ctrl+alt+x"
 type = "popup"
-command = "/home/sungsik/.local/bin/work/herdr-worktree-remove-safe"
+command = "/home/sungsik/.local/bin/herdr-worktree-remove-safe"
 width = 90
 height = 12
 description = "safe remove current worktree (force fallback)"

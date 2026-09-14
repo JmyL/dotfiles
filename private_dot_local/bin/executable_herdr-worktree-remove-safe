@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_NAME="$(basename "$0")"
+
+msg() {
+  printf '%s\n' "$*"
+}
+
+die() {
+  printf '%s: %s\n' "$APP_NAME" "$*" >&2
+  exit 1
+}
+
+confirm() {
+  local prompt="$1"
+  local reply
+  read -r -p "${prompt} [y/N] " reply
+  [[ "${reply,,}" == "y" || "${reply,,}" == "yes" ]]
+}
+
+require_cmd() {
+  local name="$1"
+  command -v "$name" >/dev/null 2>&1 || die "missing command: ${name}"
+}
+
+require_cmd herdr
+require_cmd git
+require_cmd python3
+
+workspace_id="${HERDR_WORKSPACE_ID:-}"
+if [[ -z "$workspace_id" ]]; then
+  die "HERDR_WORKSPACE_ID is not set; run this from a Herdr pane"
+fi
+
+workspace_json="$(herdr workspace get "$workspace_id")" || die "failed to read workspace"
+readarray -t worktree_fields < <(
+  python3 - <<'PY' <<<"$workspace_json"
+import json
+import sys
+
+payload = json.load(sys.stdin)
+worktree = ((payload.get("result") or {}).get("workspace") or {}).get("worktree") or {}
+checkout_path = worktree.get("checkout_path") or ""
+repo_root = worktree.get("repo_root") or ""
+is_linked = bool(worktree.get("is_linked_worktree"))
+print(checkout_path)
+print(repo_root)
+print("1" if is_linked else "0")
+PY
+)
+
+checkout_path="${worktree_fields[0]:-}"
+repo_root="${worktree_fields[1]:-}"
+is_linked="${worktree_fields[2]:-0}"
+
+if [[ "$is_linked" != "1" || -z "$checkout_path" || -z "$repo_root" ]]; then
+  die "current workspace is not a linked worktree"
+fi
+
+branch="$(git -C "$checkout_path" branch --show-current 2>/dev/null || true)"
+if [[ -z "$branch" ]]; then
+  branch="(detached)"
+fi
+
+dirty_count="$(git -C "$checkout_path" status --porcelain --ignore-submodules=none | wc -l | tr -d ' ')"
+msg "Target: ${checkout_path}"
+msg "Branch: ${branch}"
+if [[ "$dirty_count" != "0" ]]; then
+  msg "Warning: worktree has ${dirty_count} local change(s)."
+fi
+
+if ! confirm "Remove this worktree now?"; then
+  msg "cancelled"
+  exit 0
+fi
+
+set +e
+remove_output="$(herdr worktree remove --workspace "$workspace_id" 2>&1)"
+remove_rc=$?
+set -e
+
+if [[ "$remove_rc" -eq 0 ]]; then
+  msg "removed"
+  exit 0
+fi
+
+if [[ "$remove_output" == *"working trees containing submodules cannot be moved or removed"* ]]; then
+  msg "Git blocked remove because this worktree contains initialized submodules."
+  if ! confirm "Retry with --force (may delete uncommitted submodule/worktree changes)?"; then
+    msg "cancelled"
+    exit 1
+  fi
+  herdr worktree remove --workspace "$workspace_id" --force
+  msg "removed with --force"
+  exit 0
+fi
+
+printf '%s\n' "$remove_output" >&2
+exit "$remove_rc"
