@@ -12,33 +12,15 @@ die() {
   exit 1
 }
 
-confirm() {
-  local action="$1"
-  local message="$2"
-  local ttl_sec="${3:-15}"
-  local now expires file existing_action existing_expires
-  now="$(date +%s)"
-  expires="$((now + ttl_sec))"
-  file="${state_dir}/${workspace_id}.token"
-
-  if [[ -f "$file" ]]; then
-    read -r existing_action existing_expires <"$file" || true
-    if [[ "$existing_action" == "$action" && "${existing_expires:-0}" -ge "$now" ]]; then
-      rm -f "$file"
-      return 0
-    fi
-  fi
-
-  printf '%s %s\n' "$action" "$expires" >"$file"
-  msg "$message"
-  notify "Confirm again" "$message"
-  return 1
-}
-
 notify() {
   local title="$1"
   local body="${2:-}"
   herdr notification show "$title" --body "$body" >/dev/null 2>&1 || true
+}
+
+pause_on_failure() {
+  # Keep popup visible briefly so failures are readable.
+  sleep 4
 }
 
 require_cmd() {
@@ -61,8 +43,6 @@ if [[ -z "$workspace_id" ]]; then
   notify "Worktree remove failed" "Cannot resolve current workspace ID."
   die "cannot resolve current workspace ID"
 fi
-state_dir="${XDG_STATE_HOME:-${HOME}/.local/state}/herdr-worktree-remove-safe"
-mkdir -p "$state_dir"
 
 workspace_json="$(herdr workspace get "$workspace_id")" || die "failed to read workspace"
 readarray -t worktree_fields < <(
@@ -90,7 +70,9 @@ workspace_label="${worktree_fields[3]:-}"
 
 if [[ "$is_linked" != "1" || -z "$checkout_path" || -z "$repo_root" ]]; then
   notify "Worktree remove skipped" "Current workspace is not a linked worktree: ${workspace_label}"
-  die "current workspace is not a linked worktree: ${workspace_label}"
+  msg "ERROR: current workspace is not a linked worktree: ${workspace_label}"
+  pause_on_failure
+  exit 1
 fi
 
 branch="$(git -C "$checkout_path" branch --show-current 2>/dev/null || true)"
@@ -105,10 +87,6 @@ if [[ "$dirty_count" != "0" ]]; then
   msg "Warning: worktree has ${dirty_count} local change(s)."
 fi
 
-if ! confirm "remove:${checkout_path}" "Run ctrl+alt+x again within 15s to remove this worktree." 15; then
-  exit 0
-fi
-
 set +e
 remove_output="$(herdr worktree remove --workspace "$workspace_id" 2>&1)"
 remove_rc=$?
@@ -120,14 +98,21 @@ if [[ "$remove_rc" -eq 0 ]]; then
 fi
 
 if [[ "$remove_output" == *"working trees containing submodules cannot be moved or removed"* ]]; then
-  msg "Git blocked remove because this worktree contains initialized submodules."
-  if ! confirm "force:${checkout_path}" "Run ctrl+alt+x again within 15s to retry with --force." 15; then
-    exit 0
+  msg "Submodule blocker detected; trying forced remove."
+  if [[ "$dirty_count" != "0" ]]; then
+    msg "ERROR: refusing auto --force because local changes exist."
+    pause_on_failure
+    exit 1
   fi
-  herdr worktree remove --workspace "$workspace_id" --force
+  if ! force_output="$(herdr worktree remove --workspace "$workspace_id" --force 2>&1)"; then
+    printf '%s\n' "$force_output" >&2
+    pause_on_failure
+    exit 1
+  fi
   msg "removed with --force"
   exit 0
 fi
 
 printf '%s\n' "$remove_output" >&2
+pause_on_failure
 exit "$remove_rc"
