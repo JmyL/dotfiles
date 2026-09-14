@@ -1,10 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Slack stay in browser",
-  "version": "1.6.0",
-  "description": "Rewrite Slack archives permalinks to messages so they open in the web client, and focus an open Slack tab via shortcut.",
+  "version": "1.7.0",
+  "description": "Rewrite Slack archives permalinks to messages so they open in the web client, and focus Slack, Calendar, Gmail, or Jira tabs via shortcut.",
   "permissions": ["declarativeNetRequest", "tabs"],
-  "host_permissions": ["*://*.slack.com/*", "*://app.slack.com/*"],
+  "host_permissions": [
+    "*://*.slack.com/*",
+    "*://app.slack.com/*",
+    "*://calendar.google.com/*",
+    "*://mail.google.com/*",
+    "*://*.atlassian.net/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -14,6 +20,24 @@
         "default": "Alt+S"
       },
       "description": "Focus an open Slack tab"
+    },
+    "focus-calendar-tab": {
+      "suggested_key": {
+        "default": "Alt+C"
+      },
+      "description": "Focus a pinned Google Calendar tab"
+    },
+    "focus-gmail-tab": {
+      "suggested_key": {
+        "default": "Alt+G"
+      },
+      "description": "Focus a pinned Gmail tab"
+    },
+    "focus-jira-tab": {
+      "suggested_key": {
+        "default": "Alt+W"
+      },
+      "description": "Focus a pinned Jira tab"
     }
   },
   "declarative_net_request": {
