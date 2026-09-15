@@ -1,0 +1,24 @@
+# Jira defaults for token-based API access.
+export JIRA_BASE_URL="${JIRA_BASE_URL:-https://vayio.atlassian.net}"
+export JIRA_API_BASE="${JIRA_API_BASE:-${JIRA_BASE_URL}/rest/api/3}"
+
+if [[ -z ${JIRA_EMAIL:-} ]]; then
+  JIRA_EMAIL="$(git config --get user.email 2>/dev/null || true)"
+  export JIRA_EMAIL
+fi
+
+jira_api() {
+  if [[ -z ${JIRA_TOKEN:-} ]]; then
+    echo "JIRA_TOKEN is not set" >&2
+    return 1
+  fi
+  if [[ -z ${JIRA_EMAIL:-} ]]; then
+    echo "JIRA_EMAIL is not set" >&2
+    return 1
+  fi
+
+  curl -sS \
+    -u "${JIRA_EMAIL}:${JIRA_TOKEN}" \
+    -H "Accept: application/json" \
+    "$@"
+}
