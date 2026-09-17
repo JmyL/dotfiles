@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: ${0##*/} light|dark" >&2
+}
+
+mode=${1:-}
+case $mode in
+light)
+  theme_name=catppuccin
+  ;;
+dark)
+  theme_name=catppuccin-macchiato
+  ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
+
+config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/opencode
+config_jsonc=${config_dir}/tui.jsonc
+config_json=${config_dir}/tui.json
+
+mkdir -p "$config_dir"
+
+if [[ -f $config_jsonc ]]; then
+  config=$config_jsonc
+elif [[ -f $config_json ]]; then
+  config=$config_json
+else
+  config=$config_jsonc
+  cat >"$config" <<EOF_JSONC
+{
+  "\$schema": "https://opencode.ai/tui.json",
+  "theme": "${theme_name}"
+}
+EOF_JSONC
+  exit 0
+fi
+
+tmp=$(mktemp)
+if [[ $config == *.json ]]; then
+  THEME_NAME="$theme_name" CONFIG_PATH="$config" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ["CONFIG_PATH"])
+theme = os.environ["THEME_NAME"]
+
+obj = {}
+if path.exists() and path.read_text().strip():
+  obj = json.loads(path.read_text())
+
+obj["theme"] = theme
+path.write_text(json.dumps(obj, indent=2) + "\n")
+PY
+  exit 0
+fi
+
+if grep -Eq '^[[:space:]]*"theme"[[:space:]]*:' "$config"; then
+  awk -v theme_name="$theme_name" '
+    /^[[:space:]]*"theme"[[:space:]]*:/ {
+      if ($0 ~ /,[[:space:]]*$/) {
+        print "  \"theme\": \"" theme_name "\","
+      } else {
+        print "  \"theme\": \"" theme_name "\""
+      }
+      next
+    }
+    { print }
+  ' "$config" >"$tmp"
+else
+  awk -v theme_name="$theme_name" '
+    BEGIN {
+      inserted = 0
+    }
+    !inserted && /^[[:space:]]*\{[[:space:]]*$/ {
+      print
+      print "  \"theme\": \"" theme_name "\","
+      inserted = 1
+      next
+    }
+    { print }
+  ' "$config" >"$tmp"
+fi
+
+if cmp -s "$tmp" "$config"; then
+  rm -f "$tmp"
+else
+  mv "$tmp" "$config"
+fi
