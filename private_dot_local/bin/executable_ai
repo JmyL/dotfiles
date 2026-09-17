@@ -9,7 +9,12 @@ show_help() {
   cat <<'EOF'
 Usage: ai [OPTIONS] [--] [ARGS...]
 
-Run the first available AI CLI in this order: agent, claude, codex, pi.
+Run the first available AI CLI in this order:
+  1) ori opencode --model openrouter/auto (if both ori and opencode exist)
+  2) agent
+  3) claude
+  4) codex
+  5) pi
 
 Options:
   -R, --resume-last-session  Resume the last/recent session
@@ -61,6 +66,21 @@ run_agent() {
 
   exec "$cmd" "${args[@]}"
 }
+
+run_ori_opencode() {
+  local -a args=(opencode --model openrouter/auto "$@")
+
+  if ((resume_last)); then
+    echo "ai: --resume-last-session is not supported for ori opencode" >&2
+    exit 1
+  fi
+
+  exec ori "${args[@]}"
+}
+
+if command -v ori >/dev/null 2>&1 && command -v opencode >/dev/null 2>&1; then
+  run_ori_opencode "${passthrough[@]}"
+fi
 
 if command -v agent >/dev/null 2>&1; then
   run_agent agent "${passthrough[@]}"
