@@ -1,0 +1,112 @@
+{
+  "$schema": "https://lnav.org/schemas/format-v1.schema.json",
+  "aws_direct_cloudwatch_export_log": {
+    "title": "AWS Direct CloudWatch Export Log",
+    "description": "Parses AWS CLI CloudWatch filter output saved as JSON with an events array.",
+    "file-type": "json",
+    "file-pattern": "^.*/aws-direct/[^/]+\\.json$",
+    "hide-extra": true,
+    "convert-to-local-time": false,
+    "converter": {
+      "type": "application/json",
+      "header": {
+        "expr": {
+          "is_aws_direct_json_file": "instr(lower(:filepath), '/aws-direct/') > 0 AND lower(substr(:filepath, -5, 5)) = '.json'"
+        }
+      },
+      "command": "aws_direct_cloudwatch_export_converter"
+    },
+    "timestamp-field": "timestamp",
+    "level-field": "severity",
+    "body-field": "message",
+    "line-format": [
+      {
+        "field": "__timestamp__",
+        "timestamp-format": "%b %d %H:%M:%S"
+      },
+      " ",
+      {
+        "field": "__level__",
+        "min-width": 7,
+        "text-transform": "uppercase"
+      },
+      " ",
+      {
+        "field": "session_id",
+        "default-value": "-",
+        "min-width": 26,
+        "auto-width": true
+      },
+      " ",
+      {
+        "field": "node",
+        "default-value": "-",
+        "min-width": 40,
+        "auto-width": true
+      },
+      " ",
+      {
+        "field": "message",
+        "default-value": "-"
+      }
+    ],
+    "value": {
+      "timestamp": {
+        "kind": "timestamp"
+      },
+      "severity": {
+        "kind": "string"
+      },
+      "message": {
+        "kind": "string"
+      },
+      "hostname": {
+        "kind": "string",
+        "hidden": true
+      },
+      "container": {
+        "kind": "string",
+        "hidden": true
+      },
+      "node": {
+        "kind": "string"
+      },
+      "session_id": {
+        "kind": "string",
+        "identifier": true
+      },
+      "host_role": {
+        "kind": "string",
+        "hidden": true
+      },
+      "pid": {
+        "kind": "integer",
+        "hidden": true
+      },
+      "aws_ingestion_time_msec": {
+        "kind": "integer",
+        "hidden": true
+      },
+      "aws_event_id": {
+        "kind": "string",
+        "hidden": true
+      }
+    },
+    "level": {
+      "trace": "Trace",
+      "debug": "Debug",
+      "info": "Info",
+      "warning": "Warn",
+      "error": "Error",
+      "critical": "Critical",
+      "fatal": "Fatal"
+    },
+    "sample": [
+      {
+        "description": "CloudWatch exported event with nested vdrive JSON message",
+        "line": "{\"timestamp\":\"2026-07-23T11:46:24.187000+00:00\",\"severity\":\"Info\",\"message\":\"received session status update: stopped\",\"container\":\"oosops-fstrim_manager-1\",\"node\":\"/telestation/fstrim_manager\",\"session_id\":\"01KY88ZZNEC6669JJS0CS181VE\",\"host_role\":\"telestation\",\"pid\":1540,\"hostname\":\"ts-us-las-00028\",\"aws_ingestion_time_msec\":1784837727034,\"aws_event_id\":\"39803190345119078287737551162384731393301502380436881427\"}",
+        "level": "info"
+      }
+    ]
+  }
+}

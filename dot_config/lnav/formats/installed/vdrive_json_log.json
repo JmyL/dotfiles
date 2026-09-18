@@ -1,0 +1,117 @@
+{
+  "$schema": "https://lnav.org/schemas/format-v1.schema.json",
+  "vdrive_json_log": {
+    "title": "Vay vdrive JSON logs",
+    "description": "CloudWatch / vdrive JSON logs (node, timestamp_ns)",
+    "json": true,
+    "hide-extra": true,
+    "convert-to-local-time": false,
+    "level-field": "severity",
+    "level": {
+      "fatal": "(?i)fatal",
+      "error": "(?i)error",
+      "warning": "(?i)warn",
+      "info": "(?i)info",
+      "debug": "(?i)debug",
+      "trace": "(?i)trace"
+    },
+    "body-field": "message",
+    "timestamp-field": "timestamp_ns",
+    "timestamp-format": [
+      "%9"
+    ],
+    "opid-field": "session_id",
+    "line-format": [
+      {
+        "field": "__timestamp__",
+        "timestamp-format": "%b %d %H:%M:%S"
+      },
+      " ",
+      {
+        "field": "__level__",
+        "min-width": 7,
+        "text-transform": "uppercase"
+      },
+      " ",
+      {
+        "field": "session_id",
+        "default-value": "-",
+        "min-width": 26,
+        "auto-width": true
+      },
+      " ",
+      {
+        "field": "node",
+        "default-value": "-",
+        "min-width": 40,
+        "auto-width": true
+      },
+      " ",
+      {
+        "field": "message"
+      }
+    ],
+    "value": {
+      "container": {
+        "kind": "string",
+        "identifier": true,
+        "hidden": true
+      },
+      "node": {
+        "kind": "string",
+        "identifier": true
+      },
+      "host_role": {
+        "kind": "string",
+        "identifier": true,
+        "hidden": true
+      },
+      "hostname": {
+        "kind": "string",
+        "identifier": true,
+        "hidden": true
+      },
+      "session_id": {
+        "kind": "string",
+        "identifier": true
+      },
+      "pid": {
+        "kind": "integer",
+        "hidden": true
+      },
+      "message": {
+        "kind": "string"
+      },
+      "severity": {
+        "kind": "string",
+        "identifier": true
+      },
+      "timestamp_ns": {
+        "kind": "string",
+        "hidden": true
+      }
+    },
+    "highlights": {
+      "session_ulid": {
+        "pattern": "(?<![0-9A-HJKMNP-TV-Z])([0-7][0-9A-HJKMNP-TV-Z]{25})(?![0-9A-HJKMNP-TV-Z])",
+        "color": "semantic()"
+      },
+      "try_main_exception": {
+        "pattern": "[0-9]+ ERROR: exception:.*",
+        "color": "#ffffff",
+        "background-color": "#cc0000"
+      }
+    },
+    "sample": [
+      {
+        "line": "{\"container\":\"oosops-data_ingestor-1\",\"host_role\":\"vehicle\",\"hostname\":\"ve-de-00012\",\"message\":\"Upload link requested successfully.\",\"node\":\"/vehicle/data_ingestor\",\"pid\":976,\"session_id\":\"01M0F0MJT30XS6SY18FVRJGYRN\",\"severity\":\"Info\",\"timestamp_ns\":\"1787210400007925000\"}"
+      },
+      {
+        "line": "{\"container\":\"oosops-journal_logs-1\",\"host_role\":\"vehicle\",\"hostname\":\"ve-de-00012\",\"message\":\"Aug 20 07:23:16 ve-de-00012 systemd[1]: Starting Cleanup of Temporary Directories...\",\"pid\":976,\"session_id\":\"01M0F0TZY2NS2RERPE1742SDR0\",\"severity\":\"Info\",\"timestamp_ns\":\"1787210597218494000\"}"
+      },
+      {
+        "line": "{\"container\":\"vdrive-foo-1\",\"host_role\":\"vehicle\",\"hostname\":\"ve-de-00012\",\"message\":\"something failed\",\"node\":\"/vehicle/bar\",\"pid\":42,\"severity\":\"Error\",\"timestamp_ns\":\"1779769459166911000\"}"
+      }
+    ]
+  }
+}

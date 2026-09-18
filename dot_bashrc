@@ -110,3 +110,6 @@ if [[ $- == *i* ]]; then
   fi
   __prompt_to_bottom
 fi
+
+# opencode
+export PATH=/home/sungsik/.opencode/bin:$PATH
