@@ -21,6 +21,8 @@
       "~/.local/bin/**": "allow",
       "~/.config/**": "allow",
       "/tmp/**": "allow",
+      "/etc/os-release": "allow",
+      "/usr/lib/os-release": "allow",
       "~/.local/share/**": "allow",
       "~/.claude/**": "allow",
       "~/.agents/**": "allow",
