@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Switch the tuxedo todo TUI between Catppuccin flavors by rewriting the
+# theme line in config.toml. A running tuxedo hot-reloads it (~200 ms).
+# Used by darkman light-mode.d / dark-mode.d hooks.
+
+flavor=${1:-}
+config_dir=${TUXEDO_CONFIG_DIR:-$HOME/.config/tuxedo}
+config_file=${TUXEDO_CONFIG_FILE:-$config_dir/config.toml}
+
+usage() {
+  echo "usage: ${0##*/} latte|macchiato" >&2
+}
+
+case $flavor in
+latte | macchiato) ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
+
+theme_file=$config_dir/themes/catppuccin-${flavor}.toml
+if [[ ! -f $theme_file ]]; then
+  echo "${0##*/}: missing theme file: $theme_file" >&2
+  exit 1
+fi
+
+theme_name=$(sed -n 's/^name[[:space:]]*=[[:space:]]*//p' "$theme_file")
+if [[ -z $theme_name ]]; then
+  echo "${0##*/}: no name field in: $theme_file" >&2
+  exit 1
+fi
+
+file_dir=$(dirname -- "$config_file")
+mkdir -p "$file_dir"
+tmp=$(mktemp "$file_dir/.tuxedo-config.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+
+if [[ ! -e $config_file ]]; then
+  printf 'theme = %s\n' "$theme_name" >"$tmp"
+elif grep -qE '^theme[[:space:]]*=' "$config_file"; then
+  sed -E "s/^theme[[:space:]]*=.*/theme = $theme_name/" "$config_file" >"$tmp"
+else
+  cat -- "$config_file" >"$tmp"
+  if [[ -n $(tail -c 1 "$tmp") ]]; then
+    printf '\n' >>"$tmp"
+  fi
+  printf 'theme = %s\n' "$theme_name" >>"$tmp"
+fi
+
+mv -f -- "$tmp" "$config_file"
