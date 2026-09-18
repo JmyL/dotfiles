@@ -15,6 +15,20 @@
       "enabled": true
     }
   },
+  "permission": {
+    "external_directory": {
+      "*": "ask",
+      "~/.local/bin/**": "allow",
+      "~/.config/**": "allow",
+      "/tmp/**": "allow",
+      "~/.local/share/chezmoi/**": "allow",
+      "~/.local/share/chezmoi-work/**": "allow",
+      "~/.claude/**": "allow",
+      "~/.agents/**": "allow",
+      "~/projects/**": "allow",
+      "~/Documents/**": "allow"
+    }
+  },
   "experimental": {
     "policies": [
       {

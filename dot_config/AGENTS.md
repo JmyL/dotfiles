@@ -100,7 +100,7 @@ When adding or modifying dotfiles that introduce a dependency on an external com
 ## Project boundaries
 
 - This `AGENTS.md` applies only when working directly in `$HOME` as a dotfiles workspace.
-- For normal software projects under `~/Projects` or elsewhere, follow that project's own `AGENTS.md`, README, and repository conventions instead.
+- For normal software projects under `~/projects` or elsewhere, follow that project's own `AGENTS.md`, README, and repository conventions instead.
 - Do not impose home-directory dotfile assumptions on nested projects.
 
 ## Fedora Silverblue notes
