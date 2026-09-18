@@ -12,3 +12,6 @@
 # Work / company overlays — managed by ~/.local/share/chezmoi-work
 .local/bin/work/
 .config/work/
+
+# Contains the OpenRouter API key in plaintext; never track it.
+.bashrc.d/openrouter
