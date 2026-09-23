@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if ! command -v herdr >/dev/null 2>&1; then
+  echo "error: herdr command not found" >&2
+  exit 1
+fi
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "error: git command not found" >&2
+  exit 1
+fi
+
+if (($# > 1)); then
+  echo "usage: herdr-restore-workspaces [repo-path]" >&2
+  exit 2
+fi
+
+repo_input="${1:-.}"
+if ! git -C "$repo_input" rev-parse --git-dir >/dev/null 2>&1; then
+  echo "error: not inside a git repository (or invalid repo-path): $repo_input" >&2
+  exit 1
+fi
+
+mapfile -t worktree_paths < <(
+  git -C "$repo_input" worktree list --porcelain | awk '/^worktree /{print substr($0,10)}'
+)
+
+if ((${#worktree_paths[@]} == 0)); then
+  echo "error: no worktrees found for repository: $repo_input" >&2
+  exit 1
+fi
+
+repo_root="${worktree_paths[0]}"
+
+opened=0
+already_open=0
+skipped=0
+failed=0
+
+for worktree_path in "${worktree_paths[@]}"; do
+  [[ -n "$worktree_path" ]] || continue
+
+  # Herdr worktree open supports linked worktrees; skip the main checkout.
+  if [[ "$worktree_path" == "$repo_root" ]]; then
+    ((skipped+=1))
+    continue
+  fi
+
+  if [[ ! -d "$worktree_path" ]]; then
+    echo "skip: missing path: $worktree_path" >&2
+    ((skipped+=1))
+    continue
+  fi
+
+  output="$(herdr worktree open --cwd "$repo_root" --path "$worktree_path" --no-focus 2>&1)" || {
+    echo "fail: $worktree_path" >&2
+    echo "$output" >&2
+    ((failed+=1))
+    continue
+  }
+
+  if [[ "$output" == *'"already_open":true'* ]]; then
+    ((already_open+=1))
+    echo "ok (already open): $worktree_path"
+  else
+    ((opened+=1))
+    echo "ok (opened): $worktree_path"
+  fi
+done
+
+echo
+echo "repo: $repo_root"
+echo "done: opened=$opened already_open=$already_open skipped=$skipped failed=$failed"
+
+if ((failed > 0)); then
+  exit 1
+fi
