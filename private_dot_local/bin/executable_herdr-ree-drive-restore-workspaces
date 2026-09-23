@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+MAIN_REPO="${MAIN_REPO:-$HOME/projects/ree-drive}"
+
+if ! command -v herdr >/dev/null 2>&1; then
+  echo "error: herdr command not found" >&2
+  exit 1
+fi
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "error: git command not found" >&2
+  exit 1
+fi
+
+if [[ ! -d "$MAIN_REPO/.git" && ! -f "$MAIN_REPO/.git" ]]; then
+  echo "error: MAIN_REPO is not a git repository: $MAIN_REPO" >&2
+  exit 1
+fi
+
+opened=0
+already_open=0
+skipped=0
+failed=0
+
+while IFS= read -r worktree_path; do
+  [[ -n "$worktree_path" ]] || continue
+
+  # Herdr worktree open supports linked worktrees; skip the main checkout.
+  if [[ "$worktree_path" == "$MAIN_REPO" ]]; then
+    ((skipped+=1))
+    continue
+  fi
+
+  if [[ ! -d "$worktree_path" ]]; then
+    echo "skip: missing path: $worktree_path" >&2
+    ((skipped+=1))
+    continue
+  fi
+
+  output="$(herdr worktree open --cwd "$MAIN_REPO" --path "$worktree_path" --no-focus 2>&1)" || {
+    echo "fail: $worktree_path" >&2
+    echo "$output" >&2
+    ((failed+=1))
+    continue
+  }
+
+  if [[ "$output" == *'"already_open":true'* ]]; then
+    ((already_open+=1))
+    echo "ok (already open): $worktree_path"
+  else
+    ((opened+=1))
+    echo "ok (opened): $worktree_path"
+  fi
+done < <(git -C "$MAIN_REPO" worktree list --porcelain | awk '/^worktree /{print substr($0,10)}')
+
+echo
+echo "done: opened=$opened already_open=$already_open skipped=$skipped failed=$failed"
+
+if ((failed > 0)); then
+  exit 1
+fi
