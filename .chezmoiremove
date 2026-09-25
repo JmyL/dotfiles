@@ -21,3 +21,4 @@
 .local/share/light-mode.d/cursor-cli
 .bashrc.d/cursor-term-theme
 .config/darkman/test_cursor-cli-term-theme.bats
+.bashrc.d/jira
