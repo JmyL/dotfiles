@@ -1,0 +1,40 @@
+# ocs: list opencode sessions started in this directory (or the one given).
+# ocl: continue an opencode session by id (as printed by ocs).
+# Usage: ocs [directory]        Limit with OCS_LIMIT (default 20).
+#        ocl <session-id> [...]
+ocs() {
+  local limit="${OCS_LIMIT:-20}" dirs dir list=
+  [[ $limit =~ ^[0-9]+$ ]] || limit=20
+
+  command -v opencode >/dev/null || {
+    echo "ocs: opencode not found" >&2
+    return 1
+  }
+
+  if (($#)); then
+    dirs=("$1")
+  else
+    dirs=("$PWD")
+    [[ $(pwd -P) == "$PWD" ]] || dirs+=("$(pwd -P)")
+  fi
+
+  for dir in "${dirs[@]}"; do
+    list+="${list:+, }'${dir//\'/\'\'}'"
+  done
+
+  opencode db "SELECT id, datetime(time_updated / 1000, 'unixepoch', 'localtime') AS updated, title
+               FROM session
+               WHERE directory IN ($list)
+                 AND parent_id IS NULL
+               ORDER BY time_updated DESC
+               LIMIT $limit" --format tsv |
+    column -t -s $'\t'
+}
+
+ocl() {
+  [[ $# -ge 1 ]] || {
+    echo "ocl: usage: ocl <session-id> [opencode args...]" >&2
+    return 2
+  }
+  opencode -s "$1" "${@:2}"
+}

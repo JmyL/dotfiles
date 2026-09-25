@@ -38,10 +38,11 @@ These are expected by shell, tmux, vifm, aerc, or general workflows:
 
 ## Shell-specific expectations
 
-Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`, `~/.bashrc.d/lnav`, `~/.bashrc.d/xauthority`, `~/.bashrc.d/herdr-color`
+Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`, `~/.bashrc.d/lnav`, `~/.bashrc.d/xauthority`, `~/.bashrc.d/herdr-color`, `~/.bashrc.d/git-cd`, `~/.bashrc.d/ocs`
 
 - `nvim` is exported as `VISUAL` and `EDITOR`.
 - `lnav` defaults to `TZ=UTC`; `lnavl` uses the system timezone.
+- `ocs` lists opencode sessions started in the current directory; `ocl <id>` continues one (needs `opencode`; `column` from util-linux/bsdmainutils).
 - `~/.bashrc.d/xauthority` creates `~/.Xauthority` when missing on local `:0` (Sway/Xwayland). Needs `xauth` and `mcookie`.
 - `~/.bashrc.d/herdr-color` unsets `NO_COLOR` / `FORCE_COLOR` inside herdr panes and wraps `herdr` so `herdr update --handoff` from Cursor CLI does not disable TUI colors.
 - `bash-completion` is required for `apt install <TAB>` package-name completion on Ubuntu (Fedora already loads it from `/etc/bashrc`).
@@ -235,6 +236,7 @@ These are useful for reproducing the full environment but may be installed by th
 
 - `pi`
 - `herdr`
+- `opencode` — `curl -fsSL https://opencode.ai/install | bash`
 - `bun`
 - `uv`, `uvx`
 - `gh`
@@ -318,6 +320,7 @@ May need separate installation depending on Fedora version/repositories:
 - `tmuxinator`
 - `pi`
 - `herdr`
+- `opencode` — `curl -fsSL https://opencode.ai/install | bash`
 - `1password` + `op` (1Password Linux + CLI)
 - `twingate`
 - `awscli`
@@ -383,6 +386,7 @@ Ubuntu packages that may be missing, renamed, too old, or better installed anoth
 - `tmuxinator`
 - `pi`
 - `herdr`
+- `opencode` — `curl -fsSL https://opencode.ai/install | bash`
 - `1password` + `op` (1Password Linux + CLI)
 - `twingate`
 - `awscli`
