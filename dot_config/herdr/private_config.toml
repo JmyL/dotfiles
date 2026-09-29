@@ -1,7 +1,7 @@
 onboarding = false
 
 [theme]
-name = "catppuccin-latte"
+name = "catppuccin"
 auto_switch = true
 light_name = "catppuccin-latte"
 dark_name = "catppuccin"
@@ -152,6 +152,12 @@ key = "alt+n"
 type = "shell"
 command = "herdr-open-project notes"
 description = "open project: notes"
+
+[[keys.command]]
+key = "alt+slash"
+type = "shell"
+command = "herdr-open-project ask"
+description = "open project: ask"
 
 [[keys.command]]
 key = "ctrl+alt+d"
