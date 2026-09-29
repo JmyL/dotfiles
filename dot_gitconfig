@@ -27,3 +27,5 @@
 	colorMoved = default
 [rebase]
 	instructionFormat = %<(20,trunc)%an %s
+[include]
+	path = ~/.config/delta/mode.gitconfig

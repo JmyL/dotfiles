@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: ${0##*/} light|dark" >&2
+}
+
+mode=${1:-}
+config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/delta
+target=${config_dir}/mode.gitconfig
+
+mkdir -p "$config_dir"
+
+case $mode in
+light)
+  cat >"$target" <<'EOF'
+[delta]
+  light = true
+  syntax-theme = GitHub
+EOF
+  ;;
+dark)
+  cat >"$target" <<'EOF'
+[delta]
+  light = false
+EOF
+  ;;
+*)
+  usage
+  exit 2
+  ;;
+esac
