@@ -196,6 +196,24 @@ stop_osd_progress() {
     return 0
 }
 
+# The recorder outlives the `start` command, so this loop runs detached and
+# stops itself once recording ends (pid file removed on stop/cancel, or the
+# recorder died on its own).
+start_recording_osd() {
+    if [[ "$osd_enabled" != 1 ]]; then
+        return 0
+    fi
+
+    show_osd "Dictation started" "[q] finish" "$osd_progress_duration" || notify "Dictation started" "[q] finish"
+    (
+        while recording_active; do
+            show_osd "Dictation started" "[q] finish" "$osd_progress_duration" || exit 0
+            sleep "$osd_progress_interval"
+        done
+    ) &
+    disown
+}
+
 # Short status toasts use SwayOSD. Failures (-u critical) stay as
 # notifications so the full error body remains readable.
 notify() {
@@ -306,7 +324,7 @@ start_recording() {
     fi
 
     play_sound "$sound_started"
-    notify "Dictation started" "[q] finish"
+    start_recording_osd
 }
 
 stop_recording() {
@@ -318,9 +336,9 @@ stop_recording() {
     fi
 
     pid=$(cat "$pid_file")
+    rm -f "$pid_file"
     kill -INT "$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
-    rm -f "$pid_file"
     trap 'stop_osd_progress; resume_playing_media' EXIT
 
     if [ ! -s "$audio_file" ]; then
@@ -396,6 +414,7 @@ PY
 cancel_recording() {
     if recording_active; then
         pid=$(cat "$pid_file")
+        rm -f "$pid_file"
         kill -INT "$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
     fi
     rm -f "$pid_file" "$audio_file" "$text_file"
