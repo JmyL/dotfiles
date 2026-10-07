@@ -27,6 +27,7 @@ These are expected by shell, tmux, vifm, aerc, or general workflows:
 - `delta` (`git-delta` package; configured as git pager in `~/.gitconfig`)
 - `eza`
 - `jq`
+- `shellcheck` (lints the `~/.local/bin/work` scripts; install commands below)
 - `less`, `man`, `col`
 - `zip`, `unzip`, `tar`, `xz`, `7z`
 - `starship`
@@ -265,7 +266,7 @@ sudo dnf install \
   docx2txt eza fcitx5 fcitx5-hangul fd-find ffmpeg-free flatpak foot fzf git git-delta gnupg2 grim \
   grimshot isync jq kanshi kitty less libcanberra-gtk3 libnotify links lynx man-db \
   mp3info neovim notmuch pandoc pass p7zip p7zip-plugins poppler-utils python3-gobject \
-  power-profiles-daemon ripgrep slurp sox starship swappy sway swayidle \
+  power-profiles-daemon ripgrep ShellCheck slurp sox starship swappy sway swayidle \
   khal khard vdirsyncer \
   swaylock thunar tmux transmission unrar vifm vimiv vlc waybar wf-recorder \
   wl-clipboard wtype xorg-x11-xauth xclip xdg-utils xterm zathura zip zoxide wireplumber pipewire-utils ImageMagick
@@ -353,7 +354,7 @@ sudo apt install \
   aerc atuin bash-completion bat binutils blueman catdoc curl direnv docx2txt eza fcitx5 fcitx5-hangul \
   fd-find ffmpeg flatpak foot fzf git git-delta gnupg grim isync jq kanshi kitty less \
   libcanberra-gtk3-bin libnotify-bin links lynx man-db mp3info neovim notmuch p7zip-full \
-  p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep \
+  p7zip-rar pandoc pass poppler-utils power-profiles-daemon ripgrep shellcheck \
   khal khard vdirsyncer \
   slurp sox starship swappy sway swayidle swaylock swayosd thunar tmux \
   transmission-cli unrar vifm vimiv vlc waybar wf-recorder wl-clipboard \
@@ -422,7 +423,7 @@ For a terminal-only setup without Sway/Waybar desktop pieces:
 sudo dnf install \
   aerc bat binutils chezmoi curl direnv eza fd-find fzf git git-delta gnupg2 isync \
   jq kitty less man-db neovim notmuch pandoc pass p7zip p7zip-plugins \
-  poppler-utils ripgrep starship tmux vifm wl-clipboard xdg-utils zathura \
+  poppler-utils ripgrep ShellCheck starship tmux vifm wl-clipboard xdg-utils zathura \
   khal khard vdirsyncer \
   zip zoxide go
 
@@ -430,7 +431,7 @@ sudo dnf install \
 sudo apt update
 sudo apt install \
   aerc bash-completion bat binutils curl direnv eza fd-find fzf git git-delta gnupg isync jq kitty \
-  less man-db neovim notmuch p7zip-full pandoc pass poppler-utils ripgrep \
+  less man-db neovim notmuch p7zip-full pandoc pass poppler-utils ripgrep shellcheck \
   starship tmux vifm wl-clipboard xdg-utils zathura khal khard vdirsyncer \
   zip zoxide go
 ```
