@@ -7,6 +7,7 @@ audio_file="$state_dir/dictation.wav"
 text_file="$state_dir/dictation.txt"
 log_file="$state_dir/dictation.log"
 media_state_file="$state_dir/mpris-playing"
+osd_progress_file="$state_dir/osd-progress"
 venv_dir="${SWAY_DICTATE_VENV:-$HOME/.local/share/sway-dictate/.venv}"
 model_name="${SWAY_DICTATE_MODEL:-base}"
 language="${SWAY_DICTATE_LANGUAGE:-en}"
@@ -20,6 +21,7 @@ record_startup_delay="${SWAY_DICTATE_RECORD_STARTUP_DELAY:-0.05}"
 osd_enabled="${SWAY_DICTATE_OSD:-1}"
 osd_duration="${SWAY_DICTATE_OSD_DURATION:-1200}"
 osd_progress_duration="${SWAY_DICTATE_OSD_PROGRESS_DURATION:-60000}"
+osd_progress_interval="${SWAY_DICTATE_OSD_PROGRESS_INTERVAL:-0.5}"
 osd_icon="${SWAY_DICTATE_OSD_ICON:-audio-input-microphone-symbolic}"
 sound_enabled="${SWAY_DICTATE_SOUND:-1}"
 sound_started="${SWAY_DICTATE_SOUND_STARTED:-message-new-instant}"
@@ -124,6 +126,7 @@ resume_playing_media() {
 }
 
 osd_client_has_duration=""
+osd_keepalive_pid=""
 
 show_osd() {
     local title="${1:-Dictation}"
@@ -164,6 +167,33 @@ show_osd() {
     fi
 
     "${osd_command[@]}" "${osd_args[@]}" >/dev/null 2>&1
+}
+
+# SwayOSD hides the OSD ~1s after each message and offers no way to extend
+# it. Keep "Transcribing..." on screen by re-sending the same message at a
+# short interval until stop_osd_progress removes the flag file.
+start_osd_progress() {
+    if [[ "$osd_enabled" != 1 ]]; then
+        return 0
+    fi
+
+    : >"$osd_progress_file"
+    (
+        while [[ -e "$osd_progress_file" ]]; do
+            show_osd "Transcribing..." "" "$osd_progress_duration" || exit 0
+            sleep "$osd_progress_interval"
+        done
+    ) &
+    osd_keepalive_pid=$!
+}
+
+stop_osd_progress() {
+    rm -f "$osd_progress_file"
+    if [[ -n "$osd_keepalive_pid" ]]; then
+        wait "$osd_keepalive_pid" 2>/dev/null || true
+        osd_keepalive_pid=""
+    fi
+    return 0
 }
 
 # Short status toasts use SwayOSD. Failures (-u critical) stay as
@@ -291,7 +321,7 @@ stop_recording() {
     kill -INT "$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
     rm -f "$pid_file"
-    trap resume_playing_media EXIT
+    trap 'stop_osd_progress; resume_playing_media' EXIT
 
     if [ ! -s "$audio_file" ]; then
         notify -u critical "Dictation failed" "No audio was recorded."
@@ -299,7 +329,7 @@ stop_recording() {
     fi
 
     play_sound "$sound_transcribing"
-    notify "Transcribing..."
+    start_osd_progress
     ensure_python
 
     OMP_NUM_THREADS="$threads" "$venv_dir/bin/python" - "$audio_file" "$text_file" "$model_name" "$device" "$compute_type" "$language" "$beam_size" "$vad_filter" >>"$log_file" 2>&1 <<'PY'
@@ -327,6 +357,8 @@ text = re.sub(r"\s+", " ", text)
 with open(text_file, "w", encoding="utf-8") as f:
     f.write(text)
 PY
+
+    stop_osd_progress
 
     text=$(cat "$text_file")
     if [ -z "$text" ]; then
