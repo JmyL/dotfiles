@@ -28,6 +28,10 @@ case "$1 $2" in
   cat "${HERDR_CREATE_JSON:?}"
   ;;
 "worktree create")
+  if [[ -n "${HERDR_WORKTREE_CREATE_FAIL:-}" ]]; then
+    echo '{"error":{"code":"mock","message":"mock failure"}}' >&2
+    exit 1
+  fi
   ;;
 "tab rename" | "tab create" | "pane split" | "pane rename" | "pane run")
   if [[ "$1 $2" == "tab create" ]]; then
@@ -91,7 +95,9 @@ class HerdrOpenProjectTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_script(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_script(
+        self, *args: str, extra_env: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["HERDR"] = str(self.herdr)
         env["HERDR_PLUS_PROJECTS_DIR"] = str(self.projects)
@@ -99,11 +105,13 @@ class HerdrOpenProjectTest(unittest.TestCase):
         env["HERDR_WORKSPACE_LIST"] = str(self.ws_list)
         env["HERDR_PANE_LIST"] = str(self.pane_list)
         env["HERDR_CREATE_JSON"] = str(self.create_json)
+        env.update(extra_env or {})
         return subprocess.run(
             [str(SCRIPT), *args],
             check=False,
             text=True,
             capture_output=True,
+            stdin=subprocess.DEVNULL,
             env=env,
         )
 
@@ -221,6 +229,56 @@ class HerdrOpenProjectTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("no project named 'missing'", result.stderr)
         self.assertEqual(self.herdr_calls(), [])
+
+    def _git(self, *args: str) -> None:
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=test",
+                "-c",
+                "user.email=test@example.com",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                f"core.hooksPath={self.root / 'empty-hooks'}",
+                *args,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_worktree_creates_from_repo_parent_for_linked_worktree(self):
+        (self.root / "empty-hooks").mkdir()
+        repo = self.root / "repo"
+        self._git("init", "-q", str(repo))
+        self._git("-C", str(repo), "commit", "--allow-empty", "-m", "init")
+        linked = self.root / "linked"
+        self._git("-C", str(repo), "worktree", "add", "-q", str(linked))
+        (self.projects / "dotfiles.toml").write_text(
+            DOTFILES_TOML.format(cwd=linked), encoding="utf-8"
+        )
+        self.write_state([{"workspace_id": "w1K", "label": "project: dotfiles"}])
+        result = self.run_script("--worktree", "--branch", "feat", "dotfiles")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.herdr_calls(),
+            [f"worktree create --cwd {repo} --branch feat --focus"],
+        )
+
+    def test_worktree_failure_keeps_error_until_enter(self):
+        self.write_state([])
+        result = self.run_script(
+            "--worktree",
+            "--branch",
+            "feat",
+            "dotfiles",
+            extra_env={"HERDR_WORKTREE_CREATE_FAIL": "1"},
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("mock failure", result.stderr)
+        self.assertIn("press enter to close", result.stderr)
 
 
 if __name__ == "__main__":

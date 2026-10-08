@@ -2,7 +2,10 @@
 # Focus an existing "project: <name>" workspace, or create one like Navigator.
 # --worktree matches herdr-plus picker ctrl+g: create a git worktree from the
 # project's working_dir. Without --branch, prompt like the plus branch window
-# (empty input lets herdr generate worktree/...).
+# (empty input lets herdr generate worktree/...). herdr refuses to start a new
+# worktree from a linked-worktree checkout (linked_worktree_source), so the
+# create cwd is resolved to the repo parent (the checkout's common git dir).
+# On create failure the error stays in the popup until Enter is pressed.
 set -euo pipefail
 
 herdr_bin="${HERDR:-herdr}"
@@ -36,6 +39,22 @@ expand_working_dir() {
     printf '%s\n' "${path//\$HOME/$HOME}"
     ;;
   esac
+}
+
+repo_parent_dir() {
+  local common
+  if common="$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+    case "$common" in
+    */.git)
+      printf '%s\n' "${common%/.git}"
+      ;;
+    *)
+      printf '%s\n' "$1"
+      ;;
+    esac
+  else
+    printf '%s\n' "$1"
+  fi
 }
 
 resolve_project() {
@@ -257,10 +276,17 @@ if branch and prefix and "/" not in branch:
 print(branch)
 PY
   )"
+  create_cwd="$(repo_parent_dir "$working_dir")"
   if [[ -n "$branch" ]]; then
-    herdr_cmd worktree create --cwd "$working_dir" --branch "$branch" --focus >/dev/null
+    create_args=(worktree create --cwd "$create_cwd" --branch "$branch" --focus)
   else
-    herdr_cmd worktree create --cwd "$working_dir" --focus >/dev/null
+    create_args=(worktree create --cwd "$create_cwd" --focus)
+  fi
+  if ! out="$(herdr_cmd "${create_args[@]}" 2>&1)"; then
+    printf '%s\n' "$out" >&2
+    printf 'press enter to close: ' >&2
+    IFS= read -r || true
+    exit 1
   fi
   exit 0
 fi
