@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# systemd user service wrapper: wait for the session env import, then exec CMD.
+#
+# Portals D-Bus-activated before `sway-start-session` imports WAYLAND_DISPLAY
+# start with a broken environment: xdg-desktop-portal-gtk dies with "cannot
+# open display" and xdg-desktop-portal reads portal conf without
+# XDG_CURRENT_DESKTOP, so Settings falls back to a dead gtk portal and every
+# GTK app eats 25 s D-Bus activation timeouts at login (waybar would then
+# crash-restart until the portal gives up on Settings, ~75 s in).
+# Export the discovered vars here so the exec'd process is correct regardless
+# of when systemd snapshotted the unit environment. Fails open: after ~10 s
+# it execs with whatever it found.
+#
+# Usage: sd-wait-session-env CMD [ARGS...]
+set -euo pipefail
+
+cmd="${1:-}"
+if [[ -z "$cmd" ]]; then
+  echo "usage: sd-wait-session-env CMD [ARGS...]" >&2
+  exit 2
+fi
+shift
+
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+wayland_display=
+current_desktop=
+
+for ((i = 0; i < 100; i++)); do
+  env_dump="$(systemctl --user show-environment 2>/dev/null || true)"
+  wayland_display="$(printf '%s\n' "$env_dump" | sed -n 's/^WAYLAND_DISPLAY=//p')"
+  current_desktop="$(printf '%s\n' "$env_dump" | sed -n 's/^XDG_CURRENT_DESKTOP=//p')"
+  if [[ -n "$wayland_display" && -S "$runtime_dir/$wayland_display" && -n "$current_desktop" ]]; then
+    break
+  fi
+  sleep 0.1
+done
+
+if [[ -n "$wayland_display" ]]; then
+  export WAYLAND_DISPLAY="$wayland_display"
+fi
+if [[ -n "$current_desktop" ]]; then
+  export XDG_CURRENT_DESKTOP="$current_desktop"
+fi
+
+exec "$cmd" "$@"
