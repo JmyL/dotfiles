@@ -19,7 +19,7 @@ Start this on a **new issue analysis**, without waiting for “노트 만들어�
 - Slack / Jira / incident / vayplay link plus “왜 / 분석 / 봐줘 / investigate”
 - A symptom or description they want looked into
 
-Do **not** start a new note for: already-known ticket implementation, one-off code questions, dotfiles/infra, or plans (`~/.config/plans/` / `~/.config/work/plans/`).
+Do **not** start a new note for: already-known ticket implementation, one-off code questions, dotfiles/infra, or plans / runbooks (skill `obsidian-plan`).
 
 If this chat already has a note, or the vault already has one for the same Jira key / Slack URL / title: **update that note**. Search the vault before creating.
 
