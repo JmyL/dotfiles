@@ -1,7 +1,10 @@
+# shellcheck shell=bash
 # ocs: list opencode sessions started in this directory (or the one given).
-# ocl: continue an opencode session by id (as printed by ocs).
+# ocl: continue an opencode session by id (as printed by ocs), or pick one
+#      from the ocs listing via fzf when called without arguments.
 # Usage: ocs [directory]        Limit with OCS_LIMIT (default 20).
 #        ocl <session-id> [...]
+#        ocl
 ocs() {
   local limit="${OCS_LIMIT:-20}" dirs dir list=
   [[ $limit =~ ^[0-9]+$ ]] || limit=20
@@ -32,9 +35,19 @@ ocs() {
 }
 
 ocl() {
-  [[ $# -ge 1 ]] || {
-    echo "ocl: usage: ocl <session-id> [opencode args...]" >&2
-    return 2
+  if (($#)); then
+    opencode -s "$1" "${@:2}"
+    return
+  fi
+
+  command -v fzf >/dev/null || {
+    echo "ocl: fzf not found" >&2
+    return 1
   }
-  opencode -s "$1" "${@:2}"
+
+  local id
+  id=$(ocs "$@" | fzf --prompt 'opencode session> ' --header 'Enter to continue, esc to cancel' |
+    awk '{print $1}')
+  [[ -n $id ]] || return
+  opencode -s "$id"
 }
