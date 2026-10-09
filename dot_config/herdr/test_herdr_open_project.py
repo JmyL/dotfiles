@@ -133,6 +133,20 @@ class HerdrOpenProjectTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("Usage:", result.stderr)
 
+    def test_rejects_multiple_project_names(self):
+        self.write_state([])
+        result = self.run_script("dotfiles", "extra")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("only one project name argument is accepted", result.stderr)
+        self.assertIn("Usage:", result.stderr)
+        self.assertEqual(self.herdr_calls(), [])
+
+    def test_rejects_multiple_project_names_with_worktree(self):
+        result = self.run_script("--worktree", "--branch", "feat", "dotfiles", "extra")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("only one project name argument is accepted", result.stderr)
+        self.assertEqual(self.herdr_calls(), [])
+
     def test_unknown_project(self):
         self.write_state([])
         result = self.run_script("missing")

@@ -224,6 +224,7 @@ while [[ $# -gt 0 ]]; do
     ;;
   *)
     if [[ -n "$name" ]]; then
+      printf 'only one project name argument is accepted; unexpected argument: %s\n' "$1" >&2
       usage
     fi
     name="$1"
