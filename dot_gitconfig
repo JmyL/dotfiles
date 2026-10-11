@@ -5,17 +5,18 @@
 	email = jmyl@me.com
 	name = Sungsik Nam
 [credential "https://github.com"]
-	helper = 
-	helper = !/usr/bin/gh auth git-credential
+	helper =
+	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
-	helper = 
-	helper = !/usr/bin/gh auth git-credential
+	helper =
+	helper = !gh auth git-credential
 [includeIf "gitdir:~/hobbies/"]
 	path = ~/.config/gitconfig-personal
 [includeIf "gitdir:~/projects/"]
 	path = ~/.config/work/gitconfig
 [core]
 	pager = delta
+	excludesFile = ~/.gitignore
 [interactive]
 	diffFilter = delta --color-only
 [delta]
