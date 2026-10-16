@@ -10,7 +10,7 @@ show_help() {
 Usage: ai [OPTIONS] [--] [ARGS...]
 
 Run the first available AI CLI in this order:
-  1) opencode --model openrouter/auto (if opencode exists)
+  1) opencode (if opencode exists)
   2) agent
   3) claude
   4) codex
@@ -18,6 +18,7 @@ Run the first available AI CLI in this order:
 
 Options:
   -R, --resume-last-session  Resume the last/recent session
+      --mini                 Run opencode mini instead of the full TUI (opencode only)
   -h, --help                 Show this help
 
 All other arguments are passed through to the selected CLI.
@@ -26,6 +27,7 @@ EOF
 }
 
 resume_last=0
+mini=0
 passthrough=()
 seen_separator=0
 
@@ -36,6 +38,8 @@ for arg in "$@"; do
     seen_separator=1
   elif [[ "$arg" == "--resume-last-session" || "$arg" == "-R" ]]; then
     resume_last=1
+  elif [[ "$arg" == "--mini" ]]; then
+    mini=1
   elif [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
     show_help
     exit 0
@@ -68,13 +72,15 @@ run_agent() {
 }
 
 run_opencode() {
-  local -a args=(--model openrouter/auto "$@")
-
+  local -a cmd=(opencode)
+  if ((mini)); then
+    cmd=(opencode mini)
+  fi
   if ((resume_last)); then
-    args=(--continue "${args[@]}")
+    cmd+=(--continue)
   fi
 
-  exec opencode "${args[@]}"
+  exec "${cmd[@]}" "$@"
 }
 
 if command -v opencode >/dev/null 2>&1; then

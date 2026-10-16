@@ -1,5 +1,7 @@
 # shellcheck shell=bash
-# ocs: list opencode sessions started in this directory (or the one given).
+# ocs: list recent opencode sessions for the current project (or the directory
+#      given). In git repositories opencode scopes this to the whole repo,
+#      including worktrees; elsewhere to the exact directory.
 # ocl: continue an opencode session by id (as printed by ocs), or pick one
 #      via fzf when called without arguments.
 # Usage: ocs [directory]        Limit with OCS_LIMIT (default 20).
@@ -7,7 +9,7 @@
 #        ocl
 
 _ocs_sessions() {
-  local limit="${OCS_LIMIT:-20}" dirs dir list=
+  local limit="${OCS_LIMIT:-20}"
   [[ $limit =~ ^[0-9]+$ ]] || limit=20
 
   command -v opencode >/dev/null || {
@@ -16,22 +18,10 @@ _ocs_sessions() {
   }
 
   if (($#)); then
-    dirs=("$1")
+    (cd "$1" && exec opencode session list -n "$limit")
   else
-    dirs=("$PWD")
-    [[ $(pwd -P) == "$PWD" ]] || dirs+=("$(pwd -P)")
+    opencode session list -n "$limit"
   fi
-
-  for dir in "${dirs[@]}"; do
-    list+="${list:+, }'${dir//\'/\'\'}'"
-  done
-
-  opencode db "SELECT id, datetime(time_updated / 1000, 'unixepoch', 'localtime') AS updated, title
-               FROM session
-               WHERE directory IN ($list)
-                 AND parent_id IS NULL
-               ORDER BY time_updated DESC
-               LIMIT $limit" --format tsv
 }
 
 ocs() {
@@ -50,8 +40,7 @@ ocl() {
   }
 
   local id
-  id=$(_ocs_sessions "$@" |
-    awk -F'\t' -v OFS='\t' '{ $2 = substr($2, 1, 16) } 1' |
+  id=$(_ocs_sessions |
     fzf --delimiter=$'\t' --with-nth=2.. --prompt 'opencode session> ' --header 'Enter to continue, esc to cancel' |
     awk -F'\t' '{print $1}')
   [[ -n $id ]] || return

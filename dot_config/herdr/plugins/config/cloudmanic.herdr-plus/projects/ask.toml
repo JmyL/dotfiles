@@ -3,4 +3,4 @@ working_dir = "/tmp"
 
 [[tabs]]
 name = "ask"
-command = "agent --mode=ask"
+command = "ai --mini"

@@ -43,7 +43,7 @@ Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`, `~/.b
 
 - `nvim` is exported as `VISUAL` and `EDITOR`.
 - `lnav` defaults to `TZ=UTC`; `lnavl` uses the system timezone.
-- `ocs` lists opencode sessions started in the current directory; `ocl <id>` continues one (needs `opencode`; `column` from util-linux/bsdmainutils).
+- `ocs` lists recent opencode sessions for the current project (repo-wide inside git repos, via `opencode session list`); `ocl <id>` continues one and `ocl` picks via fzf (needs `opencode`, `fzf`; `column` from util-linux/bsdmainutils).
 - `~/.bashrc.d/xauthority` creates `~/.Xauthority` when missing on local `:0` (Sway/Xwayland). Needs `xauth` and `mcookie`.
 - `~/.bashrc.d/herdr-color` unsets `NO_COLOR` / `FORCE_COLOR` inside herdr panes and wraps `herdr` so `herdr update --handoff` from Cursor CLI does not disable TUI colors.
 - `bash-completion` is required for `apt install <TAB>` package-name completion on Ubuntu (Fedora already loads it from `/etc/bashrc`).
