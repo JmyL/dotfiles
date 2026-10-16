@@ -5,12 +5,17 @@ set -euo pipefail
 prompt='Select> '
 height=24
 width=80
+accept_query=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
   --prompt | -p)
     prompt=${2:-Select> }
     shift 2
+    ;;
+  --accept-query)
+    accept_query=1
+    shift
     ;;
   --height)
     height=${2:-24}
@@ -59,18 +64,43 @@ if [[ ! -s $input ]]; then
   exit 1
 fi
 
+fzf_flags=(--prompt="$prompt" --height=100% --layout=reverse --border --info=inline)
+if ((accept_query)); then
+  fzf_flags+=(--print-query)
+fi
+
 "$foot_bin" --app-id=fzf-menu \
   --title="${prompt%%>*}" \
   --window-size-chars="${width}x${height}" \
   bash -c '
     set +e
-    fzf --prompt="$1" --height=100% --layout=reverse --border --info=inline <"$2" >"$3"
-    echo $? >"$4"
-  ' bash "$prompt" "$input" "$output" "$status_file"
+    fzf "${@:4}" <"$1" >"$2"
+    echo $? >"$3"
+  ' bash "$input" "$output" "$status_file" "${fzf_flags[@]}"
 
 status=1
 if [[ -s $status_file ]]; then
   status=$(cat "$status_file")
+fi
+
+if ((accept_query)); then
+  # --print-query prints the query first, the selected item second.
+  # Esc exits 130 (fzf may still print the query) and errors exit 2 —
+  # both must stay cancellations, not "typed text".
+  if ((status != 130 && status != 2)) && [[ -s $output ]]; then
+    if [[ $(wc -l <"$output") -ge 2 ]]; then
+      # Selection wins over echoing the query back.
+      sed -n '2p' "$output"
+      exit 0
+    fi
+    # Enter with zero matches: the typed query IS the choice.
+    choice=$(sed -n '1p' "$output")
+    if [[ -n $choice ]]; then
+      printf '%s\n' "$choice"
+      exit 0
+    fi
+  fi
+  exit 1
 fi
 
 if [[ $status -eq 0 && -s $output ]]; then
