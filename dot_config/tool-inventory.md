@@ -39,11 +39,12 @@ These are expected by shell, tmux, vifm, aerc, or general workflows:
 
 ## Shell-specific expectations
 
-Config: `~/.bashrc`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`, `~/.bashrc.d/lnav`, `~/.bashrc.d/xauthority`, `~/.bashrc.d/herdr-color`, `~/.bashrc.d/git-cd`, `~/.bashrc.d/ocs`
+Config: `~/.bashrc`, `~/.bashrc.d/ask`, `~/.bashrc.d/browser`, `~/.bashrc.d/bash-completion`, `~/.bashrc.d/lnav`, `~/.bashrc.d/xauthority`, `~/.bashrc.d/herdr-color`, `~/.bashrc.d/git-cd`, `~/.bashrc.d/ocs`
 
 - `nvim` is exported as `VISUAL` and `EDITOR`.
 - `lnav` defaults to `TZ=UTC`; `lnavl` uses the system timezone.
 - `ocs` lists recent opencode sessions for the current project (repo-wide inside git repos, via `opencode session list`); `ocl <id>` continues one and `ocl` picks via fzf (needs `opencode`, `fzf`; `column` from util-linux/bsdmainutils).
+- `ask [question...]` opens `opencode mini` via `ai --mini`; a question pre-fills the mini input, `ask -R` resumes the last session.
 - `~/.bashrc.d/xauthority` creates `~/.Xauthority` when missing on local `:0` (Sway/Xwayland). Needs `xauth` and `mcookie`.
 - `~/.bashrc.d/herdr-color` unsets `NO_COLOR` / `FORCE_COLOR` inside herdr panes and wraps `herdr` so `herdr update --handoff` from Cursor CLI does not disable TUI colors.
 - `bash-completion` is required for `apt install <TAB>` package-name completion on Ubuntu (Fedora already loads it from `/etc/bashrc`).

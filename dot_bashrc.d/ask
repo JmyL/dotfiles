@@ -1,0 +1,14 @@
+# shellcheck shell=bash
+# ask: quick AI question in opencode's minimal interface.
+#      Full TUI: ai, resume last session: ai -R (or ask -R).
+# Usage: ask [question...]   Question pre-fills the mini input (Enter to send).
+#        ask [flags...]      Flags pass through to `opencode mini` (e.g. -R).
+#        ask                 Open an empty mini.
+
+ask() {
+  if (($#)) && [[ ! $1 == -* ]]; then
+    ai --mini --prompt "$*"
+  else
+    ai --mini "$@"
+  fi
+}
