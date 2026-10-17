@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -111,7 +112,81 @@ def bluetooth_devices(sinks, sources):
     return devices
 
 
+def bluetooth_device_for_defaults(sinks, sources):
+    default_sink_id = default_node_id("SINK")
+    default_source_id = default_node_id("SOURCE")
+    devices = bluetooth_devices(sinks, sources)
+
+    for device_id, device in devices.items():
+        if device.get("sink") == default_sink_id or device.get("source") == default_source_id:
+            return device_id, device
+
+    if len(devices) == 1:
+        return next(iter(devices.items()))
+    return None, None
+
+
+def bluetooth_profile(device):
+    sink_id = device.get("sink")
+    if sink_id is None:
+        return None
+    try:
+        details = run("wpctl", "inspect", str(sink_id)).stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    for line in details.splitlines():
+        if "api.bluez5.profile" in line:
+            return line.rsplit("\"", 2)[1]
+    return None
+
+
+def wait_for_bluetooth_nodes(device_id, timeout=5):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        sinks, sources = audio_nodes()
+        device = bluetooth_devices(sinks, sources).get(device_id)
+        if device is not None and device.get("sink") is not None and device.get("source") is not None:
+            return device
+        time.sleep(0.1)
+    return None
+
+
+def toggle_bluetooth_mic_profile():
+    sinks, sources = audio_nodes()
+    device_id, device = bluetooth_device_for_defaults(sinks, sources)
+    if device_id is None:
+        notify("Microphone profile failed", "Select one Bluetooth headset first")
+        return 1
+
+    current_profile = bluetooth_profile(device)
+    mic_ready = current_profile == "headset-head-unit"
+    target_profile = "a2dp-sink" if mic_ready else "headset-head-unit"
+    target_label = "Music quality (A2DP)" if mic_ready else "Mic ready (HFP mSBC)"
+
+    try:
+        run("wpctl", "set-profile", str(device_id), target_profile)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        notify("Microphone profile failed", f"Could not switch to {target_label}")
+        return 1
+
+    device = wait_for_bluetooth_nodes(device_id)
+    if device is None:
+        notify("Microphone profile failed", "Headset did not become ready")
+        return 1
+
+    subprocess.run(["wpctl", "set-default", str(device["sink"])], check=True)
+    subprocess.run(["wpctl", "set-default", str(device["source"])], check=True)
+    notify("Audio profile", f"{device['description']}: {target_label}")
+    return 0
+
+
 def main():
+    if sys.argv[1:] == ["--toggle-mic-profile"]:
+        return toggle_bluetooth_mic_profile()
+    if len(sys.argv) != 1:
+        print(f"Usage: {sys.argv[0]} [--toggle-mic-profile]", file=sys.stderr)
+        return 2
+
     sinks, sources = audio_nodes()
 
     laptop_sink = find_builtin(sinks, "speaker", "headphones")

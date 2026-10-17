@@ -325,6 +325,9 @@ bindsym $mod+t mode "$transcription_mode", exec sh -c '"$HOME/.local/bin/dev-lau
     bindsym --locked XF86MonBrightnessUp exec ~/.local/bin/sway-osd-control brightness raise
     # Switch default audio output/input device (speaker, bluetooth earbuds, etc.)
     bindsym $mod+Shift+o exec ~/.local/bin/sway-audio-switch
+    # Toggle the selected Bluetooth headset between music-quality A2DP and
+    # mic-ready HFP. The latter avoids Bluetooth microphone wake-up latency.
+    bindsym $mod+o exec ~/.local/bin/sway-audio-switch --toggle-mic-profile
     # Special key to take a screenshot with grim
     bindsym Print exec grim
     # Toggle external-only and extended display modes

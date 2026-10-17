@@ -18,6 +18,7 @@ beam_size="${SWAY_DICTATE_BEAM_SIZE:-1}"
 vad_filter="${SWAY_DICTATE_VAD_FILTER:-0}"
 paste_keys="${SWAY_DICTATE_PASTE_KEYS:-ctrl+shift+v}"
 record_startup_delay="${SWAY_DICTATE_RECORD_STARTUP_DELAY:-0.05}"
+bluetooth_record_startup_delay="${SWAY_DICTATE_BLUETOOTH_RECORD_STARTUP_DELAY:-3}"
 osd_enabled="${SWAY_DICTATE_OSD:-1}"
 osd_duration="${SWAY_DICTATE_OSD_DURATION:-1200}"
 osd_progress_duration="${SWAY_DICTATE_OSD_PROGRESS_DURATION:-60000}"
@@ -273,6 +274,29 @@ record_command() {
     fi
 }
 
+recording_startup_delay() {
+    local sink_info
+
+    # A Bluetooth headset selected in its music (A2DP) profile needs time to
+    # bring its microphone transport up.  `pw-record` is already running by
+    # this point, but announcing readiness immediately causes people to speak
+    # into the headset before it delivers input.  In the mic-ready HFP profile
+    # this extra wait is unnecessary.
+    if command -v wpctl >/dev/null 2>&1; then
+        sink_info="$(wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null || true)"
+        if grep -q 'api\.bluez5\.profile = "headset-head-unit"' <<<"$sink_info"; then
+            printf '%s\n' "$record_startup_delay"
+            return 0
+        fi
+        if grep -q 'api\.bluez5\.profile = "a2dp-sink"' <<<"$sink_info"; then
+            printf '%s\n' "$bluetooth_record_startup_delay"
+            return 0
+        fi
+    fi
+
+    printf '%s\n' "$record_startup_delay"
+}
+
 ensure_python() {
     if [ -x "$venv_dir/bin/python" ]; then
         return 0
@@ -314,7 +338,7 @@ start_recording() {
     esac
 
     echo $! >"$pid_file"
-    sleep "$record_startup_delay"
+    sleep "$(recording_startup_delay)"
 
     if ! recording_active; then
         rm -f "$pid_file"
