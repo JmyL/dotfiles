@@ -196,41 +196,26 @@ def wait_for_bluetooth_nodes(device_id, timeout=5):
     return None
 
 
-def toggle_bluetooth_mic_profile():
-    sinks, sources = audio_nodes()
-    device_id, device = bluetooth_device_for_defaults(sinks, sources)
-    if device_id is None:
-        notify("Microphone profile failed", "Select one Bluetooth headset first")
-        return 1
-
-    current_profile = bluetooth_profile(device_id)
-    choices = {"Music quality (A2DP)": "a2dp-sink", "Mic ready (HFP mSBC)": "headset-head-unit"}
-    labels = sorted(choices, key=lambda label: choices[label] == current_profile)
-    target_label = pick("Microphone profile", labels)
-    if target_label is None:
-        return 0
-    target_profile = choices[target_label]
-    if target_profile == current_profile:
-        return 0
+def select_bluetooth_profile(device_id, device, target_profile, target_label):
     profile_index = bluetooth_profile_indexes(device_id).get(target_profile)
     if profile_index is None:
-        notify("Microphone profile failed", f"{target_label} is unavailable")
+        notify("Audio switch failed", f"{target_label} is unavailable")
         return 1
 
     try:
         run("wpctl", "set-profile", str(device_id), str(profile_index))
     except (subprocess.CalledProcessError, FileNotFoundError):
-        notify("Microphone profile failed", f"Could not switch to {target_label}")
+        notify("Audio switch failed", f"Could not switch to {target_label}")
         return 1
 
     device = wait_for_bluetooth_nodes(device_id)
     if device is None:
-        notify("Microphone profile failed", "Headset did not become ready")
+        notify("Audio switch failed", "Headset did not become ready")
         return 1
 
-    subprocess.run(["wpctl", "set-default", str(device["sink"])], check=True)
-    subprocess.run(["wpctl", "set-default", str(device["source"])], check=True)
-    notify("Audio profile", f"{device['description']}: {target_label}")
+    run("wpctl", "set-default", str(device["sink"]))
+    run("wpctl", "set-default", str(device["source"]))
+    notify("Audio switched", target_label)
     return 0
 
 
@@ -334,10 +319,8 @@ def main():
         except (RuntimeError, subprocess.CalledProcessError, StopIteration) as error:
             print(str(error), file=sys.stderr)
             return 1
-    if sys.argv[1:] == ["--toggle-mic-profile"]:
-        return toggle_bluetooth_mic_profile()
     if len(sys.argv) != 1:
-        print(f"Usage: {sys.argv[0]} [--toggle-mic-profile]", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]}", file=sys.stderr)
         return 2
 
     sinks, sources = audio_nodes()
@@ -347,21 +330,34 @@ def main():
     laptop_source = next((node_id for _description, node_name, _device_id, node_id in sources
                           if node_name.startswith("alsa_") and ".analog-stereo" in node_name), None)
 
-    profiles = {"Laptop (speaker + mic)": (laptop_sink, laptop_source)}
+    laptop_label = "Laptop (speaker + mic)"
+    labels = [laptop_label]
+    actions = {laptop_label: ("laptop", None, None)}
+    current_label = laptop_label if default_node_id("SINK") == laptop_sink else None
     for device_id, device in bluetooth_devices(sinks, sources).items():
-        label = f"{device['description']} (earbuds)"
-        if label in profiles:
-            label = f"{label} [{device_id}]"
-        profiles[label] = (device.get("sink"), device.get("source"))
+        description = device["description"]
+        profile = bluetooth_profile(device_id)
+        modes = [
+            (f"{description} (music quality)", "a2dp-sink"),
+            (f"{description} (mic ready)", "headset-head-unit"),
+        ]
+        available = bluetooth_profile_indexes(device_id)
+        for label, target_profile in modes:
+            if target_profile not in available:
+                continue
+            labels.append(label)
+            actions[label] = ("bluetooth", device_id, target_profile)
+            if device.get("sink") == default_node_id("SINK") and profile == target_profile:
+                current_label = label
 
-    labels = labels_alternatives_first(
-        profiles, default_node_id("SINK"), default_node_id("SOURCE")
-    )
+    if current_label in labels:
+        labels = [label for label in labels if label != current_label] + [current_label]
     choice = pick("Audio", labels)
     if choice is None:
         return 0
 
-    if choice == "Laptop (speaker + mic)":
+    kind, device_id, target_profile = actions[choice]
+    if kind == "laptop":
         try:
             select_laptop_audio()
         except (RuntimeError, subprocess.CalledProcessError, StopIteration) as error:
@@ -369,19 +365,7 @@ def main():
             return 1
         notify("Audio switched", choice)
         return 0
-
-    sink_id, source_id = profiles[choice]
-    if sink_id is not None:
-        subprocess.run(["wpctl", "set-default", str(sink_id)], check=True)
-    if source_id is not None:
-        subprocess.run(["wpctl", "set-default", str(source_id)], check=True)
-
-    if sink_id is None and source_id is None:
-        notify("Audio switch failed", f"No devices found for {choice}")
-        return 1
-
-    notify("Audio switched", choice)
-    return 0
+    return select_bluetooth_profile(device_id, bluetooth_devices(sinks, sources)[device_id], target_profile, choice)
 
 
 if __name__ == "__main__":

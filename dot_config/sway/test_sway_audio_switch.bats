@@ -6,6 +6,7 @@ setup() {
   export PROFILE_STATE="$tmp/profile-state"
   export WPCTL_LOG="$tmp/wpctl.log"
   export NOTIFY_LOG="$tmp/notify.log"
+  export MENU_LOG="$tmp/menu.log"
   printf '%s\n' off >"$PROFILE_STATE"
 
   cat >"$tmp/pw-dump" <<'EOF'
@@ -47,7 +48,13 @@ printf '%s\n' "$*" >>"$WPCTL_LOG"
 case "$1" in
   inspect)
     case "$2" in
-      @DEFAULT_AUDIO_SINK@) printf 'id 51, type PipeWire:Interface:Node\n' ;;
+      @DEFAULT_AUDIO_SINK@)
+        if [ "$(cat "$PROFILE_STATE")" = off ]; then
+          printf 'id 51, type PipeWire:Interface:Node\n'
+        else
+          printf 'id 101, type PipeWire:Interface:Node\n'
+        fi
+        ;;
       @DEFAULT_AUDIO_SOURCE@) printf 'id 75, type PipeWire:Interface:Node\n' ;;
     esac
     ;;
@@ -73,8 +80,8 @@ EOF
   script="$tmp/sway-audio-switch"
   cat >"$tmp/fzf-menu" <<'EOF'
 #!/bin/sh
-cat >/dev/null
-printf '%s\n' "${PROFILE_CHOICE:-Mic ready (HFP mSBC)}"
+cat >"$MENU_LOG"
+printf '%s\n' "${PROFILE_CHOICE:-Test buds (mic ready)}"
 EOF
   chmod +x "$tmp/fzf-menu"
 }
@@ -84,27 +91,36 @@ teardown() {
 }
 
 @test "mic profile uses WirePlumber's numeric HFP profile index and recovers from off" {
-  run "$script" --toggle-mic-profile
+  run "$script"
 
   [ "$status" -eq 0 ]
+  grep -Fxq 'Laptop (speaker + mic)' "$MENU_LOG"
+  grep -Fxq 'Test buds (music quality)' "$MENU_LOG"
+  grep -Fxq 'Test buds (mic ready)' "$MENU_LOG"
   grep -Fxq 'set-profile 90 196865' "$WPCTL_LOG"
   grep -Fxq 'set-default 101' "$WPCTL_LOG"
   grep -Fxq 'set-default 75' "$WPCTL_LOG"
-  grep -Fq 'Mic ready (HFP mSBC)' "$NOTIFY_LOG"
+  grep -Fq 'Test buds (mic ready)' "$NOTIFY_LOG"
 }
 
 @test "music profile uses WirePlumber's numeric A2DP profile index" {
-  export PROFILE_CHOICE='Music quality (A2DP)'
+  export PROFILE_CHOICE='Test buds (music quality)'
   printf '%s\n' headset-head-unit >"$PROFILE_STATE"
 
-  run "$script" --toggle-mic-profile
+  run "$script"
 
   [ "$status" -eq 0 ]
+  [ "$(tail -n 1 "$MENU_LOG")" = 'Test buds (mic ready)' ]
   grep -Fxq 'set-profile 90 131076' "$WPCTL_LOG"
-  grep -Fq 'Music quality (A2DP)' "$NOTIFY_LOG"
+  grep -Fq 'Test buds (music quality)' "$NOTIFY_LOG"
 }
 
 @test "dictation preserves profiles and output routing" {
   run python3 "$BATS_TEST_DIRNAME/test_audio_session.py"
   [ "$status" -eq 0 ]
+}
+
+@test "only the unified audio menu has a Sway binding" {
+  grep -Fq 'bindsym $mod+Shift+o exec ~/.local/bin/sway-audio-switch' "$BATS_TEST_DIRNAME/config"
+  ! grep -Fq 'bindsym $mod+o ' "$BATS_TEST_DIRNAME/config"
 }
