@@ -31,6 +31,18 @@ class AudioSessionTests(unittest.TestCase):
             menu.assert_called_once()
             command.assert_not_called()
 
+    def test_profile_menu_puts_alternative_before_current(self):
+        with patch.object(audio, 'audio_nodes', return_value=([], [])), \
+             patch.object(audio, 'bluetooth_device_for_defaults', return_value=(90, {'description': 'Buds'})), \
+             patch.object(audio, 'bluetooth_profile', return_value='headset-head-unit'), \
+             patch.object(audio, 'pick', return_value=None) as menu:
+            audio.toggle_bluetooth_mic_profile()
+            self.assertEqual(menu.call_args.args[1], ['Music quality (A2DP)', 'Mic ready (HFP mSBC)'])
+
+    def test_device_menu_puts_alternatives_before_current(self):
+        profiles = {'Laptop': (1, 2), 'Buds': (3, 4), 'Display': (5, None)}
+        self.assertEqual(audio.labels_alternatives_first(profiles, 3, 4), ['Laptop', 'Display', 'Buds'])
+
     def test_existing_hfp_is_not_restored_or_reconfigured(self):
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(audio, 'capture_context', return_value={'device': 'buds', 'profile': 'headset-head-unit', 'sink': 'headphones'}), \

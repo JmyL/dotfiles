@@ -84,7 +84,7 @@ def default_node_id(kind):
     return None
 
 
-def labels_current_first(profiles, default_sink_id, default_source_id):
+def labels_alternatives_first(profiles, default_sink_id, default_source_id):
     by_sink = [
         label
         for label, (sink_id, _source_id) in profiles.items()
@@ -96,7 +96,7 @@ def labels_current_first(profiles, default_sink_id, default_source_id):
         if default_source_id is not None and source_id == default_source_id
     ]
     rest = [label for label in profiles if label not in current]
-    return current + rest
+    return rest + current
 
 
 def bluetooth_devices(sinks, sources):
@@ -171,7 +171,7 @@ def toggle_bluetooth_mic_profile():
 
     current_profile = bluetooth_profile(device_id)
     choices = {"Music quality (A2DP)": "a2dp-sink", "Mic ready (HFP mSBC)": "headset-head-unit"}
-    labels = sorted(choices, key=lambda label: choices[label] != current_profile)
+    labels = sorted(choices, key=lambda label: choices[label] == current_profile)
     target_label = pick("Microphone profile", labels)
     if target_label is None:
         return 0
@@ -318,7 +318,7 @@ def main():
             label = f"{label} [{device_id}]"
         profiles[label] = (device.get("sink"), device.get("source"))
 
-    labels = labels_current_first(
+    labels = labels_alternatives_first(
         profiles, default_node_id("SINK"), default_node_id("SOURCE")
     )
     choice = pick("Audio", labels)
