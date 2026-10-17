@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode=${1:-}
+case $mode in
+light | dark) ;;
+*)
+  echo "usage: ${0##*/} light|dark" >&2
+  exit 2
+  ;;
+esac
+
+herdr_theme_name=${HERDR_THEME_NAME_BIN:-${HOME}/.local/bin/herdr-theme-name}
+opencode_theme_name=${OPENCODE_THEME_NAME_BIN:-${HOME}/.local/bin/opencode-theme-name}
+
+# OpenCode probes the palette exposed by its immediate terminal (Herdr).
+# Wait for Herdr's config reload before asking OpenCode to probe again.
+"$herdr_theme_name" "$mode"
+exec "$opencode_theme_name" "$mode"
