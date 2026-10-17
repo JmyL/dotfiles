@@ -43,6 +43,22 @@ class AudioSessionTests(unittest.TestCase):
         profiles = {'Laptop': (1, 2), 'Buds': (3, 4), 'Display': (5, None)}
         self.assertEqual(audio.labels_alternatives_first(profiles, 3, 4), ['Laptop', 'Display', 'Buds'])
 
+    def test_laptop_selection_switches_hdmi_card_to_analog_duplex(self):
+        graph = [{'id': 44, 'type': 'PipeWire:Interface:Device', 'info': {'props': {
+            'device.api': 'alsa', 'device.bus': 'pci', 'device.name': 'alsa_card.internal'}}}]
+        hdmi_nodes = ([('Built-in Audio Digital Stereo (HDMI)', 'alsa_output.internal.hdmi-stereo', 44, 51)],
+                      [('Built-in Audio Analog Stereo', 'alsa_input.internal.analog-stereo', 44, 52)])
+        analog_nodes = ([('Built-in Audio Analog Stereo', 'alsa_output.internal.analog-stereo', 44, 61)],
+                        [('Built-in Audio Analog Stereo', 'alsa_input.internal.analog-stereo', 44, 62)])
+        with patch.object(audio, 'graph_objects', return_value=graph), \
+             patch.object(audio, 'bluetooth_profile_indexes', return_value={'output:analog-stereo+input:analog-stereo': 1}), \
+             patch.object(audio, 'audio_nodes', side_effect=[hdmi_nodes, analog_nodes]), \
+             patch.object(audio, 'run') as command:
+            self.assertEqual(audio.select_laptop_audio(), (61, 62))
+            self.assertEqual(command.call_args_list[0].args, ('wpctl', 'set-profile', '44', '1'))
+            self.assertEqual(command.call_args_list[1].args, ('wpctl', 'set-default', '61'))
+            self.assertEqual(command.call_args_list[2].args, ('wpctl', 'set-default', '62'))
+
     def test_existing_hfp_is_not_restored_or_reconfigured(self):
         with tempfile.TemporaryDirectory() as tmp, \
              patch.object(audio, 'capture_context', return_value={'device': 'buds', 'profile': 'headset-head-unit', 'sink': 'headphones'}), \

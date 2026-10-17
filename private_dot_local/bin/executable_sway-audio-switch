@@ -69,6 +69,40 @@ def find_builtin(nodes, prefer, avoid):
     return None
 
 
+def find_analog_node(nodes, device_id):
+    for _description, node_name, parent_id, node_id in nodes:
+        if parent_id == device_id and node_name.startswith("alsa_") and ".analog-stereo" in node_name:
+            return node_id
+    return None
+
+
+def select_laptop_audio():
+    device = next(
+        obj
+        for obj in graph_objects()
+        if obj["type"].endswith(":Device")
+        and props(obj).get("device.api") == "alsa"
+        and props(obj).get("device.bus") == "pci"
+    )
+    profile = "output:analog-stereo+input:analog-stereo"
+    profile_index = bluetooth_profile_indexes(device["id"]).get(profile)
+    if profile_index is None:
+        raise RuntimeError("Laptop analog duplex profile is unavailable")
+
+    run("wpctl", "set-profile", str(device["id"]), str(profile_index))
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        sinks, sources = audio_nodes()
+        sink_id = find_analog_node(sinks, device["id"])
+        source_id = find_analog_node(sources, device["id"])
+        if sink_id is not None and source_id is not None:
+            run("wpctl", "set-default", str(sink_id))
+            run("wpctl", "set-default", str(source_id))
+            return sink_id, source_id
+        time.sleep(0.1)
+    raise RuntimeError("Laptop speaker and microphone did not become ready")
+
+
 def default_node_id(kind):
     try:
         out = run("wpctl", "inspect", f"@DEFAULT_AUDIO_{kind}@").stdout
@@ -308,8 +342,10 @@ def main():
 
     sinks, sources = audio_nodes()
 
-    laptop_sink = find_builtin(sinks, "speaker", "headphones")
-    laptop_source = find_builtin(sources, "mic", "headset")
+    laptop_sink = next((node_id for _description, node_name, _device_id, node_id in sinks
+                        if node_name.startswith("alsa_") and ".analog-stereo" in node_name), None)
+    laptop_source = next((node_id for _description, node_name, _device_id, node_id in sources
+                          if node_name.startswith("alsa_") and ".analog-stereo" in node_name), None)
 
     profiles = {"Laptop (speaker + mic)": (laptop_sink, laptop_source)}
     for device_id, device in bluetooth_devices(sinks, sources).items():
@@ -323,6 +359,15 @@ def main():
     )
     choice = pick("Audio", labels)
     if choice is None:
+        return 0
+
+    if choice == "Laptop (speaker + mic)":
+        try:
+            select_laptop_audio()
+        except (RuntimeError, subprocess.CalledProcessError, StopIteration) as error:
+            notify("Audio switch failed", str(error))
+            return 1
+        notify("Audio switched", choice)
         return 0
 
     sink_id, source_id = profiles[choice]
