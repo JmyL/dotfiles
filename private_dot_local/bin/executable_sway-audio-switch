@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -126,18 +127,28 @@ def bluetooth_device_for_defaults(sinks, sources):
     return None, None
 
 
-def bluetooth_profile(device):
-    sink_id = device.get("sink")
-    if sink_id is None:
-        return None
+def bluetooth_profile(device_id):
     try:
-        details = run("wpctl", "inspect", str(sink_id)).stdout
+        details = run("pw-cli", "enum-params", str(device_id), "Profile").stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
-    for line in details.splitlines():
-        if "api.bluez5.profile" in line:
-            return line.rsplit("\"", 2)[1]
-    return None
+    match = re.search(r'Profile:name.*?\n\s*String "([^"]+)"', details, re.DOTALL)
+    return match.group(1) if match else None
+
+
+def bluetooth_profile_indexes(device_id):
+    try:
+        details = run("pw-cli", "enum-params", str(device_id), "EnumProfile").stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return {}
+    return {
+        name: int(index)
+        for index, name in re.findall(
+            r'Profile:index.*?\n\s*Int\s+(\d+).*?Profile:name.*?\n\s*String "([^"]+)"',
+            details,
+            re.DOTALL,
+        )
+    }
 
 
 def wait_for_bluetooth_nodes(device_id, timeout=5):
@@ -158,13 +169,17 @@ def toggle_bluetooth_mic_profile():
         notify("Microphone profile failed", "Select one Bluetooth headset first")
         return 1
 
-    current_profile = bluetooth_profile(device)
+    current_profile = bluetooth_profile(device_id)
     mic_ready = current_profile == "headset-head-unit"
     target_profile = "a2dp-sink" if mic_ready else "headset-head-unit"
     target_label = "Music quality (A2DP)" if mic_ready else "Mic ready (HFP mSBC)"
+    profile_index = bluetooth_profile_indexes(device_id).get(target_profile)
+    if profile_index is None:
+        notify("Microphone profile failed", f"{target_label} is unavailable")
+        return 1
 
     try:
-        run("wpctl", "set-profile", str(device_id), target_profile)
+        run("wpctl", "set-profile", str(device_id), str(profile_index))
     except (subprocess.CalledProcessError, FileNotFoundError):
         notify("Microphone profile failed", f"Could not switch to {target_label}")
         return 1
