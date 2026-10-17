@@ -69,6 +69,14 @@ EOF
   chmod +x "$tmp/notify-send"
 
   script="$BATS_TEST_DIRNAME/../../.local/bin/sway-audio-switch"
+  cp "$script" "$tmp/sway-audio-switch"
+  script="$tmp/sway-audio-switch"
+  cat >"$tmp/fzf-menu" <<'EOF'
+#!/bin/sh
+cat >/dev/null
+printf '%s\n' "${PROFILE_CHOICE:-Mic ready (HFP mSBC)}"
+EOF
+  chmod +x "$tmp/fzf-menu"
 }
 
 teardown() {
@@ -86,6 +94,7 @@ teardown() {
 }
 
 @test "music profile uses WirePlumber's numeric A2DP profile index" {
+  export PROFILE_CHOICE='Music quality (A2DP)'
   printf '%s\n' headset-head-unit >"$PROFILE_STATE"
 
   run "$script" --toggle-mic-profile
@@ -93,4 +102,9 @@ teardown() {
   [ "$status" -eq 0 ]
   grep -Fxq 'set-profile 90 131076' "$WPCTL_LOG"
   grep -Fq 'Music quality (A2DP)' "$NOTIFY_LOG"
+}
+
+@test "dictation preserves profiles and output routing" {
+  run python3 "$BATS_TEST_DIRNAME/test_audio_session.py"
+  [ "$status" -eq 0 ]
 }

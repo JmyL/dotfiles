@@ -170,9 +170,14 @@ def toggle_bluetooth_mic_profile():
         return 1
 
     current_profile = bluetooth_profile(device_id)
-    mic_ready = current_profile == "headset-head-unit"
-    target_profile = "a2dp-sink" if mic_ready else "headset-head-unit"
-    target_label = "Music quality (A2DP)" if mic_ready else "Mic ready (HFP mSBC)"
+    choices = {"Music quality (A2DP)": "a2dp-sink", "Mic ready (HFP mSBC)": "headset-head-unit"}
+    labels = sorted(choices, key=lambda label: choices[label] != current_profile)
+    target_label = pick("Microphone profile", labels)
+    if target_label is None:
+        return 0
+    target_profile = choices[target_label]
+    if target_profile == current_profile:
+        return 0
     profile_index = bluetooth_profile_indexes(device_id).get(target_profile)
     if profile_index is None:
         notify("Microphone profile failed", f"{target_label} is unavailable")
@@ -195,7 +200,106 @@ def toggle_bluetooth_mic_profile():
     return 0
 
 
+def graph_objects():
+    return json.loads(run("pw-dump").stdout)
+
+
+def props(obj):
+    return obj.get("info", {}).get("props", {})
+
+
+def capture_context():
+    graph = graph_objects()
+    source_id = default_node_id("SOURCE")
+    sink_id = default_node_id("SINK")
+    source = next((x for x in graph if x['id'] == source_id), {})
+    device = next((x for x in graph if x['id'] == props(source).get('device.id')), {})
+    if props(device).get('device.api') != 'bluez5':
+        return None
+    sink = next((x for x in graph if x['id'] == sink_id), {})
+    return {'device': props(device)['device.name'],
+            'profile': bluetooth_profile(device['id']),
+            'sink': props(sink).get('node.name')}
+
+
+def set_device_profile(name, profile):
+    device = next(x for x in graph_objects() if props(x).get('device.name') == name
+                  and x['type'].endswith(':Device'))
+    index = bluetooth_profile_indexes(device['id']).get(profile)
+    if index is None:
+        raise RuntimeError(f'Profile unavailable: {profile}')
+    run('wpctl', 'set-profile', str(device['id']), str(index))
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        if bluetooth_profile(device['id']) == profile:
+            return
+        time.sleep(.1)
+    raise RuntimeError('Profile switch timed out')
+
+
+def physical_source(name):
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        graph = graph_objects()
+        ids = {x['id'] for x in graph if props(x).get('device.name') == name}
+        for obj in graph:
+            p = props(obj)
+            if (p.get('device.id') in ids and p.get('media.class') in ('Audio/Source', 'Audio/Source/Internal')
+                    and not p.get('bluez5.loopback')):
+                return p['node.name']
+        time.sleep(.1)
+    raise RuntimeError('Bluetooth microphone did not appear')
+
+
+def restore_sink(name):
+    if not name:
+        return
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        for obj in graph_objects():
+            if props(obj).get('node.name') == name:
+                run('wpctl', 'set-default', str(obj['id']))
+                return
+        time.sleep(.1)
+    raise RuntimeError(f'Original output did not return: {name}')
+
+
+def prepare_capture(state):
+    context = capture_context()
+    if context is None:
+        state.unlink(missing_ok=True)
+        return ''
+    context['changed'] = context['profile'] not in ('headset-head-unit', 'headset-head-unit-cvsd')
+    state.write_text(json.dumps(context))
+    if context['changed']:
+        set_device_profile(context['device'], 'headset-head-unit')
+    # Bypass WirePlumber's virtual autoswitch source: its last-client cleanup
+    # can restore an old (even Off) profile after a manual HFP selection.
+    return physical_source(context['device'])
+
+
+def restore_capture(state):
+    if not state.exists():
+        return
+    context = json.loads(state.read_text())
+    if context['changed']:
+        set_device_profile(context['device'], context['profile'])
+        restore_sink(context['sink'])
+    state.unlink()
+
+
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] in ('--prepare-capture', '--restore-capture'):
+        state = Path(sys.argv[2])
+        try:
+            if sys.argv[1] == '--prepare-capture':
+                print(prepare_capture(state))
+            else:
+                restore_capture(state)
+            return 0
+        except (RuntimeError, subprocess.CalledProcessError, StopIteration) as error:
+            print(str(error), file=sys.stderr)
+            return 1
     if sys.argv[1:] == ["--toggle-mic-profile"]:
         return toggle_bluetooth_mic_profile()
     if len(sys.argv) != 1:
