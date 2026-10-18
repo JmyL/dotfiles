@@ -1,11 +1,11 @@
 {
   "lastChangelogVersion": "1.3.0",
   "theme": "dark",
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-8",
+  "defaultProvider": "openrouter",
+  "defaultModel": "z-ai/glm-5.3-flash",
   "defaultThinkingLevel": "medium",
   "skills": [
-    "~/.config/opencode/skills"
+    "~/.pi/skills"
   ],
   "tuiMode": "regular"
 }
