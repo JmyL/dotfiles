@@ -1,0 +1,9 @@
+# Machine-specific data used by templates.
+# Unknown hosts fall back to the default OpenCode model.
+# To add a machine: append a branch with its hostname and model below.
+[opencode]
+defaultModel = {{ if eq .chezmoi.hostname "sungsik-vay" -}}
+"openrouter/z-ai/glm-5.3-flash"
+{{- else -}}
+"openrouter/z-ai/glm-5.3-flash"
+{{- end }}
