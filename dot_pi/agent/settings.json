@@ -7,5 +7,7 @@
   "skills": [
     "~/.pi/skills"
   ],
-  "tuiMode": "regular"
+  "tuiMode": "regular",
+  "quietStartup": "header",
+  "hideThinkingBlock": true
 }
