@@ -9,5 +9,6 @@
   ],
   "tuiMode": "regular",
   "quietStartup": "header",
-  "hideThinkingBlock": true
+  "hideThinkingBlock": true,
+  "outputPad": 0
 }
