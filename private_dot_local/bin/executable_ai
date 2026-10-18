@@ -18,7 +18,8 @@ Run the first available AI CLI in this order:
 
 Options:
   -R, --resume-last-session  Resume the last/recent session
-      --mini                 Run opencode mini instead of the full TUI (opencode only)
+      --mini                 Run opencode mini instead of the full TUI (opencode only) [default]
+      --full                 Run the opencode full TUI instead of mini (opencode only)
   -h, --help                 Show this help
 
 All other arguments are passed through to the selected CLI.
@@ -27,7 +28,7 @@ EOF
 }
 
 resume_last=0
-mini=0
+mini=1
 passthrough=()
 seen_separator=0
 
@@ -40,6 +41,8 @@ for arg in "$@"; do
     resume_last=1
   elif [[ "$arg" == "--mini" ]]; then
     mini=1
+  elif [[ "$arg" == "--full" ]]; then
+    mini=0
   elif [[ "$arg" == "--help" || "$arg" == "-h" ]]; then
     show_help
     exit 0
