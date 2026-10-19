@@ -1,0 +1,66 @@
+#!/bin/sh
+# retry — repeat a command line until it exits 0.
+# Usage: retry [-i SEC] [-n MAXTRIES] [-t SEC] command [args...]
+#   -i SEC      seconds between retries (default: 2)
+#   -n MAXTRIES max attempts, 0 = unlimited (default: 0)
+#   -t SEC      overall timeout in seconds (default: 600 = 10 min)
+# Notifications: a desktop noti is sent when the command succeeds and when
+# the timeout is reached without success.
+# Exit status: 0 when the command succeeds; 1 when MAXTRIES is exhausted or
+#              the timeout is reached; 2 on usage error.
+
+interval=2
+max=0
+timeout=600
+
+while getopts "i:n:t:" opt; do
+    case "$opt" in
+        i) interval=$OPTARG ;;
+        n) max=$OPTARG ;;
+        t) timeout=$OPTARG ;;
+        *) echo "usage: retry [-i SEC] [-n MAXTRIES] [-t SEC] command [args...]" >&2; exit 2 ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+if [ $# -eq 0 ]; then
+    echo "usage: retry [-i SEC] [-n MAXTRIES] command [args...]" >&2
+    exit 2
+fi
+
+noti() {
+    if command -v noti >/dev/null 2>&1; then
+        command noti "$1" >/dev/null 2>&1 &
+    fi
+}
+
+human_time() {
+    # $1 = seconds -> "Xm Ys" / "Ys"
+    s=$1
+    if [ "$s" -ge 60 ]; then
+        printf '%dm %ds' $((s / 60)) $((s % 60))
+    else
+        printf '%ds' "$s"
+    fi
+}
+
+attempt=0
+start=$(date +%s)
+until "$@"; do
+    attempt=$((attempt + 1))
+    now=$(date +%s)
+    elapsed=$((now - start))
+    if [ "$elapsed" -ge "$timeout" ]; then
+        echo "retry: '$*' still failing after $(human_time "$elapsed") (attempt $attempt), giving up" >&2
+        noti "retry: '$*' failed for $(human_time "$elapsed") ($attempt attempts), giving up"
+        exit 1
+    fi
+    if [ "$max" -gt 0 ] && [ "$attempt" -ge "$max" ]; then
+        echo "retry: giving up after $max attempts: $*" >&2
+        exit 1
+    fi
+    echo "retry: '$*' failed (attempt $attempt), retrying in ${interval}s..." >&2
+    sleep "$interval"
+done
+
+noti "retry: '$*' succeeded (attempt $((attempt + 1)))"
