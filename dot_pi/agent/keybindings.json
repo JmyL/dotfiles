@@ -3,6 +3,6 @@
     "alt+shift+r"
   ],
   "app.interrupt": [
-    "alt+shift+s"
+    "ctrl+q"
   ]
 }
