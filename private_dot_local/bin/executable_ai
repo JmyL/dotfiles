@@ -10,11 +10,11 @@ show_help() {
 Usage: ai [OPTIONS] [--] [ARGS...]
 
 Run the first available AI CLI in this order:
-  1) opencode (if opencode exists)
-  2) agent
-  3) claude
-  4) codex
-  5) pi
+  1) pi (if pi exists)
+  2) opencode
+  3) agent
+  4) claude
+  5) codex
 
 Options:
   -R, --resume-last-session  Resume the last/recent session
@@ -86,6 +86,10 @@ run_opencode() {
   exec "${cmd[@]}" "$@"
 }
 
+if command -v pi >/dev/null 2>&1; then
+  run_agent pi "${passthrough[@]}"
+fi
+
 if command -v opencode >/dev/null 2>&1; then
   run_opencode "${passthrough[@]}"
 fi
@@ -101,5 +105,3 @@ fi
 if command -v codex >/dev/null 2>&1; then
   run_agent codex "${passthrough[@]}"
 fi
-
-run_agent pi "${passthrough[@]}"
