@@ -4,5 +4,6 @@
   ],
   "app.interrupt": [
     "ctrl+q"
-  ]
+  ],
+  "app.model.cycleBackward": []
 }
