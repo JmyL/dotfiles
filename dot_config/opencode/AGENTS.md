@@ -6,6 +6,33 @@ This session's **agent** terminals stay the `terminals/` snapshots — atuin is 
 
 Do not dump large history or secrets; filter by time, cwd, or session (`ATUIN_SESSION`).
 
+# pi.dev package search
+
+When the user asks to find a pi package/extension, search pi.dev with the `?name=` query (e.g. `https://pi.dev/packages?name=mode`), not just the default gallery landing page — the landing page is sorted/paginated and misses popular packages. Don't conclude a package doesn't exist from the landing page alone.
+
+# Terminal glyph rendering (kitty)
+
+Do not use circled/enclosed characters in terminal output. kitty renders them in a single narrow cell, so they come out tiny and hard to read (measured on this setup: ① ink 9×9px vs 16px for Hangul).
+
+- **Banned:** circled digits / enclosed alphanumerics (①②③ ⓵ ⓿, U+2460–24FF) and dingbat circled digits (❶❷❸ ➊➋➌, U+2776–2793). Use plain `1.` `2.` numbering instead.
+- **Verified-large exception:** emoji keycap sequences like 1️⃣ 2️⃣ (digit + VS16 + U+20E3) — they render wide (2 cells) at full size, same as 🔟.
+- Korean circled Hangul (㉠㉡, U+3260+) also renders wide and is fine in Korean text.
+
+# Communication style (Sungsik)
+
+When Sungsik's earlier wording in a thread caused a misunderstanding (Slack/Jira/PR/email), draft corrections in this order — he considers this easiest for others to follow:
+
+1. **Fix own expression first, state position precisely** — restate the corrected point plainly ("had typos, what I meant is ..."), with prod/dev-style scope or division-of-labor made explicit.
+2. **Then address each misunderstanding point**, referencing the other person's claim explicitly (@name, short quote) and answering it directly rather than re-asserting the original position.
+
+Apply the same order when advising on or analyzing such threads. If Sungsik's message would reopen a settled debate, point out which part still needs a direct response to the other side.
+
+For answering Sungsik's questions: if the question is simple, just answer it directly. But when his question shows a partial misunderstanding and answering it as-asked would be confusing or misleading, first give the correct explanation clearly, then follow with a brief direct answer to the original question. This makes the actual answer clearer and shorter.
+
+# No direct PR / review comments
+
+Never post comments or replies directly to PRs or similar review surfaces (GitHub review threads, issue comments) — not even for approved drafts. Always present the drafted text in chat and let Sungsik post it himself. Direct posting only when Sungsik explicitly asks for that exact comment in that turn. Jira/Slack posting flows in vay-* skills are unaffected.
+
 # Obsidian notes
 
 Follow `~/Documents/Obsidian/AGENTS.md`. Skills registered in `~/.config/opencode/skills/`: `obsidian-issue-analysis` (new-issue analysis), `obsidian-plan` (plans / how-to runbooks), `obsidian-note` (knowledge notes), `obsidian-daily-questions` (daily `## Questions`: inline answers / question→note migration).
