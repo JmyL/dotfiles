@@ -17,6 +17,7 @@ Do not use circled/enclosed characters in terminal output. kitty renders them in
 - **Banned:** circled digits / enclosed alphanumerics (①②③ ⓵ ⓿, U+2460–24FF) and dingbat circled digits (❶❷❸ ➊➋➌, U+2776–2793). Use plain `1.` `2.` numbering instead.
 - **Verified-large exception:** emoji keycap sequences like 1️⃣ 2️⃣ (digit + VS16 + U+20E3) — they render wide (2 cells) at full size, same as 🔟.
 - Korean circled Hangul (㉠㉡, U+3260+) also renders wide and is fine in Korean text.
+- **Nerd Font PUA icons (U+E000–U+F8FF, U+F0000–U+FFFFD: weather, devicons, octicons, …) are now wide-expanding:** kitty pins the whole Nerd Fonts PUA range to the non-Mono face, so icons wider than a cell expand into the following space cell. Do **not** use them in monospace-critical output — markdown tables, aligned columns, ASCII diagrams, diff-like output — or columns drift. Safe in prompts/status lines/free text; just remember they consume the trailing space.
 
 # Communication style (Sungsik)
 
