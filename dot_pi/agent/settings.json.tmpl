@@ -1,8 +1,8 @@
 {
   "lastChangelogVersion": "1.3.0",
   "theme": "system",
-  "defaultProvider": "openrouter",
-  "defaultModel": "z-ai/glm-5.3-flash",
+  "defaultProvider": {{ if hasKey . "pi" }}{{ .pi.defaultProvider | default "openrouter" | quote }}{{ else }}"openrouter"{{ end }},
+  "defaultModel": {{ if hasKey . "pi" }}{{ .pi.defaultModel | default "z-ai/glm-5.3-flash" | quote }}{{ else }}"z-ai/glm-5.3-flash"{{ end }},
   "defaultThinkingLevel": "medium",
   "skills": [
     "~/.pi/skills"
