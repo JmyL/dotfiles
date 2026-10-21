@@ -15,29 +15,58 @@
           "tool_call": false
         }
       }
+    },
+    "litellm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LiteLLM",
+      // Explicit models keep the provider alive even if the discovery plugin
+      // fails; the plugin (if it works) adds the rest of the gateway models.
+      "models": {
+        "local-glm-5.3-flash": {
+          "name": "GLM 5.3 Flash (LiteLLM local)"
+        },
+        "local-deepseek-v4.1-flash-1017": {
+          "name": "DeepSeek 4.1 Flash 1017 (LiteLLM local)"
+        }
+      },
+      "options": {
+        "baseURL": "https://litellm.vayinfra.net/v1",
+        "apiKey": "{env:LITELLM_API_KEY}",
+        "modelsDiscovery": {
+          "enabled": true,
+          "modelInfoFormat": "litellm",
+          "models": {
+            "includeBy": [{ "field": "id", "match": "^local-" }]
+          }
+        }
+      }
     }
   },
+  "plugin": ["opencode-models-discovery"],
   "mcp": {
-    "circleci": {
+    "litellm-circleci": {
       "type": "remote",
-      "url": "https://mcp.circleci.com/v1/mcp",
-      "enabled": true
+      "url": "https://litellm.vayinfra.net/mcp/circleci_mcp",
+      "headers": { "x-litellm-api-key": "Bearer {env:LITELLM_API_KEY}" },
+      // Key-only server per LITELLM_MCP_SETUP.md; without this opencode
+      // falls back to OAuth and reports "needs authentication".
+      "oauth": false,
+      "enabled": true,
+      "timeout": 30000
     },
-    "slack": {
+    "litellm-slack": {
       "type": "remote",
-      "url": "https://mcp.slack.com/mcp",
-      "oauth": {
-        // Reuse the already-approved Slack app that Cursor uses (public PKCE client, no secret needed).
-        "clientId": "3660753192626.8903469228982",
-        // The app only has Cursor's redirect URIs registered; use its local callback.
-        "redirectUri": "http://localhost:8787/callback",
-        "scope": "channels:history groups:history im:history mpim:history search:read.public search:read.private users:read"
-      }
+      "url": "https://litellm.vayinfra.net/mcp/slack",
+      "headers": { "x-litellm-api-key": "Bearer {env:LITELLM_API_KEY}" },
+      "enabled": true,
+      "timeout": 30000
     },
-    "atlassian": {
+    "litellm-atlassian": {
       "type": "remote",
-      "url": "https://mcp.atlassian.com/v1/mcp",
-      "enabled": true
+      "url": "https://litellm.vayinfra.net/mcp/atlassian_mcp",
+      "headers": { "x-litellm-api-key": "Bearer {env:LITELLM_API_KEY}" },
+      "enabled": true,
+      "timeout": 30000
     },
   },
   "permission": {
