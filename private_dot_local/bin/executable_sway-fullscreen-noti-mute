@@ -1,0 +1,124 @@
+#!/bin/bash
+# sway-fullscreen-noti-mute — inhibit swaync notification popups while the
+# currently focused workspace has a fullscreen window, and un-inhibit when it
+# does not.
+#
+# Reacts to sway window/workspace events (keybinding, app-requested fullscreen,
+# window close, workspace switch) so the inhibitor state is always consistent.
+# After RESYNC_SECS without events the state is re-checked, so a swaync restart
+# (which wipes its inhibitor list with no sway event to follow) self-heals.
+# swaymsg exits when the sway session ends, closing the pipe and the script.
+#
+# Uses a swaync inhibitor (swaync-client) instead of DND so the user's manual
+# DND state is never touched. Notifications still accumulate in the control
+# center; on unmute a single summary notification reports how many arrived
+# while inhibited. Started from ~/.config/sway/config.d/20-swaync.conf via
+# exec_always with a pgrep guard.
+
+set -u
+
+LABEL=sway-fullscreen-sync
+BASELINE=${XDG_RUNTIME_DIR:-/tmp}/sway-fullscreen-noti-mute-baseline
+RESYNC_SECS=45
+
+client() {
+  local bin=${SWAYNC_CLIENT:-$HOME/.local/bin/swaync-client}
+  if [ -x "$bin" ]; then
+    printf '%s\n' "$bin"
+  else
+    command -v swaync-client || true
+  fi
+}
+
+# Print "true"/"false"/"" (empty = swaync unreachable).
+inhibited() {
+  "$SWAYNC_CLIENT" -sw -I 2>/dev/null || true
+}
+
+# Print the current notification count; empty on failure.
+count() {
+  "$SWAYNC_CLIENT" -sw -c 2>/dev/null || true
+}
+
+# Print "fullscreen"/"none" based on whether the focused workspace holds a
+# con node with fullscreen_mode > 0. Note: sway's workspace node itself always
+# carries fullscreen_mode = 1, so the check filters type == "con".
+fullscreen_state() {
+  local ws state
+  ws=$(swaymsg -t get_workspaces 2>/dev/null | jq -r '.[] | select(.focused).name' 2>/dev/null) || ws=
+  if [ -z "$ws" ]; then
+    printf 'none\n'
+    return 0
+  fi
+  state=$(swaymsg -t get_tree 2>/dev/null | jq -r --arg ws "$ws" '
+    def fs: if (.type? == "con") and ((.fullscreen_mode? // 0) > 0) then true
+            else ([.nodes[]?, .floating_nodes[]?] | map(fs) | any) end;
+    [.. | objects | select(.type? == "workspace" and .name? == $ws)][0]
+    | if . == null then "none" elif fs then "fullscreen" else "none" end
+  ' 2>/dev/null) || state=
+  printf '%s\n' "${state:-none}"
+}
+
+# One summary notification for notifications that arrived while inhibited.
+summary() {
+  local base now arrived
+  base=$(cat "$BASELINE" 2>/dev/null) || base=
+  rm -f "$BASELINE"
+  case "$base" in
+    '' | *[!0-9]*) return 0 ;;
+  esac
+  now=$(count)
+  case "$now" in
+    '' | *[!0-9]*) return 0 ;;
+  esac
+  arrived=$((now - base))
+  if [ "$arrived" -gt 0 ] && command -v notify-send >/dev/null 2>&1; then
+    notify-send -a sway-fullscreen-mute \
+      "쌓인 알림 ${arrived}개" \
+      "fullscreen 동안 온 알림은 컨트롤 센터에서 확인" 2>/dev/null || true
+  fi
+}
+
+# Apply the inhibitor state for the given "fullscreen"/"none" state.
+apply() {
+  if [ "$1" = fullscreen ]; then
+    if [ "$(inhibited)" != true ]; then
+      if "$SWAYNC_CLIENT" -sw --inhibitor-add "$LABEL" >/dev/null 2>&1; then
+        count >"$BASELINE" 2>/dev/null
+      fi
+    fi
+  else
+    if [ "$(inhibited)" = true ]; then
+      if "$SWAYNC_CLIENT" -sw --inhibitor-remove "$LABEL" >/dev/null 2>&1; then
+        summary
+      fi
+    fi
+  fi
+}
+
+sync_now() {
+  apply "$(fullscreen_state)"
+}
+
+trap 'rm -f "$BASELINE"' EXIT
+
+SWAYNC_CLIENT=$(client)
+if [ -z "$SWAYNC_CLIENT" ] || ! command -v jq >/dev/null 2>&1 ||
+  ! command -v swaymsg >/dev/null 2>&1; then
+  exit 0
+fi
+
+sync_now
+
+# Event loop: each sway event re-syncs; the read timeout acts as the periodic
+# resync timer. EOF means the sway session ended, so the script exits.
+swaymsg -m -t subscribe '["window","workspace"]' 2>/dev/null |
+while true; do
+  if IFS= read -r -t "$RESYNC_SECS" _event; then
+    sync_now
+  elif [ $? -eq 142 ]; then
+    sync_now
+  else
+    break
+  fi
+done
