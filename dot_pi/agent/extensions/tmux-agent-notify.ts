@@ -21,6 +21,10 @@ function inTmux(): boolean {
     return !!process.env.TMUX && !!tmuxPane();
 }
 
+function inHerdrPane(): boolean {
+    return process.env.HERDR_ENV === "1" && !!process.env.HERDR_PANE_ID;
+}
+
 function run(command: string, args: string[]): void {
     spawnSync(command, args, { stdio: "ignore" });
 }
@@ -254,6 +258,11 @@ function markBusy(target: string | undefined, cwd: string | undefined): void {
 }
 
 function notifyDone(title: string, body: string): void {
+    // Inside herdr panes, herdr-focus-notify already notifies on done/blocked.
+    if (inHerdrPane()) {
+        return;
+    }
+
     const attention = locateAttention();
     if (!attention) {
         return;
@@ -275,6 +284,11 @@ function notifyDone(title: string, body: string): void {
 }
 
 function notifyBlocked(title: string, message: string, cwd: string | undefined): void {
+    // Inside herdr panes, herdr-focus-notify already notifies on done/blocked.
+    if (inHerdrPane()) {
+        return;
+    }
+
     const attention = locateAttention();
     if (!attention) {
         return;
