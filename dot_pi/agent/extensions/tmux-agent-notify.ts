@@ -47,6 +47,14 @@ function commandOutput(command: string, args: string[]): string {
     return result.status === 0 ? result.stdout.trim() : "";
 }
 
+function tmuxPaneLabel(): string {
+    const pane = tmuxPane();
+    if (!pane) {
+        return "";
+    }
+    return commandOutput("tmux", ["display-message", "-p", "-t", pane, "#{window_index}.#{pane_index}"]);
+}
+
 function tmuxSwayConId(sessionId: string): string {
     if (!sessionId) {
         return "";
@@ -266,7 +274,7 @@ function notifyDone(title: string, body: string): void {
     child.unref();
 }
 
-function notifyBlocked(message: string, cwd: string | undefined): void {
+function notifyBlocked(title: string, message: string, cwd: string | undefined): void {
     const attention = locateAttention();
     if (!attention) {
         return;
@@ -279,7 +287,6 @@ function notifyBlocked(message: string, cwd: string | undefined): void {
     }
 
     setPaneOption("@ai_state", "blocked");
-    const title = cwd ? basename(cwd) : attention.sessionName;
     writeRuntimeState("blocked", attention.target, cwd, message || "Pi needs your input");
     const child = spawn("ai-notify-and-goto", ["pi", attention.target, title, message || "Pi needs your input"], {
         detached: true,
@@ -293,7 +300,20 @@ export default function (pi: ExtensionAPI) {
     let blockedCount = 0;
     let activeCwd: string | undefined;
     let activeTarget: string | undefined;
+    let activeSessionId: string | undefined;
     const blockedQuestionToolCalls = new Set<string>();
+
+    function notifyTitle(folder: string): string {
+        const parts = [folder];
+        const paneLabel = tmuxPaneLabel();
+        if (paneLabel) {
+            parts.push(`w${paneLabel}`);
+        }
+        if (activeSessionId) {
+            parts.push(activeSessionId.slice(0, 8));
+        }
+        return parts.join(" · ");
+    }
 
     pi.on("session_start", (_event, ctx) => {
         if (ctx?.hasUI !== true) {
@@ -301,6 +321,11 @@ export default function (pi: ExtensionAPI) {
         }
         rootSession = true;
         activeCwd = ctx.cwd;
+        try {
+            activeSessionId = ctx.sessionManager?.getSessionId?.();
+        } catch {
+            activeSessionId = undefined;
+        }
         activeTarget = locateAttention()?.target;
         setPaneOption("@ai_cli", "1");
         setPaneOption("@ai_state");
@@ -333,17 +358,17 @@ export default function (pi: ExtensionAPI) {
         }
 
         blockedCount += 1;
-        notifyBlocked(String(data.label || "Pi needs your input"), activeCwd);
+        notifyBlocked(notifyTitle(activeCwd ? basename(activeCwd) : "Pi"), String(data.label || "Pi needs your input"), activeCwd);
     });
 
     pi.on("tool_call", (event) => {
-        if (!rootSession || event.toolName !== "ask_user_question") {
+        if (!rootSession || event.toolName !== "question") {
             return;
         }
 
         blockedQuestionToolCalls.add(event.toolCallId);
         blockedCount += 1;
-        notifyBlocked(questionPromptSummary(event.input), activeCwd);
+        notifyBlocked(notifyTitle(activeCwd ? basename(activeCwd) : "Pi"), questionPromptSummary(event.input), activeCwd);
     });
 
     pi.on("tool_execution_end", (event) => {
@@ -369,7 +394,7 @@ export default function (pi: ExtensionAPI) {
         blockedCount = 0;
         blockedQuestionToolCalls.clear();
         const folder = activeCwd ? basename(activeCwd) : "Pi";
-        notifyDone(folder, lastAssistantSummary(Array.isArray(event.messages) ? event.messages : []));
+        notifyDone(notifyTitle(folder), lastAssistantSummary(Array.isArray(event.messages) ? event.messages : []));
     });
 
     pi.on("session_shutdown", () => {
