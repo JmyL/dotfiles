@@ -30,9 +30,29 @@ Apply the same order when advising on or analyzing such threads. If Sungsik's me
 
 For answering Sungsik's questions: if the question is simple, just answer it directly. But when his question shows a partial misunderstanding and answering it as-asked would be confusing or misleading, first give the correct explanation clearly, then follow with a brief direct answer to the original question. This makes the actual answer clearer and shorter.
 
+# No em dashes in written text (AI tell)
+
+- Never use em dashes (`—`) in any text the agent writes: chat replies, PR titles/bodies, commit messages, code comments, Jira/Slack drafts, docs, Obsidian notes. Rewrite the sentence with a comma, colon, period, or parentheses instead.
+- En dashes (`–`) used as a dash in prose are also out; numeric ranges (2024–2025) are fine.
+- This holds even when surrounding text or the user's own message uses them: leave existing text untouched, but never add new ones.
+
 # No direct PR / review comments
 
 Never post comments or replies directly to PRs or similar review surfaces (GitHub review threads, issue comments) — not even for approved drafts. Always present the drafted text in chat and let Sungsik post it himself. Direct posting only when Sungsik explicitly asks for that exact comment in that turn. Jira/Slack posting flows in vay-* skills are unaffected.
+
+# Code comments — concise by default
+
+- Prefer self-explanatory code over comments. If a rename or small refactor makes the code obvious, delete the comment instead of rewording it.
+- Never add "what" comments that restate the code (e.g. `// increment counter`, `// loop over items`). Assume the reader knows the language.
+- When a comment is genuinely needed, keep it to one line where possible and explain **why** — a non-obvious constraint, a workaround, a ticket reference, or rationale — never the mechanics.
+- Do not add per-line narration, section banners, or doc comments on private helpers.
+- Exception: public API doc comments stay (repo rules like ree-drive's "Briefly doc every public function" still apply) — but keep them brief; no narrative paragraphs.
+
+# Pre-push ponytail review (default on)
+
+- In repositories where the `vay-ponytail-review` skill is available, run it **by default** before every push / PR creation — do not wait for the user to mention it.
+- It is local-only: never post to GitHub, never call `pr-comments.sh`, never interact with an open PR (see the skill's own rules).
+- Skip it only for trivial changes (docs-only, CI config/label tweaks) and say so in one line.
 
 # Obsidian notes
 
