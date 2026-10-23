@@ -6,7 +6,7 @@ set -euo pipefail
 # is parsed as window criteria unless quoted inside swaymsg.
 
 launcher="${SWAY_WORK_LAUNCHER:-$HOME/.local/bin/work/ree-goodmorning-launch}"
-mode="${SWAY_WORK_MODE:-Work: [g]oodmorning [r]eservation [d]eploy [s]ession [o]pen [c]opy [y]sync [q]uit}"
+mode="${SWAY_WORK_MODE:-Work: [g]oodmorning [r]eservation [d]eploy [s]ession [o]pen [c]opy [a]wait CI [y]sync [q]uit}"
 swaymsg_cmd="${SWAYMSG:-swaymsg}"
 notify_cmd="${NOTIFY_SEND:-notify-send}"
 

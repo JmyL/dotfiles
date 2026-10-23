@@ -34,7 +34,7 @@ teardown() {
 
   run "$script"
   [ "$status" -eq 0 ]
-  [ "$(cat "$SWAYMSG_LOG")" = 'mode "Work: [g]oodmorning [r]eservation [d]eploy [s]ession [o]pen [c]opy [y]sync [q]uit"' ]
+  [ "$(cat "$SWAYMSG_LOG")" = 'mode "Work: [g]oodmorning [r]eservation [d]eploy [s]ession [o]pen [c]opy [a]wait CI [y]sync [q]uit"' ]
   [ ! -f "$NOTIFY_LOG" ]
 }
 
