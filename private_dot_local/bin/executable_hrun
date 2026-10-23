@@ -1,0 +1,354 @@
+#!/usr/bin/env bash
+# hrun: run a command in the current herdr pane, then send a desktop
+# notification if the pane is not focused when the command finishes.
+#
+# Usage: hrun [-t <label>] <command> [args...]
+#
+# On completion the run pane (HERDR_PANE_ID) is compared with the herdr
+# focused pane. If they differ, a D-Bus notification with a "Go to pane"
+# action is sent; clicking it focuses the run pane: sway container focus,
+# herdr workspace focus, then herdr pane focus plus the mouse-warp plugin
+# action, mirroring the herdr-focus-notify click flow. The notification
+# plumbing mirrors ai-notify-and-goto (same bus call, action keys, expiry
+# and history-click wait, container re-exec); it is embedded because
+# ai-notify-and-goto cannot focus herdr panes, whose ids are not tmux/kitty
+# targets.
+#
+# Outside herdr panes (no HERDR_PANE_ID) the command runs as a plain
+# passthrough with no notification. Commands run as executables; use
+# `hrun bash -c '...'` for shell syntax.
+#
+# Internal modes:
+#   hrun __notify <pane_id> <workspace_id> <tab_id> <summary> <body>
+#     Notification helper invoked detached after a run.
+#   HRUN_NOTIFY_TEST_FOCUS=1 with __notify skips the notification and only
+#     runs the click focus actions (used for testing).
+#   HRUN_NOTIFY_DEBUG=1 logs notification ids and click handling to
+#     $XDG_RUNTIME_DIR/hrun/click.log.
+set -uo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: hrun [-t <label>] <command> [args...]
+
+Options:
+  -t <label>   Task label shown in the notification (default: command name)
+  -h           Show this help
+
+Examples:
+  hrun make build
+  hrun -t "push nightly" ./scripts/deploy.sh
+EOF
+}
+
+hr() {
+  # Mirror bashrc.d/herdr-color: keep NO_COLOR/FORCE_COLOR out of herdr calls.
+  (unset NO_COLOR FORCE_COLOR; command herdr "$@")
+}
+
+if [[ "${1:-}" == "__notify" ]]; then
+  shift
+  exec python3 - "$@" <<'PY'
+import glob
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+
+def in_container():
+    return os.path.exists("/run/.containerenv")
+
+
+def reexec_on_host():
+    if not in_container() or os.environ.get("HRUN_NOTIFY_HOST_ENTRY"):
+        return
+    if not shutil.which("flatpak-spawn"):
+        return
+    self_path = os.environ.get("HRUN_SELF_PATH") or os.path.expanduser(
+        "~/.local/bin/hrun"
+    )
+    env = os.environ.copy()
+    env["HRUN_NOTIFY_HOST_ENTRY"] = "1"
+    os.execvpe(
+        "flatpak-spawn",
+        ["flatpak-spawn", "--host", self_path, "__notify", *sys.argv[1:]],
+        env,
+    )
+
+
+reexec_on_host()
+
+args = sys.argv[1:]
+if len(args) < 5:
+    sys.exit(2)
+pane_id, workspace_id, tab_id, summary, body = args[:5]
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib
+
+BUS_NAME = "org.freedesktop.Notifications"
+OBJ_PATH = "/org/freedesktop/Notifications"
+IFACE = "org.freedesktop.Notifications"
+MAX_WAIT_SECONDS = 6 * 3600
+
+
+def click_log():
+    base = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+    return os.path.join(base, "hrun", "click.log")
+
+
+def log(message):
+    if os.environ.get("HRUN_NOTIFY_DEBUG") != "1":
+        return
+    try:
+        os.makedirs(os.path.dirname(click_log()), exist_ok=True)
+        stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with open(click_log(), "a", encoding="utf-8") as handle:
+            handle.write(f"{stamp} {message}\n")
+    except OSError:
+        pass
+
+
+def sanitize_group_id(value):
+    return "".join(
+        ch if (ch.isascii() and ch.isalnum()) or ch in "-_" else "-"
+        for ch in value
+    )
+
+
+def run(args):
+    try:
+        return subprocess.run(args, text=True, capture_output=True, check=False)
+    except FileNotFoundError:
+        if shutil.which("flatpak-spawn"):
+            return subprocess.run(
+                ["flatpak-spawn", "--host", *args],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        return None
+
+
+def herdr_ok(proc):
+    if proc is None or proc.returncode != 0:
+        return False
+    try:
+        return "error" not in json.loads(proc.stdout or "{}")
+    except ValueError:
+        return False
+
+
+def cached_sway_container_id():
+    state_dir = os.environ.get("HERDR_PLUGIN_STATE_DIR") or "/tmp/herdr-focus-notify"
+    path = os.path.join(
+        state_dir, "sway-containers", f"herdr-{sanitize_group_id(pane_id)}"
+    )
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError:
+        return ""
+
+
+def resolve_sway_container():
+    if os.environ.get("HRUN_NOTIFY_NO_SWAY") == "1":
+        return ""
+    scripts = glob.glob(
+        os.path.expanduser(
+            "~/.config/herdr/plugins/github/herdr-focus-notify-*/scripts/"
+            "linux-sway-resolve-kitty.py"
+        )
+    )
+    if not scripts:
+        log("sway resolve helper not found")
+        return ""
+    script = max(scripts, key=os.path.getmtime)
+    proc = run(["python3", script, "--cached", cached_sway_container_id()])
+    if proc and proc.returncode == 0:
+        return proc.stdout.strip()
+    return ""
+
+
+def focus_pane():
+    con = resolve_sway_container()
+    if con:
+        proc = run(["swaymsg", f"[con_id={con}]", "focus"])
+        if proc is None or proc.returncode != 0:
+            log(f"sway focus failed con={con}")
+    if workspace_id:
+        if not herdr_ok(run(["herdr", "workspace", "focus", workspace_id])):
+            log(f"workspace focus failed ws={workspace_id}")
+    if not herdr_ok(run(["herdr", "agent", "focus", pane_id])):
+        if tab_id and herdr_ok(run(["herdr", "tab", "focus", tab_id])):
+            log("agent focus failed, used tab focus")
+        else:
+            log(f"pane focus failed pane={pane_id}")
+    run(["herdr", "plugin", "action", "invoke", "warp",
+         "--plugin", "herdr-pane-mouse-warp"])
+
+
+if os.environ.get("HRUN_NOTIFY_TEST_FOCUS") == "1":
+    focus_pane()
+    sys.exit(0)
+
+bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+loop = GLib.MainLoop()
+clicked = {"value": False}
+notif_id = {"value": None}
+
+
+def on_signal(_conn, _sender, _path, _iface, member, params):
+    unpacked = params.unpack()
+    if not unpacked or unpacked[0] != notif_id["value"]:
+        return
+    if member == "ActivationToken":
+        clicked["value"] = True
+        loop.quit()
+    elif member == "ActionInvoked" and len(unpacked) > 1 \
+            and unpacked[1] in ("default", "goto"):
+        clicked["value"] = True
+        loop.quit()
+    elif member == "NotificationClosed":
+        reason = unpacked[1] if len(unpacked) > 1 else None
+        # Reason 1 (expired) is ignored so clicks from the notification
+        # history still work, matching ai-notify-and-goto.
+        if reason == 1:
+            return
+        loop.quit()
+
+
+bus.signal_subscribe(
+    BUS_NAME, IFACE, None, OBJ_PATH, None, Gio.DBusSignalFlags.NONE, on_signal
+)
+
+reply = bus.call_sync(
+    BUS_NAME,
+    OBJ_PATH,
+    IFACE,
+    "Notify",
+    GLib.Variant(
+        "(susssasa{sv}i)",
+        (
+            "hrun",
+            0,
+            "",
+            summary,
+            body,
+            ["default", "Go to pane", "goto", "Go to pane"],
+            {"urgency": GLib.Variant("y", 1)},
+            10000,
+        ),
+    ),
+    GLib.VariantType("(u)"),
+    Gio.DBusCallFlags.NONE,
+    -1,
+    None,
+)
+notif_id["value"] = reply.unpack()[0]
+log(f"notify id={notif_id['value']} pane={pane_id}")
+
+GLib.timeout_add_seconds(MAX_WAIT_SECONDS, loop.quit)
+loop.run()
+
+if clicked["value"]:
+    log("click -> focus")
+    focus_pane()
+else:
+    log("closed without click")
+PY
+fi
+
+label=""
+while getopts ":t:h" opt; do
+  case "$opt" in
+    t) label="${OPTARG}" ;;
+    h) usage; exit 0 ;;
+    \?) echo "hrun: unknown option: -${OPTARG}" >&2; usage >&2; exit 2 ;;
+    :) echo "hrun: option -${OPTARG} needs a value" >&2; usage >&2; exit 2 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if (( $# == 0 )); then
+  usage >&2
+  exit 2
+fi
+
+pane_id="${HERDR_PANE_ID:-}"
+if [[ -z "$pane_id" ]]; then
+  # Outside herdr: plain passthrough, no tracking possible.
+  exec "$@"
+fi
+
+label="${label:-$(basename -- "$1")}"
+SECONDS=0
+"$@"
+rc=$?
+secs=$SECONDS
+if (( secs >= 3600 )); then
+  duration="$(printf '%d:%02d:%02d' $((secs / 3600)) $(((secs % 3600) / 60)) $((secs % 60)))"
+else
+  duration="$(printf '%d:%02d' $((secs / 60)) $((secs % 60)))"
+fi
+
+# Focused herdr pane plus this pane's workspace/tab for the click action.
+# All-empty output means herdr was unreachable; err on the side of notifying.
+focus_info="$(hr pane list 2>/dev/null | python3 -c '
+import json, sys
+
+mine = sys.argv[1]
+focused = ws = tab = ""
+try:
+    panes = json.load(sys.stdin).get("result", {}).get("panes") or []
+except Exception:
+    panes = []
+for pane in panes:
+    if pane.get("focused"):
+        focused = pane.get("pane_id") or ""
+        break
+for pane in panes:
+    if pane.get("pane_id") == mine:
+        ws = pane.get("workspace_id") or ""
+        tab = pane.get("tab_id") or ""
+        break
+print("\t".join((focused, ws, tab)))
+' "$pane_id" 2>/dev/null)"
+IFS=$'\t' read -r focused_pane ws_id tab_id <<< "$focus_info"
+
+if [[ "$focused_pane" == "$pane_id" ]]; then
+  exit "$rc"
+fi
+
+display="$(basename "$PWD")"
+if [[ -n "$ws_id" ]]; then
+  ws_label="$(hr workspace get "$ws_id" 2>/dev/null | python3 -c '
+import json, re, sys
+try:
+    label = json.load(sys.stdin)["result"]["workspace"]["label"]
+except Exception:
+    label = ""
+match = re.match(r"^\S+:\s+(.+)$", label)
+print(match.group(1) if match else label)
+' 2>/dev/null)"
+  if [[ -n "$ws_label" ]]; then
+    display="$ws_label"
+  fi
+fi
+
+summary="hrun: ${label} (rc ${rc}, ${duration})"
+summary="${summary:0:120}"
+body="${display}"
+body="${body:0:200}"
+
+self="$(command -v -- "$0" 2>/dev/null || printf '%s' "$0")"
+export HRUN_SELF_PATH="$self"
+setsid -f "$self" __notify "$pane_id" "$ws_id" "$tab_id" "$summary" "$body" \
+  </dev/null >/dev/null 2>&1 &
+
+exit "$rc"
