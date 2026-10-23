@@ -6,6 +6,10 @@ This session's **agent** terminals stay the `terminals/` snapshots — atuin is 
 
 Do not dump large history or secrets; filter by time, cwd, or session (`ATUIN_SESSION`).
 
+# Work (Vay) instructions
+
+Company-specific instructions live in `~/.pi/agent/WORK_AGENTS.md`. When a task mentions Vay entities (repos, testbeds, vehicles, telestations, Jira/Confluence/Slack/Grafana/Snowflake), read that file first and follow it; add new company-specific rules there instead of here. It includes the testbed short-name convention: bare names like `loki` expand to `ts-de-ber-loki` (telestation) or `ve-de-loki` (vehicle).
+
 # pi.dev package search
 
 When the user asks to find a pi package/extension, search pi.dev with the `?name=` query (e.g. `https://pi.dev/packages?name=mode`), not just the default gallery landing page — the landing page is sorted/paginated and misses popular packages. Don't conclude a package doesn't exist from the landing page alone.
